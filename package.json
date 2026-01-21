@@ -1,0 +1,40 @@
+{
+  "name": "@beorn/flexx",
+  "version": "0.1.0",
+  "description": "Pure JavaScript flexbox layout engine with Yoga-compatible API",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "bun bench/run.ts",
+    "bench:compare": "bun bench/compare.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "flexbox",
+    "layout",
+    "yoga",
+    "terminal",
+    "tui"
+  ],
+  "author": "beorn",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.4",
+    "yoga-wasm-web": "^0.3.3"
+  }
+}
