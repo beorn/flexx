@@ -158,7 +158,13 @@ export class Node {
     this._hasNewLayout = true;
     markSubtreeLayoutSeen(this);
 
-    debug("layout: %dx%d, %d nodes in %dms", width, height, nodeCount, Date.now() - start);
+    debug(
+      "layout: %dx%d, %d nodes in %dms",
+      width,
+      height,
+      nodeCount,
+      Date.now() - start,
+    );
   }
 
   // ============================================================================
@@ -598,7 +604,10 @@ function getEdgeValue(arr: [Value, Value, Value, Value], edge: number): Value {
   }
 }
 
-function getEdgeBorderValue(arr: [number, number, number, number], edge: number): number {
+function getEdgeBorderValue(
+  arr: [number, number, number, number],
+  edge: number,
+): number {
   switch (edge) {
     case C.EDGE_LEFT:
       return arr[0];

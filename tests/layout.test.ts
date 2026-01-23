@@ -546,7 +546,10 @@ describe("Flexx Layout Engine", () => {
     it("should get padding after setting", () => {
       const node = Node.create();
       node.setPadding(EDGE_LEFT, 10);
-      expect(node.getPadding(EDGE_LEFT)).toEqual({ value: 10, unit: UNIT_POINT });
+      expect(node.getPadding(EDGE_LEFT)).toEqual({
+        value: 10,
+        unit: UNIT_POINT,
+      });
     });
 
     it("should get margin after setting", () => {

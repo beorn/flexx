@@ -19,7 +19,7 @@ import { dirname, join } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const wasmPath = join(
   __dirname,
-  "../node_modules/yoga-wasm-web/dist/yoga.wasm"
+  "../node_modules/yoga-wasm-web/dist/yoga.wasm",
 );
 
 // ============================================================================
@@ -38,7 +38,7 @@ interface BenchResult {
 function benchmark(
   name: string,
   fn: () => void,
-  options: { iterations?: number; warmup?: number } = {}
+  options: { iterations?: number; warmup?: number } = {},
 ): BenchResult {
   const { iterations = 1000, warmup = 100 } = options;
 
@@ -68,7 +68,7 @@ function benchmark(
 
 function formatComparison(
   flexx: BenchResult,
-  yoga: BenchResult
+  yoga: BenchResult,
 ): { flexxStr: string; yogaStr: string; winner: string; ratio: string } {
   const flexxStr = `${flexx.avgUs.toFixed(2)} µs`;
   const yogaStr = `${yoga.avgUs.toFixed(2)} µs`;
@@ -260,10 +260,10 @@ async function main() {
   console.log("");
 
   console.log(
-    "**Note:** These benchmarks measure tree creation + layout together."
+    "**Note:** These benchmarks measure tree creation + layout together.",
   );
   console.log(
-    "This is the fair comparison since both engines need to allocate nodes."
+    "This is the fair comparison since both engines need to allocate nodes.",
   );
   console.log("");
 
@@ -282,13 +282,13 @@ async function main() {
     const flexxResult = benchmark(
       `Flexx flat ${nodeCount}`,
       benchFlexxFlat(nodeCount),
-      { iterations: 500 }
+      { iterations: 500 },
     );
 
     const yogaResult = benchmark(
       `Yoga flat ${nodeCount}`,
       benchYogaFlat(yoga, nodeCount),
-      { iterations: 500 }
+      { iterations: 500 },
     );
 
     results.push({
@@ -307,12 +307,16 @@ async function main() {
     const flexxResult = benchmark(
       `Flexx deep ${depth}`,
       benchFlexxDeep(depth),
-      { iterations: 500 }
+      { iterations: 500 },
     );
 
-    const yogaResult = benchmark(`Yoga deep ${depth}`, benchYogaDeep(yoga, depth), {
-      iterations: 500,
-    });
+    const yogaResult = benchmark(
+      `Yoga deep ${depth}`,
+      benchYogaDeep(yoga, depth),
+      {
+        iterations: 500,
+      },
+    );
 
     results.push({
       benchmark: `Deep ${depth} levels`,
@@ -331,13 +335,13 @@ async function main() {
     const flexxResult = benchmark(
       `Flexx kanban 3x${cardsPerCol}`,
       benchFlexxKanban(cardsPerCol),
-      { iterations: 500 }
+      { iterations: 500 },
     );
 
     const yogaResult = benchmark(
       `Yoga kanban 3x${cardsPerCol}`,
       benchYogaKanban(yoga, cardsPerCol),
-      { iterations: 500 }
+      { iterations: 500 },
     );
 
     results.push({
@@ -359,7 +363,7 @@ async function main() {
   for (const { benchmark: name, flexx, yoga: yogaResult } of results) {
     const cmp = formatComparison(flexx, yogaResult);
     console.log(
-      `| ${name.padEnd(28)} | ${cmp.flexxStr.padStart(10)} | ${cmp.yogaStr.padStart(10)} | ${cmp.ratio} |`
+      `| ${name.padEnd(28)} | ${cmp.flexxStr.padStart(10)} | ${cmp.yogaStr.padStart(10)} | ${cmp.ratio} |`,
     );
   }
 
@@ -368,10 +372,10 @@ async function main() {
   console.log("");
 
   const flexxWins = results.filter(
-    (r) => r.flexx.avgUs < r.yoga.avgUs * 0.95
+    (r) => r.flexx.avgUs < r.yoga.avgUs * 0.95,
   ).length;
   const yogaWins = results.filter(
-    (r) => r.yoga.avgUs < r.flexx.avgUs * 0.95
+    (r) => r.yoga.avgUs < r.flexx.avgUs * 0.95,
   ).length;
   const ties = results.length - flexxWins - yogaWins;
 
@@ -387,11 +391,11 @@ async function main() {
 
   if (avgRatio < 0.9) {
     console.log(
-      `**Overall: Flexx is ~${(1 / avgRatio).toFixed(1)}x faster on average**`
+      `**Overall: Flexx is ~${(1 / avgRatio).toFixed(1)}x faster on average**`,
     );
   } else if (avgRatio > 1.1) {
     console.log(
-      `**Overall: Yoga is ~${avgRatio.toFixed(1)}x faster on average**`
+      `**Overall: Yoga is ~${avgRatio.toFixed(1)}x faster on average**`,
     );
   } else {
     console.log("**Overall: Performance is roughly equivalent**");

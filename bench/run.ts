@@ -35,7 +35,7 @@ interface BenchResult {
 function benchmark(
   name: string,
   fn: () => void,
-  options: { iterations?: number; warmup?: number } = {}
+  options: { iterations?: number; warmup?: number } = {},
 ): BenchResult {
   const { iterations = 1000, warmup = 100 } = options;
 
@@ -162,7 +162,7 @@ results.push(
   benchmark("Flat 100 nodes - layout only", () => {
     flat100.markDirty();
     flat100.calculateLayout(1000, 1000, DIRECTION_LTR);
-  })
+  }),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -170,7 +170,7 @@ results.push(
   benchmark("Flat 500 nodes - layout only", () => {
     flat500.markDirty();
     flat500.calculateLayout(1000, 1000, DIRECTION_LTR);
-  })
+  }),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -178,7 +178,7 @@ results.push(
   benchmark("Flat 1000 nodes - layout only", () => {
     flat1000.markDirty();
     flat1000.calculateLayout(1000, 1000, DIRECTION_LTR);
-  })
+  }),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -189,8 +189,8 @@ results.push(
       const tree = createFlatTree(100);
       tree.calculateLayout(1000, 1000, DIRECTION_LTR);
     },
-    { iterations: 500 }
-  )
+    { iterations: 500 },
+  ),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -208,7 +208,7 @@ results.push(
   benchmark("Deep 50 levels - layout only", () => {
     deep50.markDirty();
     deep50.calculateLayout(1000, 1000, DIRECTION_LTR);
-  })
+  }),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -216,7 +216,7 @@ results.push(
   benchmark("Deep 100 levels - layout only", () => {
     deep100.markDirty();
     deep100.calculateLayout(1000, 1000, DIRECTION_LTR);
-  })
+  }),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -224,7 +224,7 @@ results.push(
   benchmark("Deep 200 levels - layout only", () => {
     deep200.markDirty();
     deep200.calculateLayout(1000, 1000, DIRECTION_LTR);
-  })
+  }),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -242,7 +242,7 @@ results.push(
   benchmark("Kanban 3×10 (~33 nodes) - layout only", () => {
     kanban30.markDirty();
     kanban30.calculateLayout(120, 40, DIRECTION_LTR);
-  })
+  }),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -250,7 +250,7 @@ results.push(
   benchmark("Kanban 3×50 (~153 nodes) - layout only", () => {
     kanban150.markDirty();
     kanban150.calculateLayout(120, 40, DIRECTION_LTR);
-  })
+  }),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -258,7 +258,7 @@ results.push(
   benchmark("Kanban 3×100 (~303 nodes) - layout only", () => {
     kanban300.markDirty();
     kanban300.calculateLayout(120, 40, DIRECTION_LTR);
-  })
+  }),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -269,8 +269,8 @@ results.push(
       const tree = createKanbanTree(50);
       tree.calculateLayout(120, 40, DIRECTION_LTR);
     },
-    { iterations: 500 }
-  )
+    { iterations: 500 },
+  ),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -286,7 +286,7 @@ incrementalTree.calculateLayout(120, 40, DIRECTION_LTR);
 results.push(
   benchmark("Clean tree re-layout (should skip)", () => {
     incrementalTree.calculateLayout(120, 40, DIRECTION_LTR);
-  })
+  }),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -298,7 +298,7 @@ results.push(
       incrementalTree.calculateLayout(120, 40, DIRECTION_LTR);
       col.setWidth(40);
     }
-  })
+  }),
 );
 console.log(formatResult(results.at(-1)!));
 
@@ -306,8 +306,8 @@ console.log("");
 console.log("## Summary");
 console.log("");
 console.log(
-  "For terminal UIs (typically <500 nodes), Flexx handles layout in <1ms."
+  "For terminal UIs (typically <500 nodes), Flexx handles layout in <1ms.",
 );
 console.log(
-  "This is more than fast enough for 60fps rendering (16.67ms per frame)."
+  "This is more than fast enough for 60fps rendering (16.67ms per frame).",
 );
