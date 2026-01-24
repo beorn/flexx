@@ -965,7 +965,7 @@ function layoutNode(
     let mainPos = startOffset;
 
     for (let i = 0; i < ordered.length; i++) {
-      const c = ordered[i];
+      const c = ordered[i]!;
       const child = c.node;
       const cs = child.style;
 
