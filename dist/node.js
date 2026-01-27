@@ -3,31 +3,10 @@
  *
  * Yoga-compatible Node class for flexbox layout.
  */
+import createDebug from "debug";
 import * as C from "./constants.js";
+const debug = createDebug("flexx:layout");
 import { createDefaultStyle, } from "./types.js";
-/**
- * Floating-point tolerance for flex grow/shrink distribution.
- * Used to determine when remaining space is negligible.
- */
-const EPSILON_FLOAT = 0.001;
-/**
- * Validate that a value is a finite, non-negative number.
- * @throws Error if the value is invalid
- */
-function validateNonNegative(value, name) {
-    if (!Number.isFinite(value) || value < 0) {
-        throw new Error(`Invalid ${name}: ${value} (must be a finite non-negative number)`);
-    }
-}
-/**
- * Validate that a value is a finite number (can be negative for percent values).
- * @throws Error if the value is invalid
- */
-function validateFinite(value, name) {
-    if (!Number.isFinite(value)) {
-        throw new Error(`Invalid ${name}: ${value} (must be a finite number)`);
-    }
-}
 /**
  * A layout node in the flexbox tree.
  */
@@ -47,33 +26,65 @@ export class Node {
     // ============================================================================
     // Static Factory
     // ============================================================================
+    /**
+     * Create a new layout node.
+     *
+     * @returns A new Node instance
+     * @example
+     * ```typescript
+     * const root = Node.create();
+     * root.setWidth(100);
+     * root.setHeight(200);
+     * ```
+     */
     static create() {
         return new Node();
     }
     // ============================================================================
     // Tree Operations
     // ============================================================================
+    /**
+     * Get the number of child nodes.
+     *
+     * @returns The number of children
+     */
     getChildCount() {
         return this._children.length;
     }
+    /**
+     * Get a child node by index.
+     *
+     * @param index - Zero-based child index
+     * @returns The child node at the given index, or undefined if index is out of bounds
+     */
     getChild(index) {
         return this._children[index];
     }
+    /**
+     * Get the parent node.
+     *
+     * @returns The parent node, or null if this is a root node
+     */
     getParent() {
         return this._parent;
     }
+    /**
+     * Insert a child node at the specified index.
+     * If the child already has a parent, it will be removed from that parent first.
+     * Marks the node as dirty to trigger layout recalculation.
+     *
+     * @param child - The child node to insert
+     * @param index - The index at which to insert the child
+     * @example
+     * ```typescript
+     * const parent = Node.create();
+     * const child1 = Node.create();
+     * const child2 = Node.create();
+     * parent.insertChild(child1, 0);
+     * parent.insertChild(child2, 1);
+     * ```
+     */
     insertChild(child, index) {
-        // Prevent circular parent-child relationships
-        if (child === this) {
-            throw new Error("Cannot insert a node as its own child");
-        }
-        let ancestor = this._parent;
-        while (ancestor !== null) {
-            if (ancestor === child) {
-                throw new Error("Cannot insert an ancestor as a child (would create cycle)");
-            }
-            ancestor = ancestor._parent;
-        }
         if (child._parent !== null) {
             child._parent.removeChild(child);
         }
@@ -81,6 +92,13 @@ export class Node {
         this._children.splice(index, 0, child);
         this.markDirty();
     }
+    /**
+     * Remove a child node from this node.
+     * The child's parent reference will be cleared.
+     * Marks the node as dirty to trigger layout recalculation.
+     *
+     * @param child - The child node to remove
+     */
     removeChild(child) {
         const index = this._children.indexOf(child);
         if (index !== -1) {
@@ -89,6 +107,11 @@ export class Node {
             this.markDirty();
         }
     }
+    /**
+     * Free this node and clean up all references.
+     * Removes the node from its parent, clears all children, and removes the measure function.
+     * This does not recursively free child nodes.
+     */
     free() {
         // Remove from parent
         if (this._parent !== null) {
@@ -101,63 +124,163 @@ export class Node {
         this._children = [];
         this._measureFunc = null;
     }
+    /**
+     * Dispose the node (calls free)
+     */
+    [Symbol.dispose]() {
+        this.free();
+    }
     // ============================================================================
     // Measure Function
     // ============================================================================
+    /**
+     * Set a measure function for intrinsic sizing.
+     * The measure function is called during layout to determine the node's natural size.
+     * Typically used for text nodes or other content that has an intrinsic size.
+     * Marks the node as dirty to trigger layout recalculation.
+     *
+     * @param measureFunc - Function that returns width and height given available space and constraints
+     * @example
+     * ```typescript
+     * const textNode = Node.create();
+     * textNode.setMeasureFunc((width, widthMode, height, heightMode) => {
+     *   // Measure text and return dimensions
+     *   return { width: 50, height: 20 };
+     * });
+     * ```
+     */
     setMeasureFunc(measureFunc) {
         this._measureFunc = measureFunc;
         this.markDirty();
     }
+    /**
+     * Remove the measure function from this node.
+     * Marks the node as dirty to trigger layout recalculation.
+     */
     unsetMeasureFunc() {
         this._measureFunc = null;
         this.markDirty();
     }
+    /**
+     * Check if this node has a measure function.
+     *
+     * @returns True if a measure function is set
+     */
     hasMeasureFunc() {
         return this._measureFunc !== null;
     }
     // ============================================================================
     // Dirty Tracking
     // ============================================================================
+    /**
+     * Check if this node needs layout recalculation.
+     *
+     * @returns True if the node is dirty and needs layout
+     */
     isDirty() {
         return this._isDirty;
     }
+    /**
+     * Mark this node and all ancestors as dirty.
+     * A dirty node needs layout recalculation.
+     * This is automatically called by all style setters and tree operations.
+     */
     markDirty() {
         this._isDirty = true;
         if (this._parent !== null) {
             this._parent.markDirty();
         }
     }
+    /**
+     * Check if this node has new layout results since the last check.
+     *
+     * @returns True if layout was recalculated since the last call to markLayoutSeen
+     */
     hasNewLayout() {
         return this._hasNewLayout;
     }
+    /**
+     * Mark that the current layout has been seen/processed.
+     * Clears the hasNewLayout flag.
+     */
     markLayoutSeen() {
         this._hasNewLayout = false;
     }
     // ============================================================================
     // Layout Calculation
     // ============================================================================
+    /**
+     * Calculate layout for this node and all descendants.
+     * This runs the flexbox layout algorithm to compute positions and sizes.
+     * Only recalculates if the node is marked as dirty.
+     *
+     * @param width - Available width for layout
+     * @param height - Available height for layout
+     * @param _direction - Text direction (LTR or RTL), defaults to LTR
+     * @example
+     * ```typescript
+     * const root = Node.create();
+     * root.setFlexDirection(FLEX_DIRECTION_ROW);
+     * root.setWidth(100);
+     * root.setHeight(50);
+     *
+     * const child = Node.create();
+     * child.setFlexGrow(1);
+     * root.insertChild(child, 0);
+     *
+     * root.calculateLayout(100, 50, DIRECTION_LTR);
+     *
+     * // Now you can read computed layout
+     * console.log(child.getComputedWidth());
+     * ```
+     */
     calculateLayout(width, height, _direction = C.DIRECTION_LTR) {
-        if (!this._isDirty)
+        if (!this._isDirty) {
+            debug("layout skip (not dirty)");
             return;
+        }
+        const start = Date.now();
+        const nodeCount = countNodes(this);
         // Run the layout algorithm
         computeLayout(this, width, height);
         // Mark layout computed
         this._isDirty = false;
         this._hasNewLayout = true;
         markSubtreeLayoutSeen(this);
+        debug("layout: %dx%d, %d nodes in %dms", width, height, nodeCount, Date.now() - start);
     }
     // ============================================================================
     // Layout Results
     // ============================================================================
+    /**
+     * Get the computed left position after layout.
+     *
+     * @returns The left position in points
+     */
     getComputedLeft() {
         return this._layout.left;
     }
+    /**
+     * Get the computed top position after layout.
+     *
+     * @returns The top position in points
+     */
     getComputedTop() {
         return this._layout.top;
     }
+    /**
+     * Get the computed width after layout.
+     *
+     * @returns The width in points
+     */
     getComputedWidth() {
         return this._layout.width;
     }
+    /**
+     * Get the computed height after layout.
+     *
+     * @returns The height in points
+     */
     getComputedHeight() {
         return this._layout.height;
     }
@@ -179,16 +302,27 @@ export class Node {
     // ============================================================================
     // Width Setters
     // ============================================================================
+    /**
+     * Set the width to a fixed value in points.
+     *
+     * @param value - Width in points
+     */
     setWidth(value) {
-        validateNonNegative(value, "width");
         this._style.width = { value, unit: C.UNIT_POINT };
         this.markDirty();
     }
+    /**
+     * Set the width as a percentage of the parent's width.
+     *
+     * @param value - Width as a percentage (0-100)
+     */
     setWidthPercent(value) {
-        validateFinite(value, "width percent");
         this._style.width = { value, unit: C.UNIT_PERCENT };
         this.markDirty();
     }
+    /**
+     * Set the width to auto (determined by layout algorithm).
+     */
     setWidthAuto() {
         this._style.width = { value: 0, unit: C.UNIT_AUTO };
         this.markDirty();
@@ -196,16 +330,27 @@ export class Node {
     // ============================================================================
     // Height Setters
     // ============================================================================
+    /**
+     * Set the height to a fixed value in points.
+     *
+     * @param value - Height in points
+     */
     setHeight(value) {
-        validateNonNegative(value, "height");
         this._style.height = { value, unit: C.UNIT_POINT };
         this.markDirty();
     }
+    /**
+     * Set the height as a percentage of the parent's height.
+     *
+     * @param value - Height as a percentage (0-100)
+     */
     setHeightPercent(value) {
-        validateFinite(value, "height percent");
         this._style.height = { value, unit: C.UNIT_PERCENT };
         this.markDirty();
     }
+    /**
+     * Set the height to auto (determined by layout algorithm).
+     */
     setHeightAuto() {
         this._style.height = { value: 0, unit: C.UNIT_AUTO };
         this.markDirty();
@@ -213,77 +358,151 @@ export class Node {
     // ============================================================================
     // Min/Max Size Setters
     // ============================================================================
+    /**
+     * Set the minimum width in points.
+     *
+     * @param value - Minimum width in points
+     */
     setMinWidth(value) {
-        validateNonNegative(value, "minWidth");
         this._style.minWidth = { value, unit: C.UNIT_POINT };
         this.markDirty();
     }
+    /**
+     * Set the minimum width as a percentage of the parent's width.
+     *
+     * @param value - Minimum width as a percentage (0-100)
+     */
     setMinWidthPercent(value) {
-        validateFinite(value, "minWidth percent");
         this._style.minWidth = { value, unit: C.UNIT_PERCENT };
         this.markDirty();
     }
+    /**
+     * Set the minimum height in points.
+     *
+     * @param value - Minimum height in points
+     */
     setMinHeight(value) {
-        validateNonNegative(value, "minHeight");
         this._style.minHeight = { value, unit: C.UNIT_POINT };
         this.markDirty();
     }
+    /**
+     * Set the minimum height as a percentage of the parent's height.
+     *
+     * @param value - Minimum height as a percentage (0-100)
+     */
     setMinHeightPercent(value) {
-        validateFinite(value, "minHeight percent");
         this._style.minHeight = { value, unit: C.UNIT_PERCENT };
         this.markDirty();
     }
+    /**
+     * Set the maximum width in points.
+     *
+     * @param value - Maximum width in points
+     */
     setMaxWidth(value) {
-        validateNonNegative(value, "maxWidth");
         this._style.maxWidth = { value, unit: C.UNIT_POINT };
         this.markDirty();
     }
+    /**
+     * Set the maximum width as a percentage of the parent's width.
+     *
+     * @param value - Maximum width as a percentage (0-100)
+     */
     setMaxWidthPercent(value) {
-        validateFinite(value, "maxWidth percent");
         this._style.maxWidth = { value, unit: C.UNIT_PERCENT };
         this.markDirty();
     }
+    /**
+     * Set the maximum height in points.
+     *
+     * @param value - Maximum height in points
+     */
     setMaxHeight(value) {
-        validateNonNegative(value, "maxHeight");
         this._style.maxHeight = { value, unit: C.UNIT_POINT };
         this.markDirty();
     }
+    /**
+     * Set the maximum height as a percentage of the parent's height.
+     *
+     * @param value - Maximum height as a percentage (0-100)
+     */
     setMaxHeightPercent(value) {
-        validateFinite(value, "maxHeight percent");
         this._style.maxHeight = { value, unit: C.UNIT_PERCENT };
         this.markDirty();
     }
     // ============================================================================
     // Flex Setters
     // ============================================================================
+    /**
+     * Set the flex grow factor.
+     * Determines how much the node will grow relative to siblings when there is extra space.
+     *
+     * @param value - Flex grow factor (typically 0 or 1+)
+     * @example
+     * ```typescript
+     * const child = Node.create();
+     * child.setFlexGrow(1); // Will grow to fill available space
+     * ```
+     */
     setFlexGrow(value) {
-        validateNonNegative(value, "flexGrow");
         this._style.flexGrow = value;
         this.markDirty();
     }
+    /**
+     * Set the flex shrink factor.
+     * Determines how much the node will shrink relative to siblings when there is insufficient space.
+     *
+     * @param value - Flex shrink factor (default is 1)
+     */
     setFlexShrink(value) {
-        validateNonNegative(value, "flexShrink");
         this._style.flexShrink = value;
         this.markDirty();
     }
+    /**
+     * Set the flex basis to a fixed value in points.
+     * The initial size of the node before flex grow/shrink is applied.
+     *
+     * @param value - Flex basis in points
+     */
     setFlexBasis(value) {
-        validateNonNegative(value, "flexBasis");
         this._style.flexBasis = { value, unit: C.UNIT_POINT };
         this.markDirty();
     }
+    /**
+     * Set the flex basis as a percentage of the parent's size.
+     *
+     * @param value - Flex basis as a percentage (0-100)
+     */
     setFlexBasisPercent(value) {
-        validateFinite(value, "flexBasis percent");
         this._style.flexBasis = { value, unit: C.UNIT_PERCENT };
         this.markDirty();
     }
+    /**
+     * Set the flex basis to auto (based on the node's width/height).
+     */
     setFlexBasisAuto() {
         this._style.flexBasis = { value: 0, unit: C.UNIT_AUTO };
         this.markDirty();
     }
+    /**
+     * Set the flex direction (main axis direction).
+     *
+     * @param direction - FLEX_DIRECTION_ROW, FLEX_DIRECTION_COLUMN, FLEX_DIRECTION_ROW_REVERSE, or FLEX_DIRECTION_COLUMN_REVERSE
+     * @example
+     * ```typescript
+     * const container = Node.create();
+     * container.setFlexDirection(FLEX_DIRECTION_ROW); // Lay out children horizontally
+     * ```
+     */
     setFlexDirection(direction) {
         this._style.flexDirection = direction;
         this.markDirty();
     }
+    /**
+     * Set the flex wrap behavior.
+     *
+     * @param wrap - WRAP_NO_WRAP, WRAP_WRAP, or WRAP_WRAP_REVERSE
+     */
     setFlexWrap(wrap) {
         this._style.flexWrap = wrap;
         this.markDirty();
@@ -291,18 +510,51 @@ export class Node {
     // ============================================================================
     // Alignment Setters
     // ============================================================================
+    /**
+     * Set how children are aligned along the cross axis.
+     *
+     * @param align - ALIGN_FLEX_START, ALIGN_CENTER, ALIGN_FLEX_END, ALIGN_STRETCH, or ALIGN_BASELINE
+     * @example
+     * ```typescript
+     * const container = Node.create();
+     * container.setFlexDirection(FLEX_DIRECTION_ROW);
+     * container.setAlignItems(ALIGN_CENTER); // Center children vertically
+     * ```
+     */
     setAlignItems(align) {
         this._style.alignItems = align;
         this.markDirty();
     }
+    /**
+     * Set how this node is aligned along the parent's cross axis.
+     * Overrides the parent's alignItems for this specific child.
+     *
+     * @param align - ALIGN_AUTO, ALIGN_FLEX_START, ALIGN_CENTER, ALIGN_FLEX_END, ALIGN_STRETCH, or ALIGN_BASELINE
+     */
     setAlignSelf(align) {
         this._style.alignSelf = align;
         this.markDirty();
     }
+    /**
+     * Set how lines are aligned in a multi-line flex container.
+     * Only affects containers with wrap enabled and multiple lines.
+     *
+     * @param align - ALIGN_FLEX_START, ALIGN_CENTER, ALIGN_FLEX_END, ALIGN_STRETCH, ALIGN_SPACE_BETWEEN, or ALIGN_SPACE_AROUND
+     */
     setAlignContent(align) {
         this._style.alignContent = align;
         this.markDirty();
     }
+    /**
+     * Set how children are distributed along the main axis.
+     *
+     * @param justify - JUSTIFY_FLEX_START, JUSTIFY_CENTER, JUSTIFY_FLEX_END, JUSTIFY_SPACE_BETWEEN, JUSTIFY_SPACE_AROUND, or JUSTIFY_SPACE_EVENLY
+     * @example
+     * ```typescript
+     * const container = Node.create();
+     * container.setJustifyContent(JUSTIFY_SPACE_BETWEEN); // Space children evenly with edges at start/end
+     * ```
+     */
     setJustifyContent(justify) {
         this._style.justifyContent = justify;
         this.markDirty();
@@ -310,23 +562,58 @@ export class Node {
     // ============================================================================
     // Spacing Setters
     // ============================================================================
+    /**
+     * Set padding for one or more edges.
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
+     * @param value - Padding in points
+     * @example
+     * ```typescript
+     * node.setPadding(EDGE_ALL, 10); // Set 10pt padding on all edges
+     * node.setPadding(EDGE_HORIZONTAL, 5); // Set 5pt padding on left and right
+     * ```
+     */
     setPadding(edge, value) {
-        validateNonNegative(value, "padding");
         setEdgeValue(this._style.padding, edge, value, C.UNIT_POINT);
         this.markDirty();
     }
+    /**
+     * Set margin for one or more edges.
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
+     * @param value - Margin in points
+     * @example
+     * ```typescript
+     * node.setMargin(EDGE_ALL, 5); // Set 5pt margin on all edges
+     * node.setMargin(EDGE_TOP, 10); // Set 10pt margin on top only
+     * ```
+     */
     setMargin(edge, value) {
-        validateFinite(value, "margin"); // Margins can be negative in CSS
         setEdgeValue(this._style.margin, edge, value, C.UNIT_POINT);
         this.markDirty();
     }
+    /**
+     * Set border width for one or more edges.
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
+     * @param value - Border width in points
+     */
     setBorder(edge, value) {
-        validateNonNegative(value, "border");
         setEdgeBorder(this._style.border, edge, value);
         this.markDirty();
     }
+    /**
+     * Set gap between flex items.
+     *
+     * @param gutter - GUTTER_COLUMN (horizontal gap), GUTTER_ROW (vertical gap), or GUTTER_ALL (both)
+     * @param value - Gap size in points
+     * @example
+     * ```typescript
+     * container.setGap(GUTTER_ALL, 8); // Set 8pt gap between all items
+     * container.setGap(GUTTER_COLUMN, 10); // Set 10pt horizontal gap only
+     * ```
+     */
     setGap(gutter, value) {
-        validateNonNegative(value, "gap");
         if (gutter === C.GUTTER_COLUMN) {
             this._style.gap[0] = value;
         }
@@ -342,22 +629,49 @@ export class Node {
     // ============================================================================
     // Position Setters
     // ============================================================================
+    /**
+     * Set the position type.
+     *
+     * @param positionType - POSITION_TYPE_STATIC, POSITION_TYPE_RELATIVE, or POSITION_TYPE_ABSOLUTE
+     * @example
+     * ```typescript
+     * node.setPositionType(POSITION_TYPE_ABSOLUTE);
+     * node.setPosition(EDGE_LEFT, 10);
+     * node.setPosition(EDGE_TOP, 20);
+     * ```
+     */
     setPositionType(positionType) {
         this._style.positionType = positionType;
         this.markDirty();
     }
+    /**
+     * Set position offset for one or more edges.
+     * Only applies when position type is ABSOLUTE or RELATIVE.
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
+     * @param value - Position offset in points
+     */
     setPosition(edge, value) {
-        validateFinite(value, "position"); // Position can be negative
         setEdgeValue(this._style.position, edge, value, C.UNIT_POINT);
         this.markDirty();
     }
     // ============================================================================
     // Other Setters
     // ============================================================================
+    /**
+     * Set the display type.
+     *
+     * @param display - DISPLAY_FLEX or DISPLAY_NONE
+     */
     setDisplay(display) {
         this._style.display = display;
         this.markDirty();
     }
+    /**
+     * Set the overflow behavior.
+     *
+     * @param overflow - OVERFLOW_VISIBLE, OVERFLOW_HIDDEN, or OVERFLOW_SCROLL
+     */
     setOverflow(overflow) {
         this._style.overflow = overflow;
         this.markDirty();
@@ -365,72 +679,192 @@ export class Node {
     // ============================================================================
     // Style Getters
     // ============================================================================
+    /**
+     * Get the width style value.
+     *
+     * @returns Width value with unit (points, percent, or auto)
+     */
     getWidth() {
         return this._style.width;
     }
+    /**
+     * Get the height style value.
+     *
+     * @returns Height value with unit (points, percent, or auto)
+     */
     getHeight() {
         return this._style.height;
     }
+    /**
+     * Get the minimum width style value.
+     *
+     * @returns Minimum width value with unit
+     */
     getMinWidth() {
         return this._style.minWidth;
     }
+    /**
+     * Get the minimum height style value.
+     *
+     * @returns Minimum height value with unit
+     */
     getMinHeight() {
         return this._style.minHeight;
     }
+    /**
+     * Get the maximum width style value.
+     *
+     * @returns Maximum width value with unit
+     */
     getMaxWidth() {
         return this._style.maxWidth;
     }
+    /**
+     * Get the maximum height style value.
+     *
+     * @returns Maximum height value with unit
+     */
     getMaxHeight() {
         return this._style.maxHeight;
     }
+    /**
+     * Get the flex grow factor.
+     *
+     * @returns Flex grow value
+     */
     getFlexGrow() {
         return this._style.flexGrow;
     }
+    /**
+     * Get the flex shrink factor.
+     *
+     * @returns Flex shrink value
+     */
     getFlexShrink() {
         return this._style.flexShrink;
     }
+    /**
+     * Get the flex basis style value.
+     *
+     * @returns Flex basis value with unit
+     */
     getFlexBasis() {
         return this._style.flexBasis;
     }
+    /**
+     * Get the flex direction.
+     *
+     * @returns Flex direction constant
+     */
     getFlexDirection() {
         return this._style.flexDirection;
     }
+    /**
+     * Get the flex wrap setting.
+     *
+     * @returns Flex wrap constant
+     */
     getFlexWrap() {
         return this._style.flexWrap;
     }
+    /**
+     * Get the align items setting.
+     *
+     * @returns Align items constant
+     */
     getAlignItems() {
         return this._style.alignItems;
     }
+    /**
+     * Get the align self setting.
+     *
+     * @returns Align self constant
+     */
     getAlignSelf() {
         return this._style.alignSelf;
     }
+    /**
+     * Get the align content setting.
+     *
+     * @returns Align content constant
+     */
     getAlignContent() {
         return this._style.alignContent;
     }
+    /**
+     * Get the justify content setting.
+     *
+     * @returns Justify content constant
+     */
     getJustifyContent() {
         return this._style.justifyContent;
     }
+    /**
+     * Get the padding for a specific edge.
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, or EDGE_BOTTOM
+     * @returns Padding value with unit
+     */
     getPadding(edge) {
         return getEdgeValue(this._style.padding, edge);
     }
+    /**
+     * Get the margin for a specific edge.
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, or EDGE_BOTTOM
+     * @returns Margin value with unit
+     */
     getMargin(edge) {
         return getEdgeValue(this._style.margin, edge);
     }
+    /**
+     * Get the border width for a specific edge.
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, or EDGE_BOTTOM
+     * @returns Border width in points
+     */
     getBorder(edge) {
         return getEdgeBorderValue(this._style.border, edge);
     }
+    /**
+     * Get the position offset for a specific edge.
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, or EDGE_BOTTOM
+     * @returns Position value with unit
+     */
     getPosition(edge) {
         return getEdgeValue(this._style.position, edge);
     }
+    /**
+     * Get the position type.
+     *
+     * @returns Position type constant
+     */
     getPositionType() {
         return this._style.positionType;
     }
+    /**
+     * Get the display type.
+     *
+     * @returns Display constant
+     */
     getDisplay() {
         return this._style.display;
     }
+    /**
+     * Get the overflow setting.
+     *
+     * @returns Overflow constant
+     */
     getOverflow() {
         return this._style.overflow;
     }
+    /**
+     * Get the gap for column or row.
+     *
+     * @param gutter - GUTTER_COLUMN or GUTTER_ROW
+     * @returns Gap size in points
+     */
     getGap(gutter) {
         if (gutter === C.GUTTER_COLUMN) {
             return this._style.gap[0];
@@ -539,87 +973,22 @@ function markSubtreeLayoutSeen(node) {
         markSubtreeLayoutSeen(child);
     }
 }
+function countNodes(node) {
+    let count = 1;
+    for (const child of node.children) {
+        count += countNodes(child);
+    }
+    return count;
+}
 // ============================================================================
 // Layout Algorithm
 // Based on Planning-nl/flexbox.js reference implementation
 // ============================================================================
 /**
- * Compute intrinsic main-axis size for a node.
- * For nodes with measureFunc, calls the measure function.
- * For containers, recursively computes children's sizes and sums them.
- *
- * @param node - The node to measure
- * @param isRow - Whether parent flex direction is row
- * @param availMainAxis - Available space on main axis (for at-most constraint)
- * @param availCrossAxis - Available space on cross axis
- * @returns The intrinsic main-axis size
+ * Epsilon value for floating point comparisons in flex distribution.
+ * Used to determine when remaining space is negligible and iteration should stop.
  */
-function computeIntrinsicMainSize(node, isRow, availMainAxis, availCrossAxis) {
-    const style = node.style;
-    // If explicit main-axis size, use it
-    const mainDim = isRow ? style.width : style.height;
-    if (mainDim.unit === C.UNIT_POINT) {
-        return mainDim.value;
-    }
-    if (mainDim.unit === C.UNIT_PERCENT && availMainAxis > 0) {
-        return availMainAxis * (mainDim.value / 100);
-    }
-    // If has measure function (leaf node like text), call it
-    if (node.measureFunc !== null && node.children.length === 0) {
-        const measured = node.measureFunc(availMainAxis, C.MEASURE_MODE_AT_MOST, availCrossAxis, C.MEASURE_MODE_UNDEFINED);
-        return isRow ? measured.width : measured.height;
-    }
-    // Container: compute intrinsic size based on children
-    const relativeChildren = node.children.filter((c) => c.style.positionType !== C.POSITION_TYPE_ABSOLUTE && c.style.display !== C.DISPLAY_NONE);
-    if (relativeChildren.length === 0) {
-        return 0;
-    }
-    // Determine THIS node's flex direction
-    const nodeIsRow = style.flexDirection === C.FLEX_DIRECTION_ROW ||
-        style.flexDirection === C.FLEX_DIRECTION_ROW_REVERSE;
-    // Padding and border on the axis we're measuring
-    const padding = style.padding;
-    const border = style.border;
-    const paddingOnAxis = isRow
-        ? resolveValue(padding[0], availMainAxis) + resolveValue(padding[2], availMainAxis)
-        : resolveValue(padding[1], availMainAxis) + resolveValue(padding[3], availMainAxis);
-    const borderOnAxis = isRow ? border[0] + border[2] : border[1] + border[3];
-    // If measuring the SAME axis as this node's main axis, sum children + gaps
-    // If measuring the CROSS axis, take the max
-    const measuringMainAxis = isRow === nodeIsRow;
-    if (measuringMainAxis) {
-        // Sum children along main axis
-        const gap = nodeIsRow ? style.gap[0] : style.gap[1];
-        const totalGaps = relativeChildren.length > 1 ? gap * (relativeChildren.length - 1) : 0;
-        let totalChildMain = 0;
-        for (const child of relativeChildren) {
-            const cs = child.style;
-            // Child margin on the axis we're measuring
-            const mainMargin = isRow
-                ? resolveValue(cs.margin[0], availMainAxis) + resolveValue(cs.margin[2], availMainAxis)
-                : resolveValue(cs.margin[1], availMainAxis) + resolveValue(cs.margin[3], availMainAxis);
-            // Recursively compute child's intrinsic size on this axis
-            const childIntrinsic = computeIntrinsicMainSize(child, isRow, availMainAxis, availCrossAxis);
-            totalChildMain += childIntrinsic + mainMargin;
-        }
-        return totalChildMain + totalGaps + paddingOnAxis + borderOnAxis;
-    }
-    else {
-        // Max of children (cross axis stacking)
-        let maxChild = 0;
-        for (const child of relativeChildren) {
-            const cs = child.style;
-            // Child margin on the axis we're measuring
-            const mainMargin = isRow
-                ? resolveValue(cs.margin[0], availMainAxis) + resolveValue(cs.margin[2], availMainAxis)
-                : resolveValue(cs.margin[1], availMainAxis) + resolveValue(cs.margin[3], availMainAxis);
-            // Recursively compute child's intrinsic size on this axis
-            const childIntrinsic = computeIntrinsicMainSize(child, isRow, availMainAxis, availCrossAxis);
-            maxChild = Math.max(maxChild, childIntrinsic + mainMargin);
-        }
-        return maxChild + paddingOnAxis + borderOnAxis;
-    }
-}
+const EPSILON_FLOAT = 0.001;
 /**
  * Compute layout for a node tree.
  */
@@ -641,8 +1010,14 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
         return;
     }
     // Calculate spacing
-    const margin = resolveSpacing(style.margin, availableWidth, availableHeight);
-    const padding = resolveSpacing(style.padding, availableWidth, availableHeight);
+    const marginLeft = resolveValue(style.margin[0], availableWidth);
+    const marginTop = resolveValue(style.margin[1], availableHeight);
+    const marginRight = resolveValue(style.margin[2], availableWidth);
+    const marginBottom = resolveValue(style.margin[3], availableHeight);
+    const paddingLeft = resolveValue(style.padding[0], availableWidth);
+    const paddingTop = resolveValue(style.padding[1], availableHeight);
+    const paddingRight = resolveValue(style.padding[2], availableWidth);
+    const paddingBottom = resolveValue(style.padding[3], availableHeight);
     const borderLeft = style.border[0];
     const borderTop = style.border[1];
     const borderRight = style.border[2];
@@ -656,7 +1031,7 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
         nodeWidth = availableWidth * (style.width.value / 100);
     }
     else {
-        nodeWidth = availableWidth - margin.left - margin.right;
+        nodeWidth = availableWidth - marginLeft - marginRight;
     }
     nodeWidth = applyMinMax(nodeWidth, style.minWidth, style.maxWidth, availableWidth);
     let nodeHeight;
@@ -667,18 +1042,18 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
         nodeHeight = availableHeight * (style.height.value / 100);
     }
     else {
-        nodeHeight = availableHeight - margin.top - margin.bottom;
+        nodeHeight = availableHeight - marginTop - marginBottom;
     }
     nodeHeight = applyMinMax(nodeHeight, style.minHeight, style.maxHeight, availableHeight);
     // Content area (inside border and padding)
-    const innerLeft = borderLeft + padding.left;
-    const innerTop = borderTop + padding.top;
-    const innerRight = borderRight + padding.right;
-    const innerBottom = borderBottom + padding.bottom;
+    const innerLeft = borderLeft + paddingLeft;
+    const innerTop = borderTop + paddingTop;
+    const innerRight = borderRight + paddingRight;
+    const innerBottom = borderBottom + paddingBottom;
     const contentWidth = Math.max(0, nodeWidth - innerLeft - innerRight);
     const contentHeight = Math.max(0, nodeHeight - innerTop - innerBottom);
     // Handle measure function (text nodes)
-    if (node.measureFunc !== null && node.children.length === 0) {
+    if (node.hasMeasureFunc() && node.children.length === 0) {
         const measureFunc = node.measureFunc;
         const widthMode = style.width.unit === C.UNIT_AUTO
             ? C.MEASURE_MODE_AT_MOST
@@ -695,15 +1070,13 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
         }
         layout.width = Math.round(nodeWidth);
         layout.height = Math.round(nodeHeight);
-        layout.left = Math.round(offsetX + margin.left);
-        layout.top = Math.round(offsetY + margin.top);
+        layout.left = Math.round(offsetX + marginLeft);
+        layout.top = Math.round(offsetY + marginTop);
         return;
     }
-    // Separate relative and absolute children, excluding display:none
-    const relativeChildren = node.children.filter((c) => c.style.positionType !== C.POSITION_TYPE_ABSOLUTE &&
-        c.style.display !== C.DISPLAY_NONE);
-    const absoluteChildren = node.children.filter((c) => c.style.positionType === C.POSITION_TYPE_ABSOLUTE &&
-        c.style.display !== C.DISPLAY_NONE);
+    // Separate relative and absolute children
+    const relativeChildren = node.children.filter((c) => c.style.positionType !== C.POSITION_TYPE_ABSOLUTE);
+    const absoluteChildren = node.children.filter((c) => c.style.positionType === C.POSITION_TYPE_ABSOLUTE);
     // Flex layout for relative children
     if (relativeChildren.length > 0) {
         const isRow = style.flexDirection === C.FLEX_DIRECTION_ROW ||
@@ -739,18 +1112,6 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
                 else if (sizeVal.unit === C.UNIT_PERCENT) {
                     baseSize = mainAxisSize * (sizeVal.value / 100);
                 }
-                else if (child.measureFunc !== null &&
-                    child.children.length === 0) {
-                    // For children with measure functions and no explicit size,
-                    // call the measure function to get intrinsic size
-                    const crossSize = isRow ? crossAxisSize : mainAxisSize;
-                    const measured = child.measureFunc(mainAxisSize, C.MEASURE_MODE_AT_MOST, crossSize, C.MEASURE_MODE_UNDEFINED);
-                    baseSize = isRow ? measured.width : measured.height;
-                }
-                else if (child.children.length > 0) {
-                    // Container child with auto main-axis size - compute intrinsic size
-                    baseSize = computeIntrinsicMainSize(child, isRow, mainAxisSize, crossAxisSize);
-                }
             }
             // Min/max on main axis
             const minVal = isRow ? cs.minWidth : cs.minHeight;
@@ -780,7 +1141,7 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
             let totalGrow = children.reduce((sum, c) => (c.mainSize < c.maxMain ? sum + c.flexGrow : sum), 0);
             if (totalGrow > 0) {
                 let remaining = freeSpace;
-                while (remaining > EPSILON_FLOAT && totalGrow > 0) {
+                while (remaining > 0.001 && totalGrow > 0) {
                     const amountPerGrow = remaining / totalGrow;
                     let distributed = 0;
                     for (const c of children) {
@@ -796,7 +1157,7 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
                         }
                     }
                     remaining -= distributed;
-                    if (distributed < EPSILON_FLOAT)
+                    if (distributed < 0.001)
                         break;
                 }
             }
@@ -806,7 +1167,7 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
             let totalShrink = children.reduce((sum, c) => (c.mainSize > c.minMain ? sum + c.flexShrink : sum), 0);
             if (totalShrink > 0) {
                 let remaining = -freeSpace;
-                while (remaining > EPSILON_FLOAT && totalShrink > 0) {
+                while (remaining > 0.001 && totalShrink > 0) {
                     const amountPerShrink = remaining / totalShrink;
                     let shrunk = 0;
                     for (const c of children) {
@@ -822,7 +1183,7 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
                         }
                     }
                     remaining -= shrunk;
-                    if (shrunk < EPSILON_FLOAT)
+                    if (shrunk < 0.001)
                         break;
                 }
             }
@@ -835,8 +1196,8 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
         const usedMain = children.reduce((sum, c) => sum + c.mainSize + c.mainMargin, 0) +
             totalGaps;
         const remainingSpace = Math.max(0, mainAxisSize - usedMain);
-        // startOffset is used for flex-start/flex-end/center positioning
         let startOffset = 0;
+        let itemSpacing = mainGap;
         switch (style.justifyContent) {
             case C.JUSTIFY_FLEX_END:
                 startOffset = remainingSpace;
@@ -844,62 +1205,39 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
             case C.JUSTIFY_CENTER:
                 startOffset = remainingSpace / 2;
                 break;
-            // space-between/around/evenly calculate positions directly in the loop
+            case C.JUSTIFY_SPACE_BETWEEN:
+                if (children.length > 1) {
+                    itemSpacing = mainGap + remainingSpace / (children.length - 1);
+                }
+                break;
+            case C.JUSTIFY_SPACE_AROUND:
+                if (children.length > 0) {
+                    const extraSpace = remainingSpace / children.length;
+                    startOffset = extraSpace / 2;
+                    itemSpacing = mainGap + extraSpace;
+                }
+                break;
+            case C.JUSTIFY_SPACE_EVENLY:
+                if (children.length > 0) {
+                    const extraSpace = remainingSpace / (children.length + 1);
+                    startOffset = extraSpace;
+                    itemSpacing = mainGap + extraSpace;
+                }
+                break;
         }
         // Handle reverse
         const ordered = isReverse ? [...children].reverse() : children;
-        // Round main sizes to integers before positioning.
-        //
-        // Why: Terminal UIs render on a character grid, so fractional widths cause
-        // visual artifacts. Without rounding, a 3-column layout in 80 chars might
-        // produce widths like [26.67, 26.67, 26.66] which, when floored during
-        // rendering, leaves a 1-char gap at the end. By rounding before positioning,
-        // we get [27, 27, 26] with gaps that align to character boundaries.
-        //
-        // This happens AFTER flex distribution to preserve the flex algorithm's
-        // proportional calculations, but BEFORE positioning so gaps are consistent.
+        // Round main sizes to get integer widths for gap calculation
+        // This ensures consistent gaps by rounding sizes before positioning
         for (const c of children) {
             c.mainSize = Math.round(c.mainSize);
         }
         // Position and layout children
-        // For space-between/around/evenly, we calculate positions directly to match
-        // Yoga's integer rounding behavior (floor-based distribution)
-        const numChildren = ordered.length;
-        const isSpaceBetween = style.justifyContent === C.JUSTIFY_SPACE_BETWEEN;
-        const isSpaceAround = style.justifyContent === C.JUSTIFY_SPACE_AROUND;
-        const isSpaceEvenly = style.justifyContent === C.JUSTIFY_SPACE_EVENLY;
-        // Pre-calculate cumulative sizes for direct position calculation
-        const cumulativeSizes = [0];
-        for (let i = 0; i < ordered.length; i++) {
-            cumulativeSizes.push(cumulativeSizes[i] + ordered[i].mainSize + ordered[i].mainMargin);
-        }
+        let mainPos = startOffset;
         for (let i = 0; i < ordered.length; i++) {
             const c = ordered[i];
             const child = c.node;
             const cs = child.style;
-            // Calculate main position directly (not accumulated) to match Yoga's rounding
-            let mainPos;
-            if (isSpaceBetween && numChildren > 1) {
-                // space-between: gaps distributed using floor((i * totalGap) / (n-1))
-                const gapBefore = Math.floor((i * remainingSpace) / (numChildren - 1));
-                mainPos = cumulativeSizes[i] + gapBefore;
-            }
-            else if (isSpaceAround && numChildren > 0) {
-                // space-around: half gap at edges, full gaps between
-                const unitGap = remainingSpace / numChildren;
-                const gapBefore = Math.floor(unitGap / 2 + i * unitGap);
-                mainPos = cumulativeSizes[i] + gapBefore;
-            }
-            else if (isSpaceEvenly && numChildren > 0) {
-                // space-evenly: equal gaps everywhere including edges
-                const unitGap = remainingSpace / (numChildren + 1);
-                const gapBefore = Math.floor((i + 1) * unitGap);
-                mainPos = cumulativeSizes[i] + gapBefore;
-            }
-            else {
-                // flex-start, flex-end, center: use startOffset + accumulated size
-                mainPos = startOffset + cumulativeSizes[i] + i * mainGap;
-            }
             const childMarginLeft = resolveValue(cs.margin[0], contentWidth);
             const childMarginTop = resolveValue(cs.margin[1], contentHeight);
             const childMarginRight = resolveValue(cs.margin[2], contentWidth);
@@ -936,65 +1274,53 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
             }
             // Handle measure function for intrinsic sizing
             // Measure functions provide intrinsic sizes for text/content nodes
-            // Main axis size comes from flex algorithm (already considers grow/shrink)
-            // Cross axis size may need to be measured
-            //
-            // IMPORTANT: When passing sizes to layoutNode, we pass the "available" space
-            // which includes margin. The child's layoutNode will subtract its own margin
-            // to determine its actual content size.
-            //
-            // - childMainSize is the CONTENT size from flex algorithm (doesn't include margin)
-            // - childCrossSize is the NODE size (cross dimension, margin already subtracted)
-            // - We need to add margin back so child can compute: nodeSize = available - margin
-            const mainMargin = isRow
-                ? childMarginLeft + childMarginRight
-                : childMarginTop + childMarginBottom;
-            let childWidth = isRow ? childMainSize + mainMargin : childCrossSize + crossMargin;
-            let childHeight = isRow ? childCrossSize + crossMargin : childMainSize + mainMargin;
-            if (child.measureFunc !== null && child.children.length === 0) {
+            let childWidth = isRow ? childMainSize : childCrossSize;
+            let childHeight = isRow ? childCrossSize : childMainSize;
+            if (child.hasMeasureFunc() && child.children.length === 0) {
                 const widthAuto = cs.width.unit === C.UNIT_AUTO || cs.width.unit === C.UNIT_UNDEFINED;
                 const heightAuto = cs.height.unit === C.UNIT_AUTO || cs.height.unit === C.UNIT_UNDEFINED;
-                // Only measure cross-axis if it's auto-sized AND alignment is not stretch
-                // Stretch already sets cross-axis size to fill parent
-                const crossAxisAuto = isRow ? heightAuto : widthAuto;
-                const needsCrossAxisMeasure = crossAxisAuto && alignment !== C.ALIGN_STRETCH;
-                if (needsCrossAxisMeasure) {
-                    // Call measure function to determine cross-axis size
+                if (widthAuto || heightAuto) {
+                    // Call measure function with available space
                     const widthMode = widthAuto
                         ? C.MEASURE_MODE_AT_MOST
                         : C.MEASURE_MODE_EXACTLY;
                     const heightMode = heightAuto
                         ? C.MEASURE_MODE_UNDEFINED
                         : C.MEASURE_MODE_EXACTLY;
-                    const availW = isRow ? childMainSize : crossAxisSize - crossMargin;
-                    const availH = isRow ? crossAxisSize - crossMargin : childMainSize;
+                    const availW = widthAuto
+                        ? isRow
+                            ? childMainSize
+                            : crossAxisSize - crossMargin
+                        : cs.width.value;
+                    const availH = heightAuto
+                        ? isRow
+                            ? crossAxisSize - crossMargin
+                            : childMainSize
+                        : cs.height.value;
                     const measured = child.measureFunc(availW, widthMode, availH, heightMode);
-                    // Use measured size only for cross-axis (main axis comes from flex algorithm)
-                    if (isRow && heightAuto) {
-                        childHeight = measured.height;
-                    }
-                    else if (!isRow && widthAuto) {
+                    // For measure function nodes, intrinsic size takes precedence
+                    if (widthAuto) {
                         childWidth = measured.width;
+                    }
+                    if (heightAuto) {
+                        childHeight = measured.height;
                     }
                 }
             }
-            // Child position within content area (RELATIVE to parent's content area)
+            // Child position within content area
             const childX = isRow ? mainPos + childMarginLeft : childMarginLeft;
             const childY = isRow ? childMarginTop : mainPos + childMarginTop;
-            // Relative position from parent (what we store in layout)
-            const childRelLeft = Math.round(innerLeft + childX);
-            const childRelTop = Math.round(innerTop + childY);
-            // Absolute position (for passing to grandchildren's layout)
-            const childAbsLeft = Math.round(offsetX + margin.left + childRelLeft);
-            const childAbsTop = Math.round(offsetY + margin.top + childRelTop);
-            // Recurse to layout any grandchildren (pass absolute offset)
-            layoutNode(child, childWidth, childHeight, childAbsLeft, childAbsTop);
-            // Set this child's layout - store RELATIVE position (like Yoga)
-            // Use the NODE size (content), not the AVAILABLE size (content + margin)
-            child.layout.width = Math.round(isRow ? childMainSize : childCrossSize);
-            child.layout.height = Math.round(isRow ? childCrossSize : childMainSize);
-            child.layout.left = childRelLeft;
-            child.layout.top = childRelTop;
+            // Calculate child's actual position
+            const childLeft = Math.round(offsetX + marginLeft + innerLeft + childX);
+            const childTop = Math.round(offsetY + marginTop + innerTop + childY);
+            // Recurse to layout any grandchildren
+            layoutNode(child, childWidth, childHeight, childLeft, childTop);
+            // Set this child's layout - override what layoutNode computed
+            // because flex algorithm determines sizes, not the child's style
+            child.layout.width = Math.round(childWidth);
+            child.layout.height = Math.round(childHeight);
+            child.layout.left = childLeft;
+            child.layout.top = childTop;
             // Apply cross-axis alignment offset
             const finalCrossSize = isRow ? child.layout.height : child.layout.width;
             let crossOffset = 0;
@@ -1014,14 +1340,18 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
                     child.layout.left += Math.round(crossOffset);
                 }
             }
-            // Note: mainPos is calculated directly per-item above, no accumulation needed
+            // Advance main position - add gap only between items, not after the last one
+            mainPos += childMainSize + c.mainMargin;
+            if (i < ordered.length - 1) {
+                mainPos += itemSpacing;
+            }
         }
     }
     // Set this node's layout
     layout.width = Math.round(nodeWidth);
     layout.height = Math.round(nodeHeight);
-    layout.left = Math.round(offsetX + margin.left);
-    layout.top = Math.round(offsetY + margin.top);
+    layout.left = Math.round(offsetX + marginLeft);
+    layout.top = Math.round(offsetY + marginTop);
     // Layout absolute children - margin is the offset from container
     for (const child of absoluteChildren) {
         const cs = child.style;
@@ -1045,18 +1375,6 @@ function resolveValue(value, availableSize) {
         default:
             return 0;
     }
-}
-/**
- * Resolve a 4-edge spacing array (margin, padding, or position) to pixel values.
- * Takes into account that horizontal edges resolve against width, vertical against height.
- */
-function resolveSpacing(spacing, availableWidth, availableHeight) {
-    return {
-        left: resolveValue(spacing[0], availableWidth),
-        top: resolveValue(spacing[1], availableHeight),
-        right: resolveValue(spacing[2], availableWidth),
-        bottom: resolveValue(spacing[3], availableHeight),
-    };
 }
 /**
  * Apply min/max constraints to a size.
