@@ -49,9 +49,9 @@ We've written thorough tests and use Flexx in production ourselves, but it hasn'
 ## Installation
 
 ```bash
-npm install @beorn/flexx
-# or
 bun add @beorn/flexx
+# or
+npm install @beorn/flexx
 ```
 
 ## Performance
