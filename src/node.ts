@@ -1132,6 +1132,87 @@ function countNodes(node: Node): number {
 const EPSILON_FLOAT = 0.001;
 
 /**
+ * Child layout information for flex distribution.
+ */
+interface ChildLayout {
+  node: Node;
+  mainSize: number;
+  mainMargin: number;
+  flexGrow: number;
+  flexShrink: number;
+  minMain: number;
+  maxMain: number;
+}
+
+/**
+ * Distribute free space among flex children using grow or shrink factors.
+ * Handles both positive (grow) and negative (shrink) free space.
+ *
+ * @param children - Array of child layout info to distribute space among
+ * @param freeSpace - Amount of space to distribute (positive for grow, negative for shrink)
+ */
+function distributeFlexSpace(
+  children: ChildLayout[],
+  freeSpace: number,
+): void {
+  const isGrowing = freeSpace > 0;
+  const absoluteSpace = Math.abs(freeSpace);
+
+  // Calculate total flex factor (grow or shrink) for children that can participate
+  let totalFlex = children.reduce((sum, c) => {
+    if (isGrowing) {
+      return c.mainSize < c.maxMain ? sum + c.flexGrow : sum;
+    }
+    return c.mainSize > c.minMain ? sum + c.flexShrink : sum;
+  }, 0);
+
+  if (totalFlex === 0) return;
+
+  let remaining = absoluteSpace;
+
+  // Iterate until remaining space is negligible or no more flex items
+  while (remaining > EPSILON_FLOAT && totalFlex > 0) {
+    const amountPerFlex = remaining / totalFlex;
+    let distributed = 0;
+
+    for (const c of children) {
+      const flexFactor = isGrowing ? c.flexGrow : c.flexShrink;
+      const limit = isGrowing ? c.maxMain : c.minMain;
+
+      if (flexFactor > 0) {
+        const canParticipate = isGrowing
+          ? c.mainSize < c.maxMain
+          : c.mainSize > c.minMain;
+
+        if (canParticipate) {
+          let delta = flexFactor * amountPerFlex;
+
+          // Cap at limit
+          if (isGrowing) {
+            if (c.mainSize + delta > limit) {
+              delta = limit - c.mainSize;
+              totalFlex -= flexFactor; // Remove from next iteration
+            }
+            c.mainSize += delta;
+          } else {
+            if (c.mainSize - delta < limit) {
+              delta = c.mainSize - limit;
+              totalFlex -= flexFactor; // Remove from next iteration
+            }
+            c.mainSize -= delta;
+          }
+
+          distributed += delta;
+        }
+      }
+    }
+
+    remaining -= distributed;
+    if (distributed < EPSILON_FLOAT) break;
+  }
+}
+
+/**
  * Compute layout for a node tree.
  */
 function computeLayout(
@@ -1274,15 +1355,6 @@ function layoutNode(
     const mainGap = isRow ? style.gap[0] : style.gap[1];
 
     // Prepare child layout info
-    interface ChildLayout {
-      node: Node;
-      mainSize: number;
-      mainMargin: number;
-      flexGrow: number;
-      flexShrink: number;
-      minMain: number;
-      maxMain: number;
-    }
 
     const children: ChildLayout[] = [];
     let totalBaseMain = 0;
@@ -1342,62 +1414,8 @@ function layoutNode(
       relativeChildren.length > 1 ? mainGap * (relativeChildren.length - 1) : 0;
     const freeSpace = mainAxisSize - totalBaseMain - totalGaps;
 
-    // Grow algorithm (based on flexbox.js SizeGrower)
-    if (freeSpace > 0) {
-      let totalGrow = children.reduce(
-        (sum, c) => (c.mainSize < c.maxMain ? sum + c.flexGrow : sum),
-        0,
-      );
-      if (totalGrow > 0) {
-        let remaining = freeSpace;
-        while (remaining > 0.001 && totalGrow > 0) {
-          const amountPerGrow = remaining / totalGrow;
-          let distributed = 0;
-          for (const c of children) {
-            if (c.flexGrow > 0 && c.mainSize < c.maxMain) {
-              let grow = c.flexGrow * amountPerGrow;
-              // Cap at maxMain
-              if (c.mainSize + grow > c.maxMain) {
-                grow = c.maxMain - c.mainSize;
-                totalGrow -= c.flexGrow; // Remove from next iteration
-              }
-              c.mainSize += grow;
-              distributed += grow;
-            }
-          }
-          remaining -= distributed;
-          if (distributed < 0.001) break;
-        }
-      }
-    }
-    // Shrink algorithm (based on flexbox.js SizeShrinker)
-    else if (freeSpace < 0) {
-      let totalShrink = children.reduce(
-        (sum, c) => (c.mainSize > c.minMain ? sum + c.flexShrink : sum),
-        0,
-      );
-      if (totalShrink > 0) {
-        let remaining = -freeSpace;
-        while (remaining > 0.001 && totalShrink > 0) {
-          const amountPerShrink = remaining / totalShrink;
-          let shrunk = 0;
-          for (const c of children) {
-            if (c.flexShrink > 0 && c.mainSize > c.minMain) {
-              let shrink = c.flexShrink * amountPerShrink;
-              // Cap at minMain
-              if (c.mainSize - shrink < c.minMain) {
-                shrink = c.mainSize - c.minMain;
-                totalShrink -= c.flexShrink; // Remove from next iteration
-              }
-              c.mainSize -= shrink;
-              shrunk += shrink;
-            }
-          }
-          remaining -= shrunk;
-          if (shrunk < 0.001) break;
-        }
-      }
-    }
+    // Distribute free space using grow or shrink factors
+    distributeFlexSpace(children, freeSpace);
 
     // Apply min/max constraints to final sizes
     for (const c of children) {
