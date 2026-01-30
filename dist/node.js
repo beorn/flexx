@@ -1049,6 +1049,49 @@ function getEdgeBorderValue(arr, edge) {
     }
 }
 /**
+ * Check if flex direction is row-oriented (horizontal main axis).
+ */
+function isRowDirection(flexDirection) {
+    return flexDirection === C.FLEX_DIRECTION_ROW || flexDirection === C.FLEX_DIRECTION_ROW_REVERSE;
+}
+/**
+ * Check if flex direction is reversed.
+ */
+function isReverseDirection(flexDirection) {
+    return flexDirection === C.FLEX_DIRECTION_ROW_REVERSE || flexDirection === C.FLEX_DIRECTION_COLUMN_REVERSE;
+}
+/**
+ * Get the logical edge value (START/END) for a given physical index.
+ * Returns undefined if no logical value applies to this physical edge.
+ *
+ * The mapping depends on flex direction:
+ * - Row: left↔START/END, right↔END/START (swapped if reverse)
+ * - Column: top↔START/END, bottom↔END/START (swapped if reverse)
+ */
+function getLogicalEdgeValue(arr, physicalIndex, flexDirection) {
+    const isRow = isRowDirection(flexDirection);
+    const isReverse = isReverseDirection(flexDirection);
+    if (isRow) {
+        // Horizontal main axis: START/END apply to left/right
+        if (physicalIndex === 0) {
+            return isReverse ? arr[5] : arr[4]; // Left: START or END
+        }
+        else if (physicalIndex === 2) {
+            return isReverse ? arr[4] : arr[5]; // Right: END or START
+        }
+    }
+    else {
+        // Vertical main axis: START/END apply to top/bottom
+        if (physicalIndex === 1) {
+            return isReverse ? arr[5] : arr[4]; // Top: START or END
+        }
+        else if (physicalIndex === 3) {
+            return isReverse ? arr[4] : arr[5]; // Bottom: END or START
+        }
+    }
+    return undefined;
+}
+/**
  * Resolve logical (START/END) margins/padding to physical values.
  * In Yoga, START/END are stored separately and resolved based on flex direction:
  * - Row (LTR): START→left, END→right
@@ -1061,32 +1104,7 @@ function getEdgeBorderValue(arr, edge) {
  */
 function resolveEdgeValue(arr, physicalIndex, // 0=left, 1=top, 2=right, 3=bottom
 flexDirection, availableSize) {
-    // Check if logical START/END should override physical
-    const isRow = flexDirection === C.FLEX_DIRECTION_ROW || flexDirection === C.FLEX_DIRECTION_ROW_REVERSE;
-    const isReverse = flexDirection === C.FLEX_DIRECTION_ROW_REVERSE || flexDirection === C.FLEX_DIRECTION_COLUMN_REVERSE;
-    let logicalValue;
-    if (isRow) {
-        // Horizontal main axis
-        if (physicalIndex === 0) {
-            // Left: use START in normal, END in reverse
-            logicalValue = isReverse ? arr[5] : arr[4];
-        }
-        else if (physicalIndex === 2) {
-            // Right: use END in normal, START in reverse
-            logicalValue = isReverse ? arr[4] : arr[5];
-        }
-    }
-    else {
-        // Vertical main axis
-        if (physicalIndex === 1) {
-            // Top: use START in normal, END in reverse
-            logicalValue = isReverse ? arr[5] : arr[4];
-        }
-        else if (physicalIndex === 3) {
-            // Bottom: use END in normal, START in reverse
-            logicalValue = isReverse ? arr[4] : arr[5];
-        }
-    }
+    const logicalValue = getLogicalEdgeValue(arr, physicalIndex, flexDirection);
     // Logical takes precedence if defined
     if (logicalValue && logicalValue.unit !== C.UNIT_UNDEFINED) {
         return resolveValue(logicalValue, availableSize);
@@ -1098,25 +1116,7 @@ flexDirection, availableSize) {
  * Check if a logical edge margin is set to auto.
  */
 function isEdgeAuto(arr, physicalIndex, flexDirection) {
-    const isRow = flexDirection === C.FLEX_DIRECTION_ROW || flexDirection === C.FLEX_DIRECTION_ROW_REVERSE;
-    const isReverse = flexDirection === C.FLEX_DIRECTION_ROW_REVERSE || flexDirection === C.FLEX_DIRECTION_COLUMN_REVERSE;
-    let logicalValue;
-    if (isRow) {
-        if (physicalIndex === 0) {
-            logicalValue = isReverse ? arr[5] : arr[4];
-        }
-        else if (physicalIndex === 2) {
-            logicalValue = isReverse ? arr[4] : arr[5];
-        }
-    }
-    else {
-        if (physicalIndex === 1) {
-            logicalValue = isReverse ? arr[5] : arr[4];
-        }
-        else if (physicalIndex === 3) {
-            logicalValue = isReverse ? arr[4] : arr[5];
-        }
-    }
+    const logicalValue = getLogicalEdgeValue(arr, physicalIndex, flexDirection);
     // Check logical first
     if (logicalValue && logicalValue.unit !== C.UNIT_UNDEFINED) {
         return logicalValue.unit === C.UNIT_AUTO;
@@ -1433,10 +1433,8 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
     // Flex layout for relative children
     debug('layoutNode: node.children=%d, relativeChildren=%d, absolute=%d', node.children.length, relativeChildren.length, absoluteChildren.length);
     if (relativeChildren.length > 0) {
-        const isRow = style.flexDirection === C.FLEX_DIRECTION_ROW ||
-            style.flexDirection === C.FLEX_DIRECTION_ROW_REVERSE;
-        const isReverse = style.flexDirection === C.FLEX_DIRECTION_ROW_REVERSE ||
-            style.flexDirection === C.FLEX_DIRECTION_COLUMN_REVERSE;
+        const isRow = isRowDirection(style.flexDirection);
+        const isReverse = isReverseDirection(style.flexDirection);
         const mainAxisSize = isRow ? contentWidth : contentHeight;
         const crossAxisSize = isRow ? contentHeight : contentWidth;
         const mainGap = isRow ? style.gap[0] : style.gap[1];
