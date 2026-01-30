@@ -267,6 +267,15 @@ export declare class Node {
      */
     setMaxHeightPercent(value: number): void;
     /**
+     * Set the aspect ratio of the node.
+     * When set, the node's width/height relationship is constrained.
+     * If width is defined, height = width / aspectRatio.
+     * If height is defined, width = height * aspectRatio.
+     *
+     * @param value - Aspect ratio (width/height). Use NaN to unset.
+     */
+    setAspectRatio(value: number): void;
+    /**
      * Set the flex grow factor.
      * Determines how much the node will grow relative to siblings when there is extra space.
      *
@@ -495,6 +504,12 @@ export declare class Node {
      * @returns Maximum height value with unit
      */
     getMaxHeight(): Value;
+    /**
+     * Get the aspect ratio.
+     *
+     * @returns Aspect ratio value (NaN if not set)
+     */
+    getAspectRatio(): number;
     /**
      * Get the flex grow factor.
      *

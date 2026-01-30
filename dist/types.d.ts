@@ -49,6 +49,7 @@ export interface Style {
     minHeight: Value;
     maxWidth: Value;
     maxHeight: Value;
+    aspectRatio: number;
     margin: [Value, Value, Value, Value, Value, Value];
     padding: [Value, Value, Value, Value, Value, Value];
     border: [number, number, number, number];

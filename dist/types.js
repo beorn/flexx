@@ -32,6 +32,7 @@ export function createDefaultStyle() {
         minHeight: createValue(),
         maxWidth: createValue(),
         maxHeight: createValue(),
+        aspectRatio: NaN, // undefined by default
         margin: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
         padding: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
         border: [0, 0, 0, 0],
