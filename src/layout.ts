@@ -14,6 +14,14 @@ import { resolveValue, applyMinMax } from "./utils.js";
 const debug = createDebug("flexx:layout");
 
 // ============================================================================
+// Constants for Edge Indices (avoid magic numbers)
+// ============================================================================
+const EDGE_LEFT = 0;
+const EDGE_TOP = 1;
+const EDGE_RIGHT = 2;
+const EDGE_BOTTOM = 3;
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -569,13 +577,17 @@ function layoutNode(
   }
 
   // Separate relative and absolute children
-  // Filter out display:none children - they don't participate in layout at all
-  const relativeChildren = node.children.filter(
-    (c) => c.style.positionType !== C.POSITION_TYPE_ABSOLUTE && c.style.display !== C.DISPLAY_NONE,
-  );
-  const absoluteChildren = node.children.filter(
-    (c) => c.style.positionType === C.POSITION_TYPE_ABSOLUTE && c.style.display !== C.DISPLAY_NONE,
-  );
+  // Use a single loop instead of filter() to avoid intermediate array allocations
+  const relativeChildren: Node[] = [];
+  const absoluteChildren: Node[] = [];
+  for (const c of node.children) {
+    if (c.style.display === C.DISPLAY_NONE) continue;
+    if (c.style.positionType === C.POSITION_TYPE_ABSOLUTE) {
+      absoluteChildren.push(c);
+    } else {
+      relativeChildren.push(c);
+    }
+  }
 
   // Flex layout for relative children
   debug('layoutNode: node.children=%d, relativeChildren=%d, absolute=%d', node.children.length, relativeChildren.length, absoluteChildren.length);
@@ -1266,10 +1278,11 @@ function layoutNode(
       let crossOffset = 0;
 
       // Check for auto margins on cross axis - they override alignment
-      const crossStartMargin = isRow ? childStyle.margin[1] : childStyle.margin[0]; // top for row, left for column
-      const crossEndMargin = isRow ? childStyle.margin[3] : childStyle.margin[2]; // bottom for row, right for column
-      const hasAutoStartMargin = crossStartMargin.unit === C.UNIT_AUTO;
-      const hasAutoEndMargin = crossEndMargin.unit === C.UNIT_AUTO;
+      // Use isEdgeAuto to correctly respect logical EDGE_START/END margins
+      const crossStartIndex = isRow ? 1 : 0; // top for row, left for column
+      const crossEndIndex = isRow ? 3 : 2;   // bottom for row, right for column
+      const hasAutoStartMargin = isEdgeAuto(childStyle.margin, crossStartIndex, style.flexDirection);
+      const hasAutoEndMargin = isEdgeAuto(childStyle.margin, crossEndIndex, style.flexDirection);
       const availableCrossSpace = crossAxisSize - finalCrossSize - crossMargin;
 
       if (hasAutoStartMargin && hasAutoEndMargin) {
