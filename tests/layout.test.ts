@@ -588,6 +588,50 @@ describe("Flexx Layout Engine", () => {
     });
   });
 
+  describe("Aspect Ratio", () => {
+    it("should compute height from width when aspectRatio is set", () => {
+      const root = Node.create();
+      root.setWidth(200);
+      root.setAspectRatio(2); // width/height = 2, so height = 100
+      root.calculateLayout(200, 200);
+
+      expect(root.getComputedWidth()).toBe(200);
+      expect(root.getComputedHeight()).toBe(100);
+    });
+
+    it("should compute width from height when aspectRatio is set", () => {
+      const root = Node.create();
+      root.setHeight(100);
+      root.setAspectRatio(2); // width/height = 2, so width = 200
+      root.calculateLayout(200, 200);
+
+      expect(root.getComputedWidth()).toBe(200);
+      expect(root.getComputedHeight()).toBe(100);
+    });
+
+    it("should respect explicit dimensions over aspectRatio", () => {
+      const root = Node.create();
+      root.setWidth(200);
+      root.setHeight(50); // Explicit height takes precedence
+      root.setAspectRatio(2);
+      root.calculateLayout(200, 200);
+
+      expect(root.getComputedWidth()).toBe(200);
+      expect(root.getComputedHeight()).toBe(50);
+    });
+
+    it("should have NaN as default aspectRatio", () => {
+      const node = Node.create();
+      expect(Number.isNaN(node.getAspectRatio())).toBe(true);
+    });
+
+    it("should get/set aspectRatio correctly", () => {
+      const node = Node.create();
+      node.setAspectRatio(1.5);
+      expect(node.getAspectRatio()).toBe(1.5);
+    });
+  });
+
   describe("Utility Functions", () => {
     describe("createValue", () => {
       it("should create a value with default parameters", () => {

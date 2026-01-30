@@ -64,6 +64,7 @@ export interface Style {
   minHeight: Value;
   maxWidth: Value;
   maxHeight: Value;
+  aspectRatio: number; // NaN = undefined, otherwise width/height ratio
 
   // Spacing (per-edge: left, top, right, bottom, start, end)
   // Physical edges: [0]=left, [1]=top, [2]=right, [3]=bottom
@@ -109,6 +110,7 @@ export function createDefaultStyle(): Style {
     minHeight: createValue(),
     maxWidth: createValue(),
     maxHeight: createValue(),
+    aspectRatio: NaN, // undefined by default
     margin: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
     padding: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
     border: [0, 0, 0, 0],

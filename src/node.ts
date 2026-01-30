@@ -520,6 +520,19 @@ export class Node {
     this.markDirty();
   }
 
+  /**
+   * Set the aspect ratio of the node.
+   * When set, the node's width/height relationship is constrained.
+   * If width is defined, height = width / aspectRatio.
+   * If height is defined, width = height * aspectRatio.
+   *
+   * @param value - Aspect ratio (width/height). Use NaN to unset.
+   */
+  setAspectRatio(value: number): void {
+    this._style.aspectRatio = value;
+    this.markDirty();
+  }
+
   // ============================================================================
   // Flex Setters
   // ============================================================================
@@ -893,6 +906,15 @@ export class Node {
    */
   getMaxHeight(): Value {
     return this._style.maxHeight;
+  }
+
+  /**
+   * Get the aspect ratio.
+   *
+   * @returns Aspect ratio value (NaN if not set)
+   */
+  getAspectRatio(): number {
+    return this._style.aspectRatio;
   }
 
   /**
@@ -1556,6 +1578,24 @@ function layoutNode(
   } else {
     nodeHeight = availableHeight - marginTop - marginBottom;
   }
+
+  // Apply aspect ratio constraint
+  // If aspectRatio is set and one dimension is auto (NaN), derive it from the other
+  const aspectRatio = style.aspectRatio;
+  if (!Number.isNaN(aspectRatio) && aspectRatio > 0) {
+    const widthIsAuto = Number.isNaN(nodeWidth) || style.width.unit === C.UNIT_AUTO;
+    const heightIsAuto = Number.isNaN(nodeHeight) || style.height.unit === C.UNIT_AUTO;
+
+    if (widthIsAuto && !heightIsAuto && !Number.isNaN(nodeHeight)) {
+      // Height is defined, width is auto: width = height * aspectRatio
+      nodeWidth = nodeHeight * aspectRatio;
+    } else if (heightIsAuto && !widthIsAuto && !Number.isNaN(nodeWidth)) {
+      // Width is defined, height is auto: height = width / aspectRatio
+      nodeHeight = nodeWidth / aspectRatio;
+    }
+    // If both are defined or both are auto, aspectRatio doesn't apply at this stage
+  }
+
   // Apply min/max constraints (works even with NaN available for point-based constraints)
   nodeHeight = applyMinMax(
     nodeHeight,
