@@ -1763,10 +1763,10 @@ function layoutNode(
           // CSS spec: percentage margins resolve against containing block's WIDTH only
           // Use resolveEdgeValue to respect logical EDGE_START/END
           const crossMargin = isRow
-            ? resolveEdgeValue(cs.margin, 1, style.flexDirection, mainAxisSize) +
-              resolveEdgeValue(cs.margin, 3, style.flexDirection, mainAxisSize)
-            : resolveEdgeValue(cs.margin, 0, style.flexDirection, mainAxisSize) +
-              resolveEdgeValue(cs.margin, 2, style.flexDirection, mainAxisSize);
+            ? resolveEdgeValue(cs.margin, 1, style.flexDirection, contentWidth) +
+              resolveEdgeValue(cs.margin, 3, style.flexDirection, contentWidth)
+            : resolveEdgeValue(cs.margin, 0, style.flexDirection, contentWidth) +
+              resolveEdgeValue(cs.margin, 2, style.flexDirection, contentWidth);
           const availCross = crossAxisSize - crossMargin;
           const measured = child.measureFunc!(
             mainAxisSize,
