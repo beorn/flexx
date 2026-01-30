@@ -1233,6 +1233,7 @@ function layoutNode(
   offsetX: number,
   offsetY: number,
 ): void {
+  debug('layoutNode called: availW=%d, availH=%d, offsetX=%d, offsetY=%d, children=%d', availableWidth, availableHeight, offsetX, offsetY, node.children.length);
   const style = node.style;
   const layout = node.layout;
 
@@ -1342,6 +1343,7 @@ function layoutNode(
   );
 
   // Flex layout for relative children
+  debug('layoutNode: node.children=%d, relativeChildren=%d, absolute=%d', node.children.length, relativeChildren.length, absoluteChildren.length);
   if (relativeChildren.length > 0) {
     const isRow =
       style.flexDirection === C.FLEX_DIRECTION_ROW ||
@@ -1470,6 +1472,8 @@ function layoutNode(
 
     // Position and layout children
     let mainPos = startOffset;
+
+    debug('positioning children: isRow=%s, startOffset=%d, relativeChildren=%d', isRow, startOffset, relativeChildren.length);
 
     for (let i = 0; i < ordered.length; i++) {
       const c = ordered[i]!;
@@ -1600,7 +1604,10 @@ function layoutNode(
       }
 
       // Advance main position - add gap only between items, not after the last one
-      mainPos += childMainSize + c.mainMargin;
+      // Use actual computed size, not the flex-computed mainSize (which may be 0 for measure nodes)
+      const actualMainSize = isRow ? childWidth : childHeight;
+      debug('  child %d: mainPos=%d → top=%d (actualMainSize=%d)', i, mainPos, child.layout.top, actualMainSize);
+      mainPos += actualMainSize + c.mainMargin;
       if (i < ordered.length - 1) {
         mainPos += itemSpacing;
       }
