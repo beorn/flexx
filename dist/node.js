@@ -1217,7 +1217,11 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
         // Calculate final used space and justify-content
         const usedMain = children.reduce((sum, c) => sum + c.mainSize + c.mainMargin, 0) +
             totalGaps;
-        const remainingSpace = Math.max(0, mainAxisSize - usedMain);
+        // For auto-sized containers, there's no remaining space to justify
+        // The container will shrink-wrap to content
+        const mainDimStyle = isRow ? style.width : style.height;
+        const mainIsAuto = mainDimStyle.unit === C.UNIT_AUTO || mainDimStyle.unit === C.UNIT_UNDEFINED;
+        const remainingSpace = mainIsAuto ? 0 : Math.max(0, mainAxisSize - usedMain);
         let startOffset = 0;
         let itemSpacing = mainGap;
         switch (style.justifyContent) {
@@ -1349,7 +1353,9 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
             layoutNode(child, childWidth, childHeight, childLeft, childTop);
             // Set this child's layout - override what layoutNode computed
             // UNLESS the child has auto size AND no flexGrow (shrink-wrap behavior)
-            if (!mainIsAuto || hasFlexGrow) {
+            // For auto-sized children without measureFunc, let layoutNode determine the size
+            const hasMeasure = child.hasMeasureFunc() && child.children.length === 0;
+            if (!mainIsAuto || hasFlexGrow || hasMeasure) {
                 if (isRow) {
                     child.layout.width = Math.round(childWidth);
                 }
@@ -1357,12 +1363,22 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
                     child.layout.height = Math.round(childHeight);
                 }
             }
-            // Cross axis and position are always set by flex algorithm
-            if (isRow) {
-                child.layout.height = Math.round(childHeight);
-            }
-            else {
-                child.layout.width = Math.round(childWidth);
+            // Cross axis: only override for explicit sizing or when we have a real constraint
+            // For auto-sized children, let layoutNode determine the size
+            const crossDimForCheck = isRow ? cs.height : cs.width;
+            const crossIsAuto = crossDimForCheck.unit === C.UNIT_AUTO || crossDimForCheck.unit === C.UNIT_UNDEFINED;
+            // Only override if child has explicit sizing OR parent has explicit cross size
+            // When parent has auto cross size, let children shrink-wrap first
+            const parentCrossDim = isRow ? style.height : style.width;
+            const parentCrossIsAuto = parentCrossDim.unit === C.UNIT_AUTO || parentCrossDim.unit === C.UNIT_UNDEFINED;
+            const shouldOverrideCross = !crossIsAuto || (!parentCrossIsAuto && alignment === C.ALIGN_STRETCH);
+            if (shouldOverrideCross) {
+                if (isRow) {
+                    child.layout.height = Math.round(childHeight);
+                }
+                else {
+                    child.layout.width = Math.round(childWidth);
+                }
             }
             // Store RELATIVE position (within parent's content area), not absolute
             // This matches Yoga's behavior where getComputedLeft/Top return relative positions
@@ -1400,15 +1416,19 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
                 mainPos += itemSpacing;
             }
         }
-        // For auto-sized containers, shrink-wrap to content
+        // For auto-sized NON-ROOT containers, shrink-wrap to content
+        // Root nodes (parent === null) fill available space like Yoga
         // The mainPos after all children is the total main axis content size
-        if (isRow && style.width.unit !== C.UNIT_POINT && style.width.unit !== C.UNIT_PERCENT) {
-            // Auto-width row: shrink-wrap to mainPos
-            nodeWidth = mainPos + innerLeft + innerRight;
-        }
-        if (!isRow && style.height.unit !== C.UNIT_POINT && style.height.unit !== C.UNIT_PERCENT) {
-            // Auto-height column: shrink-wrap to mainPos
-            nodeHeight = mainPos + innerTop + innerBottom;
+        const isRoot = node.getParent() === null;
+        if (!isRoot) {
+            if (isRow && style.width.unit !== C.UNIT_POINT && style.width.unit !== C.UNIT_PERCENT) {
+                // Auto-width row: shrink-wrap to mainPos
+                nodeWidth = mainPos + innerLeft + innerRight;
+            }
+            if (!isRow && style.height.unit !== C.UNIT_POINT && style.height.unit !== C.UNIT_PERCENT) {
+                // Auto-height column: shrink-wrap to mainPos
+                nodeHeight = mainPos + innerTop + innerBottom;
+            }
         }
         // For cross axis, find the max child size
         let maxCrossSize = 0;
@@ -1421,13 +1441,15 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
                     resolveValue(c.node.style.margin[2], contentWidth);
             maxCrossSize = Math.max(maxCrossSize, childCross + childMargin);
         }
-        if (isRow && style.height.unit !== C.UNIT_POINT && style.height.unit !== C.UNIT_PERCENT) {
-            // Auto-height row: shrink-wrap to max child height
-            nodeHeight = maxCrossSize + innerTop + innerBottom;
-        }
-        if (!isRow && style.width.unit !== C.UNIT_POINT && style.width.unit !== C.UNIT_PERCENT) {
-            // Auto-width column: shrink-wrap to max child width
-            nodeWidth = maxCrossSize + innerLeft + innerRight;
+        if (!isRoot) {
+            if (isRow && style.height.unit !== C.UNIT_POINT && style.height.unit !== C.UNIT_PERCENT) {
+                // Auto-height row: shrink-wrap to max child height
+                nodeHeight = maxCrossSize + innerTop + innerBottom;
+            }
+            if (!isRow && style.width.unit !== C.UNIT_POINT && style.width.unit !== C.UNIT_PERCENT) {
+                // Auto-width column: shrink-wrap to max child width
+                nodeWidth = maxCrossSize + innerLeft + innerRight;
+            }
         }
     }
     // Set this node's layout
