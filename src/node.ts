@@ -1397,6 +1397,22 @@ function layoutNode(
     return;
   }
 
+  // Handle leaf nodes without measureFunc - when unconstrained, use padding+border as intrinsic size
+  if (node.children.length === 0) {
+    // For leaf nodes without measureFunc, intrinsic size is just padding+border
+    if (Number.isNaN(nodeWidth)) {
+      nodeWidth = innerLeft + innerRight;
+    }
+    if (Number.isNaN(nodeHeight)) {
+      nodeHeight = innerTop + innerBottom;
+    }
+    layout.width = Math.round(nodeWidth);
+    layout.height = Math.round(nodeHeight);
+    layout.left = Math.round(offsetX + marginLeft);
+    layout.top = Math.round(offsetY + marginTop);
+    return;
+  }
+
   // Separate relative and absolute children
   const relativeChildren = node.children.filter(
     (c) => c.style.positionType !== C.POSITION_TYPE_ABSOLUTE,
@@ -1717,8 +1733,21 @@ function layoutNode(
       const childLeft = Math.round(offsetX + marginLeft + innerLeft + childX);
       const childTop = Math.round(offsetY + marginTop + innerTop + childY);
 
+      // Check if cross axis is auto-sized (needed for deciding what to pass to layoutNode)
+      const crossDimForLayoutCall = isRow ? cs.height : cs.width;
+      const crossIsAutoForLayoutCall = crossDimForLayoutCall.unit === C.UNIT_AUTO || crossDimForLayoutCall.unit === C.UNIT_UNDEFINED;
+
+      // For auto-sized children (no flexGrow, no measureFunc), pass NaN to let them compute intrinsic size
+      // Otherwise layoutNode would subtract margins from the available size
+      const passWidthToChild = (isRow && mainIsAuto && !hasFlexGrow) ? NaN :
+                              (!isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross) ? NaN :
+                              childWidth;
+      const passHeightToChild = (!isRow && mainIsAuto && !hasFlexGrow) ? NaN :
+                                (isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross) ? NaN :
+                                childHeight;
+
       // Recurse to layout any grandchildren
-      layoutNode(child, childWidth, childHeight, childLeft, childTop);
+      layoutNode(child, passWidthToChild, passHeightToChild, childLeft, childTop);
 
       // Set this child's layout - override what layoutNode computed
       // UNLESS the child has auto size AND no flexGrow (shrink-wrap behavior)
