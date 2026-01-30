@@ -588,6 +588,158 @@ describe("Flexx Layout Engine", () => {
     });
   });
 
+  describe("Nested Container Intrinsic Sizing", () => {
+    it("should compute intrinsic size for row inside column", () => {
+      // Column with auto height containing a row with auto-sized columns
+      const root = Node.create();
+      root.setWidth(80);
+      root.setFlexDirection(FLEX_DIRECTION_COLUMN);
+
+      const row = Node.create();
+      row.setFlexDirection(FLEX_DIRECTION_ROW);
+
+      const col1 = Node.create();
+      col1.setMeasureFunc(() => ({ width: 10, height: 2 }));
+      row.insertChild(col1, 0);
+
+      const col2 = Node.create();
+      col2.setMeasureFunc(() => ({ width: 5, height: 3 }));
+      row.insertChild(col2, 1);
+
+      root.insertChild(row, 0);
+      root.calculateLayout(80, NaN, DIRECTION_LTR);
+
+      // Row stretches to fill parent width (alignItems: stretch default)
+      // Height is intrinsic (max of children = 3)
+      expect(row.getComputedWidth()).toBe(80);
+      expect(row.getComputedHeight()).toBe(3);
+      expect(root.getComputedHeight()).toBe(3);
+    });
+
+    it("should compute intrinsic size for column inside row", () => {
+      // Row with explicit width containing auto-sized columns
+      const root = Node.create();
+      root.setWidth(80);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+
+      const col1 = Node.create();
+      col1.setFlexDirection(FLEX_DIRECTION_COLUMN);
+      const text1 = Node.create();
+      text1.setMeasureFunc(() => ({ width: 6, height: 1 }));
+      col1.insertChild(text1, 0);
+      const text2 = Node.create();
+      text2.setMeasureFunc(() => ({ width: 10, height: 1 }));
+      col1.insertChild(text2, 1);
+
+      const col2 = Node.create();
+      col2.setFlexDirection(FLEX_DIRECTION_COLUMN);
+      const text3 = Node.create();
+      text3.setMeasureFunc(() => ({ width: 3, height: 1 }));
+      col2.insertChild(text3, 0);
+
+      root.insertChild(col1, 0);
+      root.insertChild(col2, 1);
+
+      root.calculateLayout(80, NaN, DIRECTION_LTR);
+
+      // col1: width=10 (max of children), height=2 (sum of children)
+      expect(col1.getComputedWidth()).toBe(10);
+      expect(col1.getComputedHeight()).toBe(2);
+
+      // col2: width=3, height=1
+      expect(col2.getComputedWidth()).toBe(3);
+      expect(col2.getComputedHeight()).toBe(1);
+    });
+
+    it("should handle deeply nested containers (10 levels)", () => {
+      // Build a chain: root -> box -> box -> ... -> leaf
+      const root = Node.create();
+      root.setWidth(100);
+      root.setFlexDirection(FLEX_DIRECTION_COLUMN);
+
+      let current = root;
+      for (let i = 0; i < 10; i++) {
+        const box = Node.create();
+        box.setFlexDirection(i % 2 === 0 ? FLEX_DIRECTION_ROW : FLEX_DIRECTION_COLUMN);
+        current.insertChild(box, 0);
+        current = box;
+      }
+
+      // Add a leaf with intrinsic size
+      const leaf = Node.create();
+      leaf.setMeasureFunc(() => ({ width: 20, height: 5 }));
+      current.insertChild(leaf, 0);
+
+      // Should not stack overflow and should compute correct size
+      root.calculateLayout(100, NaN, DIRECTION_LTR);
+
+      expect(leaf.getComputedWidth()).toBe(20);
+      expect(leaf.getComputedHeight()).toBe(5);
+      expect(root.getComputedHeight()).toBe(5); // Height propagates up
+    });
+
+    it("should handle wide trees (many siblings)", () => {
+      const root = Node.create();
+      root.setWidth(200);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+
+      // Add 20 auto-sized children
+      for (let i = 0; i < 20; i++) {
+        const child = Node.create();
+        child.setMeasureFunc(() => ({ width: 5, height: 2 }));
+        root.insertChild(child, i);
+      }
+
+      root.calculateLayout(200, NaN, DIRECTION_LTR);
+
+      // All children should be laid out
+      expect(root.getChildCount()).toBe(20);
+      expect(root.getComputedHeight()).toBe(2);
+
+      // Children should be positioned sequentially
+      for (let i = 0; i < 20; i++) {
+        const child = root.getChild(i)!;
+        expect(child.getComputedWidth()).toBe(5);
+        expect(child.getComputedLeft()).toBe(i * 5);
+      }
+    });
+
+    it("should handle mixed nesting (row->col->row->col)", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+
+      const col = Node.create();
+      col.setFlexDirection(FLEX_DIRECTION_COLUMN);
+
+      const innerRow = Node.create();
+      innerRow.setFlexDirection(FLEX_DIRECTION_ROW);
+
+      const innerCol = Node.create();
+      innerCol.setFlexDirection(FLEX_DIRECTION_COLUMN);
+
+      const leaf = Node.create();
+      leaf.setMeasureFunc(() => ({ width: 15, height: 3 }));
+
+      innerCol.insertChild(leaf, 0);
+      innerRow.insertChild(innerCol, 0);
+      col.insertChild(innerRow, 0);
+      root.insertChild(col, 0);
+
+      root.calculateLayout(100, NaN, DIRECTION_LTR);
+
+      // Size should propagate up through all levels
+      expect(leaf.getComputedWidth()).toBe(15);
+      expect(leaf.getComputedHeight()).toBe(3);
+      expect(innerCol.getComputedWidth()).toBe(15);
+      expect(innerCol.getComputedHeight()).toBe(3);
+      expect(innerRow.getComputedWidth()).toBe(15);
+      expect(innerRow.getComputedHeight()).toBe(3);
+      expect(col.getComputedWidth()).toBe(15);
+      expect(col.getComputedHeight()).toBe(3);
+    });
+  });
+
   describe("Utility Functions", () => {
     describe("createValue", () => {
       it("should create a value with default parameters", () => {
