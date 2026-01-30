@@ -1353,6 +1353,70 @@ interface ChildLayout {
 }
 
 /**
+ * A flex line containing children and cross-axis sizing info.
+ * Used for flex-wrap to group items that fit on one line.
+ */
+interface FlexLine {
+  children: ChildLayout[];
+  crossSize: number; // Maximum cross size of items in this line
+  crossStart: number; // Computed cross-axis start position
+}
+
+/**
+ * Break children into flex lines based on available main-axis space.
+ *
+ * @param children - All children to potentially wrap
+ * @param mainAxisSize - Available main-axis space (NaN for unconstrained)
+ * @param mainGap - Gap between items on main axis
+ * @param wrap - Wrap mode (WRAP_NO_WRAP, WRAP_WRAP, WRAP_WRAP_REVERSE)
+ * @returns Array of flex lines
+ */
+function breakIntoLines(
+  children: ChildLayout[],
+  mainAxisSize: number,
+  mainGap: number,
+  wrap: number,
+): FlexLine[] {
+  // No wrapping or unconstrained - all children on one line
+  if (wrap === C.WRAP_NO_WRAP || Number.isNaN(mainAxisSize) || children.length === 0) {
+    return [{ children, crossSize: 0, crossStart: 0 }];
+  }
+
+  const lines: FlexLine[] = [];
+  let currentLine: ChildLayout[] = [];
+  let lineMainSize = 0;
+
+  for (const child of children) {
+    const childMainSize = child.baseSize + child.mainMargin;
+    const gapIfNotFirst = currentLine.length > 0 ? mainGap : 0;
+
+    // Check if child fits on current line
+    if (currentLine.length > 0 && lineMainSize + gapIfNotFirst + childMainSize > mainAxisSize) {
+      // Start a new line
+      lines.push({ children: currentLine, crossSize: 0, crossStart: 0 });
+      currentLine = [child];
+      lineMainSize = childMainSize;
+    } else {
+      // Add to current line
+      currentLine.push(child);
+      lineMainSize += gapIfNotFirst + childMainSize;
+    }
+  }
+
+  // Don't forget the last line
+  if (currentLine.length > 0) {
+    lines.push({ children: currentLine, crossSize: 0, crossStart: 0 });
+  }
+
+  // Reverse lines for wrap-reverse
+  if (wrap === C.WRAP_WRAP_REVERSE) {
+    lines.reverse();
+  }
+
+  return lines;
+}
+
+/**
  * Distribute free space among flex children using grow or shrink factors.
  * Handles both positive (grow) and negative (shrink) free space.
  *
