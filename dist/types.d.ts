@@ -33,7 +33,7 @@ export interface Layout {
 export interface Style {
     display: number;
     positionType: number;
-    position: [Value, Value, Value, Value];
+    position: [Value, Value, Value, Value, Value, Value];
     flexDirection: number;
     flexWrap: number;
     flexGrow: number;
@@ -49,8 +49,8 @@ export interface Style {
     minHeight: Value;
     maxWidth: Value;
     maxHeight: Value;
-    margin: [Value, Value, Value, Value];
-    padding: [Value, Value, Value, Value];
+    margin: [Value, Value, Value, Value, Value, Value];
+    padding: [Value, Value, Value, Value, Value, Value];
     border: [number, number, number, number];
     gap: [number, number];
     overflow: number;

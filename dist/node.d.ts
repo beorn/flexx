@@ -157,7 +157,7 @@ export declare class Node {
      * console.log(child.getComputedWidth());
      * ```
      */
-    calculateLayout(width: number, height: number, _direction?: number): void;
+    calculateLayout(width?: number, height?: number, _direction?: number): void;
     /**
      * Get the computed left position after layout.
      *
@@ -369,6 +369,14 @@ export declare class Node {
      */
     setPadding(edge: number, value: number): void;
     /**
+     * Set padding as a percentage of the parent's width.
+     * Per CSS spec, percentage padding always resolves against the containing block's width.
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
+     * @param value - Padding as a percentage (0-100)
+     */
+    setPaddingPercent(edge: number, value: number): void;
+    /**
      * Set margin for one or more edges.
      *
      * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
@@ -380,6 +388,19 @@ export declare class Node {
      * ```
      */
     setMargin(edge: number, value: number): void;
+    /**
+     * Set margin as a percentage of the parent's size.
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
+     * @param value - Margin as a percentage (0-100)
+     */
+    setMarginPercent(edge: number, value: number): void;
+    /**
+     * Set margin to auto (for centering items with margin: auto).
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
+     */
+    setMarginAuto(edge: number): void;
     /**
      * Set border width for one or more edges.
      *
@@ -419,6 +440,13 @@ export declare class Node {
      * @param value - Position offset in points
      */
     setPosition(edge: number, value: number): void;
+    /**
+     * Set position offset as a percentage.
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
+     * @param value - Position offset as a percentage of parent's corresponding dimension
+     */
+    setPositionPercent(edge: number, value: number): void;
     /**
      * Set the display type.
      *

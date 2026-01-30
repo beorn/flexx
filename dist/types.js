@@ -16,11 +16,11 @@ export function createDefaultStyle() {
     return {
         display: 0, // DISPLAY_FLEX
         positionType: 1, // POSITION_TYPE_RELATIVE
-        position: [createValue(), createValue(), createValue(), createValue()],
+        position: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
         flexDirection: 0, // FLEX_DIRECTION_COLUMN (Yoga default, not CSS!)
         flexWrap: 0, // WRAP_NO_WRAP
         flexGrow: 0,
-        flexShrink: 1, // Yoga default
+        flexShrink: 0, // Yoga native default (CSS uses 1)
         flexBasis: createValue(0, 3), // AUTO
         alignItems: 4, // ALIGN_STRETCH
         alignSelf: 0, // ALIGN_AUTO
@@ -32,8 +32,8 @@ export function createDefaultStyle() {
         minHeight: createValue(),
         maxWidth: createValue(),
         maxHeight: createValue(),
-        margin: [createValue(), createValue(), createValue(), createValue()],
-        padding: [createValue(), createValue(), createValue(), createValue()],
+        margin: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
+        padding: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
         border: [0, 0, 0, 0],
         gap: [0, 0],
         overflow: 0, // OVERFLOW_VISIBLE
