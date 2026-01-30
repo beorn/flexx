@@ -157,7 +157,7 @@ export declare class Node {
      * console.log(child.getComputedWidth());
      * ```
      */
-    calculateLayout(width: number, height: number, _direction?: number): void;
+    calculateLayout(width?: number, height?: number, _direction?: number): void;
     /**
      * Get the computed left position after layout.
      *
@@ -380,6 +380,19 @@ export declare class Node {
      * ```
      */
     setMargin(edge: number, value: number): void;
+    /**
+     * Set margin as a percentage of the parent's size.
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
+     * @param value - Margin as a percentage (0-100)
+     */
+    setMarginPercent(edge: number, value: number): void;
+    /**
+     * Set margin to auto (for centering items with margin: auto).
+     *
+     * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
+     */
+    setMarginAuto(edge: number): void;
     /**
      * Set border width for one or more edges.
      *
