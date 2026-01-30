@@ -1631,11 +1631,11 @@ function layoutNode(
       } else if (crossDim.unit === C.UNIT_PERCENT) {
         // Percent of PARENT's cross axis (not available size)
         childCrossSize = crossAxisSize * (crossDim.value / 100);
-      } else if (parentHasDefiniteCross) {
-        // We have a definite cross size - use it (stretch fills, auto uses available space)
+      } else if (parentHasDefiniteCross && alignment === C.ALIGN_STRETCH) {
+        // Stretch alignment with definite parent cross size - fill the cross axis
         childCrossSize = crossAxisSize - crossMargin;
       } else {
-        // No definite cross size - use NaN to signal shrink-wrap behavior
+        // Non-stretch alignment or no definite cross size - shrink-wrap to content
         childCrossSize = NaN;
       }
 
