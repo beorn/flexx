@@ -95,7 +95,7 @@ export function createDefaultStyle(): Style {
     flexDirection: 0, // FLEX_DIRECTION_COLUMN (Yoga default, not CSS!)
     flexWrap: 0, // WRAP_NO_WRAP
     flexGrow: 0,
-    flexShrink: 1, // Yoga default
+    flexShrink: 0, // Yoga native default (CSS uses 1)
     flexBasis: createValue(0, 3), // AUTO
     alignItems: 4, // ALIGN_STRETCH
     alignSelf: 0, // ALIGN_AUTO
