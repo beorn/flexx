@@ -573,8 +573,8 @@ describe("Flexx Layout Engine", () => {
 
     it("should have correct default values", () => {
       const node = Node.create();
-      // Default flex shrink is 1 (Yoga default)
-      expect(node.getFlexShrink()).toBe(1);
+      // Default flex shrink is 0 (Yoga native default; CSS uses 1)
+      expect(node.getFlexShrink()).toBe(0);
       // Default flex grow is 0
       expect(node.getFlexGrow()).toBe(0);
       // Default flex direction is column
@@ -627,7 +627,7 @@ describe("Flexx Layout Engine", () => {
         // Flex properties
         expect(style.flexDirection).toBe(FLEX_DIRECTION_COLUMN);
         expect(style.flexGrow).toBe(0);
-        expect(style.flexShrink).toBe(1); // Yoga default
+        expect(style.flexShrink).toBe(0); // Yoga native default (CSS uses 1)
         expect(style.flexBasis).toEqual({ value: 0, unit: UNIT_AUTO });
 
         // Alignment
@@ -643,8 +643,10 @@ describe("Flexx Layout Engine", () => {
         expect(style.maxWidth).toEqual({ value: 0, unit: UNIT_UNDEFINED });
 
         // Spacing defaults to zero/undefined
-        expect(style.padding).toHaveLength(4);
-        expect(style.margin).toHaveLength(4);
+        // 6 slots: [left, top, right, bottom, start, end] for logical edge support
+        expect(style.padding).toHaveLength(6);
+        expect(style.margin).toHaveLength(6);
+        expect(style.position).toHaveLength(6);
         expect(style.border).toEqual([0, 0, 0, 0]);
         expect(style.gap).toEqual([0, 0]);
       });

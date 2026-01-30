@@ -42,7 +42,7 @@ export interface Style {
 
   // Position
   positionType: number;
-  position: [Value, Value, Value, Value]; // [left, top, right, bottom]
+  position: [Value, Value, Value, Value, Value, Value]; // [left, top, right, bottom, start, end]
 
   // Flex
   flexDirection: number;
@@ -65,9 +65,11 @@ export interface Style {
   maxWidth: Value;
   maxHeight: Value;
 
-  // Spacing (per-edge: left, top, right, bottom)
-  margin: [Value, Value, Value, Value];
-  padding: [Value, Value, Value, Value];
+  // Spacing (per-edge: left, top, right, bottom, start, end)
+  // Physical edges: [0]=left, [1]=top, [2]=right, [3]=bottom
+  // Logical edges: [4]=start, [5]=end (resolved based on flex direction)
+  margin: [Value, Value, Value, Value, Value, Value];
+  padding: [Value, Value, Value, Value, Value, Value];
   border: [number, number, number, number]; // Border widths (always points)
 
   // Gap
@@ -91,7 +93,7 @@ export function createDefaultStyle(): Style {
   return {
     display: 0, // DISPLAY_FLEX
     positionType: 1, // POSITION_TYPE_RELATIVE
-    position: [createValue(), createValue(), createValue(), createValue()],
+    position: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
     flexDirection: 0, // FLEX_DIRECTION_COLUMN (Yoga default, not CSS!)
     flexWrap: 0, // WRAP_NO_WRAP
     flexGrow: 0,
@@ -107,8 +109,8 @@ export function createDefaultStyle(): Style {
     minHeight: createValue(),
     maxWidth: createValue(),
     maxHeight: createValue(),
-    margin: [createValue(), createValue(), createValue(), createValue()],
-    padding: [createValue(), createValue(), createValue(), createValue()],
+    margin: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
+    padding: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
     border: [0, 0, 0, 0],
     gap: [0, 0],
     overflow: 0, // OVERFLOW_VISIBLE

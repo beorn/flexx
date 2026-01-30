@@ -1064,7 +1064,7 @@ export class Node {
 // ============================================================================
 
 function setEdgeValue(
-  arr: [Value, Value, Value, Value],
+  arr: [Value, Value, Value, Value, Value, Value],
   edge: number,
   value: number,
   unit: number,
@@ -1098,12 +1098,12 @@ function setEdgeValue(
       arr[3] = v;
       break;
     case C.EDGE_START:
-      // In LTR mode, START = LEFT
-      arr[0] = v;
+      // Store in logical START slot (resolved to physical at layout time)
+      arr[4] = v;
       break;
     case C.EDGE_END:
-      // In LTR mode, END = RIGHT
-      arr[2] = v;
+      // Store in logical END slot (resolved to physical at layout time)
+      arr[5] = v;
       break;
   }
 }
@@ -1151,7 +1151,7 @@ function setEdgeBorder(
   }
 }
 
-function getEdgeValue(arr: [Value, Value, Value, Value], edge: number): Value {
+function getEdgeValue(arr: [Value, Value, Value, Value, Value, Value], edge: number): Value {
   switch (edge) {
     case C.EDGE_LEFT:
       return arr[0];
@@ -1161,6 +1161,10 @@ function getEdgeValue(arr: [Value, Value, Value, Value], edge: number): Value {
       return arr[2];
     case C.EDGE_BOTTOM:
       return arr[3];
+    case C.EDGE_START:
+      return arr[4];
+    case C.EDGE_END:
+      return arr[5];
     default:
       return arr[0]; // Default to left
   }
@@ -1182,6 +1186,94 @@ function getEdgeBorderValue(
     default:
       return arr[0]; // Default to left
   }
+}
+
+/**
+ * Resolve logical (START/END) margins/padding to physical values.
+ * In Yoga, START/END are stored separately and resolved based on flex direction:
+ * - Row (LTR): START→left, END→right
+ * - Row-reverse (LTR): START→right, END→left
+ * - Column: START→top, END→bottom
+ * - Column-reverse: START→bottom, END→top
+ *
+ * Physical edges (LEFT/RIGHT/TOP/BOTTOM) are used directly.
+ * When both physical and logical are set, logical takes precedence.
+ */
+function resolveEdgeValue(
+  arr: [Value, Value, Value, Value, Value, Value],
+  physicalIndex: number, // 0=left, 1=top, 2=right, 3=bottom
+  flexDirection: number,
+  availableSize: number,
+): number {
+  // Check if logical START/END should override physical
+  const isRow = flexDirection === C.FLEX_DIRECTION_ROW || flexDirection === C.FLEX_DIRECTION_ROW_REVERSE;
+  const isReverse = flexDirection === C.FLEX_DIRECTION_ROW_REVERSE || flexDirection === C.FLEX_DIRECTION_COLUMN_REVERSE;
+
+  let logicalValue: Value | undefined;
+
+  if (isRow) {
+    // Horizontal main axis
+    if (physicalIndex === 0) {
+      // Left: use START in normal, END in reverse
+      logicalValue = isReverse ? arr[5] : arr[4];
+    } else if (physicalIndex === 2) {
+      // Right: use END in normal, START in reverse
+      logicalValue = isReverse ? arr[4] : arr[5];
+    }
+  } else {
+    // Vertical main axis
+    if (physicalIndex === 1) {
+      // Top: use START in normal, END in reverse
+      logicalValue = isReverse ? arr[5] : arr[4];
+    } else if (physicalIndex === 3) {
+      // Bottom: use END in normal, START in reverse
+      logicalValue = isReverse ? arr[4] : arr[5];
+    }
+  }
+
+  // Logical takes precedence if defined
+  if (logicalValue && logicalValue.unit !== C.UNIT_UNDEFINED) {
+    return resolveValue(logicalValue, availableSize);
+  }
+
+  // Fall back to physical
+  return resolveValue(arr[physicalIndex], availableSize);
+}
+
+/**
+ * Check if a logical edge margin is set to auto.
+ */
+function isEdgeAuto(
+  arr: [Value, Value, Value, Value, Value, Value],
+  physicalIndex: number,
+  flexDirection: number,
+): boolean {
+  const isRow = flexDirection === C.FLEX_DIRECTION_ROW || flexDirection === C.FLEX_DIRECTION_ROW_REVERSE;
+  const isReverse = flexDirection === C.FLEX_DIRECTION_ROW_REVERSE || flexDirection === C.FLEX_DIRECTION_COLUMN_REVERSE;
+
+  let logicalValue: Value | undefined;
+
+  if (isRow) {
+    if (physicalIndex === 0) {
+      logicalValue = isReverse ? arr[5] : arr[4];
+    } else if (physicalIndex === 2) {
+      logicalValue = isReverse ? arr[4] : arr[5];
+    }
+  } else {
+    if (physicalIndex === 1) {
+      logicalValue = isReverse ? arr[5] : arr[4];
+    } else if (physicalIndex === 3) {
+      logicalValue = isReverse ? arr[4] : arr[5];
+    }
+  }
+
+  // Check logical first
+  if (logicalValue && logicalValue.unit !== C.UNIT_UNDEFINED) {
+    return logicalValue.unit === C.UNIT_AUTO;
+  }
+
+  // Fall back to physical
+  return arr[physicalIndex].unit === C.UNIT_AUTO;
 }
 
 function markSubtreeLayoutSeen(node: Node): void {
@@ -1406,15 +1498,16 @@ function layoutNode(
 
   // Calculate spacing
   // CSS spec: percentage margins AND padding resolve against containing block's WIDTH only
-  const marginLeft = resolveValue(style.margin[0], availableWidth);
-  const marginTop = resolveValue(style.margin[1], availableWidth);
-  const marginRight = resolveValue(style.margin[2], availableWidth);
-  const marginBottom = resolveValue(style.margin[3], availableWidth);
+  // Use resolveEdgeValue to respect logical EDGE_START/END
+  const marginLeft = resolveEdgeValue(style.margin, 0, style.flexDirection, availableWidth);
+  const marginTop = resolveEdgeValue(style.margin, 1, style.flexDirection, availableWidth);
+  const marginRight = resolveEdgeValue(style.margin, 2, style.flexDirection, availableWidth);
+  const marginBottom = resolveEdgeValue(style.margin, 3, style.flexDirection, availableWidth);
 
-  const paddingLeft = resolveValue(style.padding[0], availableWidth);
-  const paddingTop = resolveValue(style.padding[1], availableWidth);
-  const paddingRight = resolveValue(style.padding[2], availableWidth);
-  const paddingBottom = resolveValue(style.padding[3], availableWidth);
+  const paddingLeft = resolveEdgeValue(style.padding, 0, style.flexDirection, availableWidth);
+  const paddingTop = resolveEdgeValue(style.padding, 1, style.flexDirection, availableWidth);
+  const paddingRight = resolveEdgeValue(style.padding, 2, style.flexDirection, availableWidth);
+  const paddingBottom = resolveEdgeValue(style.padding, 3, style.flexDirection, availableWidth);
 
   const borderLeft = style.border[0];
   const borderTop = style.border[1];
@@ -1589,22 +1682,22 @@ function layoutNode(
       const cs = child.style;
 
       // Check for auto margins on main axis
-      // EDGE_START/END are logical (based on writing direction), not physical
-      // For row: margin[0]=start(left in LTR), margin[2]=end(right in LTR)
-      // For column: margin[1]=start(top), margin[3]=end(bottom)
-      // In reverse direction, the logical start/end remain the same,
-      // but they're applied to opposite physical positions during layout
-      const mainStartMargin = isRow ? cs.margin[0] : cs.margin[1];
-      const mainEndMargin = isRow ? cs.margin[2] : cs.margin[3];
-      const mainStartMarginAuto = mainStartMargin.unit === C.UNIT_AUTO;
-      const mainEndMarginAuto = mainEndMargin.unit === C.UNIT_AUTO;
+      // Physical indices depend on axis and reverse direction:
+      // - Row: main-start=left(0), main-end=right(2)
+      // - Row-reverse: main-start=right(2), main-end=left(0)
+      // - Column: main-start=top(1), main-end=bottom(3)
+      // - Column-reverse: main-start=bottom(3), main-end=top(1)
+      const mainStartIndex = isRow ? (isReverse ? 2 : 0) : (isReverse ? 3 : 1);
+      const mainEndIndex = isRow ? (isReverse ? 0 : 2) : (isReverse ? 1 : 3);
+      const mainStartMarginAuto = isEdgeAuto(cs.margin, mainStartIndex, style.flexDirection);
+      const mainEndMarginAuto = isEdgeAuto(cs.margin, mainEndIndex, style.flexDirection);
 
       // Resolve non-auto margins (auto margins resolve to 0 initially)
       // CSS spec: percentage margins resolve against containing block's WIDTH only
       // For row: mainAxisSize is contentWidth; for column: crossAxisSize is contentWidth
       const parentWidth = isRow ? mainAxisSize : crossAxisSize;
-      const mainStartMarginValue = mainStartMarginAuto ? 0 : resolveValue(mainStartMargin, parentWidth);
-      const mainEndMarginValue = mainEndMarginAuto ? 0 : resolveValue(mainEndMargin, parentWidth);
+      const mainStartMarginValue = mainStartMarginAuto ? 0 : resolveEdgeValue(cs.margin, mainStartIndex, style.flexDirection, parentWidth);
+      const mainEndMarginValue = mainEndMarginAuto ? 0 : resolveEdgeValue(cs.margin, mainEndIndex, style.flexDirection, parentWidth);
 
       // Total non-auto margin for flex calculations
       const mainMargin = mainStartMarginValue + mainEndMarginValue;
@@ -1625,11 +1718,12 @@ function layoutNode(
           // For auto-sized children with measureFunc but no flexGrow,
           // pre-measure to get intrinsic size for justify-content calculation
           // CSS spec: percentage margins resolve against containing block's WIDTH only
+          // Use resolveEdgeValue to respect logical EDGE_START/END
           const crossMargin = isRow
-            ? resolveValue(cs.margin[1], mainAxisSize) +
-              resolveValue(cs.margin[3], mainAxisSize)
-            : resolveValue(cs.margin[0], mainAxisSize) +
-              resolveValue(cs.margin[2], mainAxisSize);
+            ? resolveEdgeValue(cs.margin, 1, style.flexDirection, mainAxisSize) +
+              resolveEdgeValue(cs.margin, 3, style.flexDirection, mainAxisSize)
+            : resolveEdgeValue(cs.margin, 0, style.flexDirection, mainAxisSize) +
+              resolveEdgeValue(cs.margin, 2, style.flexDirection, mainAxisSize);
           const availCross = crossAxisSize - crossMargin;
           const measured = child.measureFunc!(
             mainAxisSize,
@@ -1648,11 +1742,12 @@ function layoutNode(
           // For auto-sized LEAF children without measureFunc, use padding + border as minimum
           // This ensures elements with only padding still have proper size
           // CSS spec: percentage padding resolves against containing block's WIDTH only
+          // Use resolveEdgeValue to respect logical EDGE_START/END
           // For row: mainAxisSize is contentWidth; for column: crossAxisSize is contentWidth
           const parentWidth = isRow ? mainAxisSize : crossAxisSize;
           const childPadding = isRow
-            ? resolveValue(cs.padding[0], parentWidth) + resolveValue(cs.padding[2], parentWidth)
-            : resolveValue(cs.padding[1], parentWidth) + resolveValue(cs.padding[3], parentWidth);
+            ? resolveEdgeValue(cs.padding, 0, cs.flexDirection, parentWidth) + resolveEdgeValue(cs.padding, 2, cs.flexDirection, parentWidth)
+            : resolveEdgeValue(cs.padding, 1, cs.flexDirection, parentWidth) + resolveEdgeValue(cs.padding, 3, cs.flexDirection, parentWidth);
           const childBorder = isRow
             ? cs.border[0] + cs.border[2]
             : cs.border[1] + cs.border[3];
@@ -1817,7 +1912,8 @@ function layoutNode(
         const cs = child.style;
 
         // Get cross-axis (top/bottom) margins for this child
-        const topMargin = resolveValue(cs.margin[1], contentWidth);
+        // Use resolveEdgeValue to respect logical EDGE_START/END
+        const topMargin = resolveEdgeValue(cs.margin, 1, style.flexDirection, contentWidth);
 
         // Compute child's height - need to do a mini-layout or use the cached size
         // For children with explicit height, use that
@@ -1863,18 +1959,29 @@ function layoutNode(
       let childMarginBottom: number;
 
       // CSS spec: percentage margins resolve against containing block's WIDTH only
+      // Use resolveEdgeValue to respect logical EDGE_START/END
       if (isRow) {
         // Row: main axis is horizontal
-        childMarginLeft = c.mainStartMarginAuto ? c.mainStartMarginValue : resolveValue(cs.margin[0], contentWidth);
-        childMarginRight = c.mainEndMarginAuto ? c.mainEndMarginValue : resolveValue(cs.margin[2], contentWidth);
-        childMarginTop = resolveValue(cs.margin[1], contentWidth);
-        childMarginBottom = resolveValue(cs.margin[3], contentWidth);
+        // In row-reverse, mainStart=right(2), mainEnd=left(0)
+        childMarginLeft = c.mainStartMarginAuto && !isReverse ? c.mainStartMarginValue :
+                          c.mainEndMarginAuto && isReverse ? c.mainEndMarginValue :
+                          resolveEdgeValue(cs.margin, 0, style.flexDirection, contentWidth);
+        childMarginRight = c.mainEndMarginAuto && !isReverse ? c.mainEndMarginValue :
+                           c.mainStartMarginAuto && isReverse ? c.mainStartMarginValue :
+                           resolveEdgeValue(cs.margin, 2, style.flexDirection, contentWidth);
+        childMarginTop = resolveEdgeValue(cs.margin, 1, style.flexDirection, contentWidth);
+        childMarginBottom = resolveEdgeValue(cs.margin, 3, style.flexDirection, contentWidth);
       } else {
         // Column: main axis is vertical
-        childMarginTop = c.mainStartMarginAuto ? c.mainStartMarginValue : resolveValue(cs.margin[1], contentWidth);
-        childMarginBottom = c.mainEndMarginAuto ? c.mainEndMarginValue : resolveValue(cs.margin[3], contentWidth);
-        childMarginLeft = resolveValue(cs.margin[0], contentWidth);
-        childMarginRight = resolveValue(cs.margin[2], contentWidth);
+        // In column-reverse, mainStart=bottom(3), mainEnd=top(1)
+        childMarginTop = c.mainStartMarginAuto && !isReverse ? c.mainStartMarginValue :
+                         c.mainEndMarginAuto && isReverse ? c.mainEndMarginValue :
+                         resolveEdgeValue(cs.margin, 1, style.flexDirection, contentWidth);
+        childMarginBottom = c.mainEndMarginAuto && !isReverse ? c.mainEndMarginValue :
+                            c.mainStartMarginAuto && isReverse ? c.mainStartMarginValue :
+                            resolveEdgeValue(cs.margin, 3, style.flexDirection, contentWidth);
+        childMarginLeft = resolveEdgeValue(cs.margin, 0, style.flexDirection, contentWidth);
+        childMarginRight = resolveEdgeValue(cs.margin, 2, style.flexDirection, contentWidth);
       }
 
       // Main axis size comes from flex algorithm (already rounded)
@@ -2077,10 +2184,11 @@ function layoutNode(
       const useEdgeBasedRounding = childMainSize > 0;
 
       // Compute child's box model minimum early (needed for edge-based rounding)
-      const childPaddingL = resolveValue(cs.padding[0], contentWidth);
-      const childPaddingT = resolveValue(cs.padding[1], contentWidth);
-      const childPaddingR = resolveValue(cs.padding[2], contentWidth);
-      const childPaddingB = resolveValue(cs.padding[3], contentWidth);
+      // Use resolveEdgeValue to respect logical EDGE_START/END for padding
+      const childPaddingL = resolveEdgeValue(cs.padding, 0, cs.flexDirection, contentWidth);
+      const childPaddingT = resolveEdgeValue(cs.padding, 1, cs.flexDirection, contentWidth);
+      const childPaddingR = resolveEdgeValue(cs.padding, 2, cs.flexDirection, contentWidth);
+      const childPaddingB = resolveEdgeValue(cs.padding, 3, cs.flexDirection, contentWidth);
       const childBorderL = cs.border[0];
       const childBorderT = cs.border[1];
       const childBorderR = cs.border[2];
@@ -2269,14 +2377,15 @@ function layoutNode(
     }
     // For cross axis, find the max child size
     // CSS spec: percentage margins resolve against containing block's WIDTH only
+    // Use resolveEdgeValue to respect logical EDGE_START/END
     let maxCrossSize = 0;
     for (const c of children) {
       const childCross = isRow ? c.node.layout.height : c.node.layout.width;
       const childMargin = isRow
-        ? resolveValue(c.node.style.margin[1], contentWidth) +
-          resolveValue(c.node.style.margin[3], contentWidth)
-        : resolveValue(c.node.style.margin[0], contentWidth) +
-          resolveValue(c.node.style.margin[2], contentWidth);
+        ? resolveEdgeValue(c.node.style.margin, 1, style.flexDirection, contentWidth) +
+          resolveEdgeValue(c.node.style.margin, 3, style.flexDirection, contentWidth)
+        : resolveEdgeValue(c.node.style.margin, 0, style.flexDirection, contentWidth) +
+          resolveEdgeValue(c.node.style.margin, 2, style.flexDirection, contentWidth);
       maxCrossSize = Math.max(maxCrossSize, childCross + childMargin);
     }
     // Cross-axis shrink-wrap for auto-sized dimension
@@ -2342,10 +2451,11 @@ function layoutNode(
   for (const child of absoluteChildren) {
     const cs = child.style;
     // CSS spec: percentage margins resolve against containing block's WIDTH only
-    const childMarginLeft = resolveValue(cs.margin[0], nodeWidth);
-    const childMarginTop = resolveValue(cs.margin[1], nodeWidth);
-    const childMarginRight = resolveValue(cs.margin[2], nodeWidth);
-    const childMarginBottom = resolveValue(cs.margin[3], nodeWidth);
+    // Use resolveEdgeValue to respect logical EDGE_START/END
+    const childMarginLeft = resolveEdgeValue(cs.margin, 0, style.flexDirection, nodeWidth);
+    const childMarginTop = resolveEdgeValue(cs.margin, 1, style.flexDirection, nodeWidth);
+    const childMarginRight = resolveEdgeValue(cs.margin, 2, style.flexDirection, nodeWidth);
+    const childMarginBottom = resolveEdgeValue(cs.margin, 3, style.flexDirection, nodeWidth);
 
     // Position offsets from setPosition(edge, value)
     const leftPos = cs.position[0];
