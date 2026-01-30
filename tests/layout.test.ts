@@ -32,6 +32,8 @@ import {
   UNIT_POINT,
   UNIT_UNDEFINED,
   WRAP_NO_WRAP,
+  WRAP_WRAP,
+  WRAP_WRAP_REVERSE,
 } from "../src/index.js";
 
 describe("Flexx Layout Engine", () => {
@@ -678,6 +680,74 @@ describe("Flexx Layout Engine", () => {
       const node = Node.create();
       node.setAspectRatio(1.5);
       expect(node.getAspectRatio()).toBe(1.5);
+    });
+  });
+
+  describe("Flex Wrap", () => {
+    it("should wrap items to new line when they exceed container width", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setHeight(100);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+      root.setFlexWrap(WRAP_WRAP);
+
+      // Three 40px items can't fit in 100px row, should wrap
+      const child1 = Node.create();
+      child1.setWidth(40);
+      child1.setHeight(20);
+      root.insertChild(child1, 0);
+
+      const child2 = Node.create();
+      child2.setWidth(40);
+      child2.setHeight(20);
+      root.insertChild(child2, 1);
+
+      const child3 = Node.create();
+      child3.setWidth(40);
+      child3.setHeight(20);
+      root.insertChild(child3, 2);
+
+      root.calculateLayout(100, 100);
+
+      // First two items on first line
+      expect(child1.getComputedLeft()).toBe(0);
+      expect(child1.getComputedTop()).toBe(0);
+      expect(child2.getComputedLeft()).toBe(40);
+      expect(child2.getComputedTop()).toBe(0);
+
+      // Third item wrapped to second line
+      expect(child3.getComputedLeft()).toBe(0);
+      expect(child3.getComputedTop()).toBe(20);
+    });
+
+    it("should not wrap when flex-wrap is no-wrap (default)", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setHeight(100);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+      // Default is WRAP_NO_WRAP
+
+      const child1 = Node.create();
+      child1.setWidth(40);
+      child1.setHeight(20);
+      root.insertChild(child1, 0);
+
+      const child2 = Node.create();
+      child2.setWidth(40);
+      child2.setHeight(20);
+      root.insertChild(child2, 1);
+
+      const child3 = Node.create();
+      child3.setWidth(40);
+      child3.setHeight(20);
+      root.insertChild(child3, 2);
+
+      root.calculateLayout(100, 100);
+
+      // All items on same line (overflowing)
+      expect(child1.getComputedTop()).toBe(0);
+      expect(child2.getComputedTop()).toBe(0);
+      expect(child3.getComputedTop()).toBe(0);
     });
   });
 

@@ -1898,43 +1898,47 @@ function layoutNode(
       totalBaseMain += baseSize + mainMargin;
     }
 
-    // Calculate total hypothetical main size for free space calculation
-    // (already included in totalBaseMain since we use hypothetical sizes)
+    // Break children into flex lines for wrap support
+    const lines = breakIntoLines(children, mainAxisSize, mainGap, style.flexWrap);
+    const crossGap = isRow ? style.gap[1] : style.gap[0];
 
-    // Calculate gaps
-    const totalGaps =
-      relativeChildren.length > 1 ? mainGap * (relativeChildren.length - 1) : 0;
+    // Process each line: distribute flex space
+    for (const line of lines) {
+      const lineChildren = line.children;
+      if (lineChildren.length === 0) continue;
 
-    // Distribute free space using grow or shrink factors
-    // When mainAxisSize is constrained (not NaN), use it directly.
-    // When unconstrained (NaN), check if there's a max constraint that would be exceeded -
-    // in that case, use the max constraint to trigger shrinking.
-    let effectiveMainSize = mainAxisSize;
-    if (Number.isNaN(mainAxisSize)) {
-      // Shrink-wrap mode - check if max constraint applies
-      const maxMainVal = isRow ? style.maxWidth : style.maxHeight;
-      if (maxMainVal.unit !== C.UNIT_UNDEFINED) {
-        const maxMain = resolveValue(maxMainVal, isRow ? availableWidth : availableHeight);
-        if (!Number.isNaN(maxMain) && totalBaseMain + totalGaps > maxMain) {
-          // Children exceed max constraint - use max as effective size for shrinking
-          const innerMain = isRow ? (innerLeft + innerRight) : (innerTop + innerBottom);
-          effectiveMainSize = maxMain - innerMain;
+      // Calculate total base main and gaps for this line
+      const lineTotalBaseMain = lineChildren.reduce((sum, c) => sum + c.baseSize + c.mainMargin, 0);
+      const lineTotalGaps = lineChildren.length > 1 ? mainGap * (lineChildren.length - 1) : 0;
+
+      // Distribute free space using grow or shrink factors
+      let effectiveMainSize = mainAxisSize;
+      if (Number.isNaN(mainAxisSize)) {
+        // Shrink-wrap mode - check if max constraint applies
+        const maxMainVal = isRow ? style.maxWidth : style.maxHeight;
+        if (maxMainVal.unit !== C.UNIT_UNDEFINED) {
+          const maxMain = resolveValue(maxMainVal, isRow ? availableWidth : availableHeight);
+          if (!Number.isNaN(maxMain) && lineTotalBaseMain + lineTotalGaps > maxMain) {
+            const innerMain = isRow ? (innerLeft + innerRight) : (innerTop + innerBottom);
+            effectiveMainSize = maxMain - innerMain;
+          }
         }
+      }
+
+      if (!Number.isNaN(effectiveMainSize)) {
+        const adjustedFreeSpace = effectiveMainSize - lineTotalBaseMain - lineTotalGaps;
+        distributeFlexSpace(lineChildren, adjustedFreeSpace);
+      }
+
+      // Apply min/max constraints to final sizes
+      for (const c of lineChildren) {
+        c.mainSize = Math.max(c.minMain, Math.min(c.maxMain, c.mainSize));
       }
     }
 
-    if (!Number.isNaN(effectiveMainSize)) {
-      // Use hypothetical sizes for free space calculation (totalBaseMain now contains hypothetical sizes)
-      const adjustedFreeSpace = effectiveMainSize - totalBaseMain - totalGaps;
-      distributeFlexSpace(children, adjustedFreeSpace);
-    }
-
-    // Apply min/max constraints to final sizes (handles any remaining edge cases)
-    for (const c of children) {
-      c.mainSize = Math.max(c.minMain, Math.min(c.maxMain, c.mainSize));
-    }
-
     // Calculate final used space and justify-content
+    // For single-line, use all children; for multi-line, this applies per-line during positioning
+    const totalGaps = children.length > 1 ? mainGap * (children.length - 1) : 0;
     const usedMain =
       children.reduce((sum, c) => sum + c.mainSize + c.mainMargin, 0) +
       totalGaps;
@@ -2046,17 +2050,68 @@ function layoutNode(
       }
     }
 
+    // Compute line cross-axis sizes and offsets for flex-wrap
+    // Each child needs to know its line's cross offset
+    const childLineIndex = new Map<ChildLayout, number>();
+    const lineCrossOffsets: number[] = [];
+    let cumulativeCrossOffset = 0;
+
+    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+      const line = lines[lineIdx]!;
+      lineCrossOffsets.push(cumulativeCrossOffset);
+
+      // Calculate max cross size for this line
+      let maxLineCross = 0;
+      for (const c of line.children) {
+        childLineIndex.set(c, lineIdx);
+        // Estimate child cross size (will be computed more precisely during layout)
+        const cs = c.node.style;
+        const crossDim = isRow ? cs.height : cs.width;
+        const crossMarginStart = isRow
+          ? resolveEdgeValue(cs.margin, 1, style.flexDirection, contentWidth)
+          : resolveEdgeValue(cs.margin, 0, style.flexDirection, contentWidth);
+        const crossMarginEnd = isRow
+          ? resolveEdgeValue(cs.margin, 3, style.flexDirection, contentWidth)
+          : resolveEdgeValue(cs.margin, 2, style.flexDirection, contentWidth);
+
+        let childCross = 0;
+        if (crossDim.unit === C.UNIT_POINT) {
+          childCross = crossDim.value;
+        } else if (crossDim.unit === C.UNIT_PERCENT && !Number.isNaN(crossAxisSize)) {
+          childCross = crossAxisSize * (crossDim.value / 100);
+        } else {
+          // Auto - use a default or measure. For now, use 0 and let stretch handle it.
+          childCross = 0;
+        }
+        maxLineCross = Math.max(maxLineCross, childCross + crossMarginStart + crossMarginEnd);
+      }
+      line.crossSize = maxLineCross > 0 ? maxLineCross : (crossAxisSize / lines.length);
+      cumulativeCrossOffset += line.crossSize + crossGap;
+    }
+
     // Position and layout children
     // For reverse directions, start from the END of the container
     // Use fractional mainPos for edge-based rounding
     let mainPos = isReverse ? mainAxisSize - startOffset : startOffset;
+    let currentLineIdx = -1;
 
-    debug('positioning children: isRow=%s, startOffset=%d, relativeChildren=%d, isReverse=%s', isRow, startOffset, relativeChildren.length, isReverse);
+    debug('positioning children: isRow=%s, startOffset=%d, relativeChildren=%d, isReverse=%s, lines=%d', isRow, startOffset, relativeChildren.length, isReverse, lines.length);
 
     for (let i = 0; i < children.length; i++) {
       const c = children[i]!
       const child = c.node;
       const cs = child.style;
+
+      // Check if we've moved to a new line (for flex-wrap)
+      const childLineIdx = childLineIndex.get(c) ?? 0;
+      if (childLineIdx !== currentLineIdx) {
+        currentLineIdx = childLineIdx;
+        // Reset mainPos for new line
+        mainPos = isReverse ? mainAxisSize - startOffset : startOffset;
+      }
+
+      // Get cross-axis offset for this child's line
+      const lineCrossOffset = lineCrossOffsets[childLineIdx] ?? 0;
 
       // For main-axis margins, use computed auto margin values
       // For cross-axis margins, resolve normally (auto margins on cross axis handled separately)
@@ -2229,21 +2284,22 @@ function layoutNode(
       // IMPORTANT: In reverse, swap which margin is applied to which side
       // EDGE_START (margin[0]/[1]) becomes the trailing margin in reverse layout
       // EDGE_END (margin[2]/[3]) becomes the leading margin in reverse layout
+      // For flex-wrap, add lineCrossOffset to cross-axis position
       let childX: number;
       let childY: number;
       if (isReverse) {
         if (isRow) {
           // Row-reverse: items positioned from right, margin_start applied on right
           childX = mainPos - childMainSize - childMarginLeft;  // Use left margin (EDGE_START) as trailing
-          childY = childMarginTop;
+          childY = lineCrossOffset + childMarginTop;
         } else {
           // Column-reverse: items positioned from bottom, margin_start applied on bottom
-          childX = childMarginLeft;
+          childX = lineCrossOffset + childMarginLeft;
           childY = mainPos - childMainSize - childMarginTop;  // Use top margin (EDGE_START) as trailing
         }
       } else {
-        childX = isRow ? mainPos + childMarginLeft : childMarginLeft;
-        childY = isRow ? childMarginTop : mainPos + childMarginTop;
+        childX = isRow ? mainPos + childMarginLeft : lineCrossOffset + childMarginLeft;
+        childY = isRow ? lineCrossOffset + childMarginTop : mainPos + childMarginTop;
       }
 
       // Edge-based rounding using ABSOLUTE coordinates (Yoga-compatible)
