@@ -117,6 +117,35 @@ Same constants, same method names, same behavior for supported features.
 - [Yoga Comparison](docs/yoga-comparison.md) — detailed feature comparison and benchmarks
 - [Algorithm](ALGORITHM.md) — how the layout algorithm works
 
+## Yoga Compatibility Test Suite
+
+Flexx includes a compatibility test suite imported from [Facebook Yoga](https://github.com/facebook/yoga) (MIT License).
+
+**Current compatibility: 131/395 tests pass (33%)**
+
+```bash
+# Run Yoga compatibility tests
+bun test tests/yoga/
+
+# Re-import tests from Yoga source
+bun scripts/import-yoga-tests.ts
+```
+
+The test suite is auto-generated from Yoga's HTML fixture files. Each test:
+1. Sets up a node tree with specific styles
+2. Calculates layout using Flexx
+3. Asserts results match Yoga's computed values
+
+**Test files:**
+- `tests/yoga/*.test.ts` — Generated tests (do not edit manually)
+- `scripts/import-yoga-tests.ts` — Import script that fetches fixtures and generates tests
+
+**Why 33%?** The failing tests primarily cover:
+- RTL direction (not implemented)
+- Baseline alignment (not implemented)
+- flex-wrap edge cases (partial support)
+- Absolute positioning edge cases
+
 ## Related Projects
 
 - [Inkx](https://github.com/beorn/inkx) — React terminal UI framework using Flexx

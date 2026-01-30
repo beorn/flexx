@@ -214,7 +214,9 @@ root.setFlexDirection(FLEX_DIRECTION_ROW);
 
 ## Test Coverage
 
-Flexx includes tests for:
+### Unit Tests
+
+Flexx includes hand-written unit tests for:
 
 - ✅ Basic layout (single node, column, row)
 - ✅ Flex grow distribution
@@ -232,6 +234,46 @@ Flexx includes tests for:
 - ✅ Style getters/setters
 
 See [tests/layout.test.ts](../tests/layout.test.ts) for the full test suite.
+
+### Yoga Compatibility Test Suite
+
+Flexx imports test fixtures from [Facebook Yoga](https://github.com/facebook/yoga) (MIT License) for compatibility testing.
+
+**Current compatibility: 131/395 tests pass (33%)**
+
+| Test Category    | Coverage | Notes                                |
+| ---------------- | -------- | ------------------------------------ |
+| flex-direction   | High     | All basic cases pass                 |
+| flex-grow/shrink | High     | Core functionality working           |
+| justify-content  | High     | All 6 values work                    |
+| align-items      | Partial  | Baseline not implemented             |
+| align-content    | Partial  | Wrap-related cases failing           |
+| flex-wrap        | Low      | Multi-line layout has edge cases     |
+| absolute pos     | Partial  | Some edge cases failing              |
+| RTL direction    | None     | Not implemented (11 tests skipped)   |
+
+```bash
+# Run Yoga compatibility tests
+bun test tests/yoga/
+
+# Re-import tests from upstream Yoga
+bun scripts/import-yoga-tests.ts
+
+# Run specific fixture
+bun scripts/import-yoga-tests.ts --fixture FlexDirection
+```
+
+**Test files:**
+- `tests/yoga/*.test.ts` — Auto-generated tests (17 files, do not edit manually)
+- `scripts/import-yoga-tests.ts` — Fetches Yoga HTML fixtures and generates test files
+
+**How it works:**
+1. Import script fetches HTML fixtures from Yoga's GitHub repo
+2. Parses CSS styles and converts to Flexx API calls
+3. Uses `yoga-wasm-web` as reference to compute expected values
+4. Generates Bun test files comparing Flexx output against Yoga
+
+Tests marked `it.skip` are disabled in the upstream fixture (typically RTL or unsupported features).
 
 ---
 
