@@ -1197,6 +1197,21 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
         layout.top = Math.round(offsetY + marginTop);
         return;
     }
+    // Handle leaf nodes without measureFunc - when unconstrained, use padding+border as intrinsic size
+    if (node.children.length === 0) {
+        // For leaf nodes without measureFunc, intrinsic size is just padding+border
+        if (Number.isNaN(nodeWidth)) {
+            nodeWidth = innerLeft + innerRight;
+        }
+        if (Number.isNaN(nodeHeight)) {
+            nodeHeight = innerTop + innerBottom;
+        }
+        layout.width = Math.round(nodeWidth);
+        layout.height = Math.round(nodeHeight);
+        layout.left = Math.round(offsetX + marginLeft);
+        layout.top = Math.round(offsetY + marginTop);
+        return;
+    }
     // Separate relative and absolute children
     const relativeChildren = node.children.filter((c) => c.style.positionType !== C.POSITION_TYPE_ABSOLUTE);
     const absoluteChildren = node.children.filter((c) => c.style.positionType === C.POSITION_TYPE_ABSOLUTE);
@@ -1249,8 +1264,14 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
                     const measured = child.measureFunc(mainAxisSize, C.MEASURE_MODE_AT_MOST, availCross, C.MEASURE_MODE_UNDEFINED);
                     baseSize = isRow ? measured.width : measured.height;
                 }
+                else if (child.children.length > 0) {
+                    // For auto-sized children WITH children but no measureFunc,
+                    // recursively compute intrinsic size by laying out with unconstrained main axis
+                    layoutNode(child, isRow ? NaN : crossAxisSize, isRow ? crossAxisSize : NaN, 0, 0);
+                    baseSize = isRow ? child.layout.width : child.layout.height;
+                }
                 else {
-                    // For auto-sized children without measureFunc, use padding + border as minimum
+                    // For auto-sized LEAF children without measureFunc, use padding + border as minimum
                     // This ensures elements with only padding still have proper size
                     const childPadding = isRow
                         ? resolveValue(cs.padding[0], mainAxisSize) + resolveValue(cs.padding[2], mainAxisSize)
@@ -1381,12 +1402,12 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
                 // Percent of PARENT's cross axis (not available size)
                 childCrossSize = crossAxisSize * (crossDim.value / 100);
             }
-            else if (parentHasDefiniteCross) {
-                // We have a definite cross size - use it (stretch fills, auto uses available space)
+            else if (parentHasDefiniteCross && alignment === C.ALIGN_STRETCH) {
+                // Stretch alignment with definite parent cross size - fill the cross axis
                 childCrossSize = crossAxisSize - crossMargin;
             }
             else {
-                // No definite cross size - use NaN to signal shrink-wrap behavior
+                // Non-stretch alignment or no definite cross size - shrink-wrap to content
                 childCrossSize = NaN;
             }
             // Handle intrinsic sizing for auto-sized children
@@ -1471,8 +1492,19 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY) {
             // Calculate child's actual position
             const childLeft = Math.round(offsetX + marginLeft + innerLeft + childX);
             const childTop = Math.round(offsetY + marginTop + innerTop + childY);
+            // Check if cross axis is auto-sized (needed for deciding what to pass to layoutNode)
+            const crossDimForLayoutCall = isRow ? cs.height : cs.width;
+            const crossIsAutoForLayoutCall = crossDimForLayoutCall.unit === C.UNIT_AUTO || crossDimForLayoutCall.unit === C.UNIT_UNDEFINED;
+            // For auto-sized children (no flexGrow, no measureFunc), pass NaN to let them compute intrinsic size
+            // Otherwise layoutNode would subtract margins from the available size
+            const passWidthToChild = (isRow && mainIsAuto && !hasFlexGrow) ? NaN :
+                (!isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross) ? NaN :
+                    childWidth;
+            const passHeightToChild = (!isRow && mainIsAuto && !hasFlexGrow) ? NaN :
+                (isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross) ? NaN :
+                    childHeight;
             // Recurse to layout any grandchildren
-            layoutNode(child, childWidth, childHeight, childLeft, childTop);
+            layoutNode(child, passWidthToChild, passHeightToChild, childLeft, childTop);
             // Set this child's layout - override what layoutNode computed
             // UNLESS the child has auto size AND no flexGrow (shrink-wrap behavior)
             // For auto-sized children without measureFunc, let layoutNode determine the size

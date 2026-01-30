@@ -1478,8 +1478,13 @@ function layoutNode(
             C.MEASURE_MODE_UNDEFINED,
           );
           baseSize = isRow ? measured.width : measured.height;
+        } else if (child.children.length > 0) {
+          // For auto-sized children WITH children but no measureFunc,
+          // recursively compute intrinsic size by laying out with unconstrained main axis
+          layoutNode(child, isRow ? NaN : crossAxisSize, isRow ? crossAxisSize : NaN, 0, 0);
+          baseSize = isRow ? child.layout.width : child.layout.height;
         } else {
-          // For auto-sized children without measureFunc, use padding + border as minimum
+          // For auto-sized LEAF children without measureFunc, use padding + border as minimum
           // This ensures elements with only padding still have proper size
           const childPadding = isRow
             ? resolveValue(cs.padding[0], mainAxisSize) + resolveValue(cs.padding[2], mainAxisSize)
