@@ -8,6 +8,7 @@ import {
   createValue,
   DIRECTION_LTR,
   DISPLAY_FLEX,
+  DISPLAY_NONE,
   EDGE_ALL,
   EDGE_BOTTOM,
   EDGE_LEFT,
@@ -46,6 +47,54 @@ describe("Flexx Layout Engine", () => {
       expect(root.getComputedHeight()).toBe(24);
       expect(root.getComputedLeft()).toBe(0);
       expect(root.getComputedTop()).toBe(0);
+    });
+
+    it("should set display:none node to zero size", () => {
+      const root = Node.create();
+      root.setWidth(80);
+      root.setHeight(24);
+      root.setDisplay(DISPLAY_NONE);
+
+      root.calculateLayout(80, 24, DIRECTION_LTR);
+
+      expect(root.getComputedWidth()).toBe(0);
+      expect(root.getComputedHeight()).toBe(0);
+    });
+
+    it("should exclude display:none children from layout", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+
+      const child1 = Node.create();
+      child1.setWidth(30);
+      child1.setHeight(20);
+      root.insertChild(child1, 0);
+
+      const hiddenChild = Node.create();
+      hiddenChild.setWidth(30);
+      hiddenChild.setHeight(20);
+      hiddenChild.setDisplay(DISPLAY_NONE);
+      root.insertChild(hiddenChild, 1);
+
+      const child2 = Node.create();
+      child2.setWidth(30);
+      child2.setHeight(20);
+      root.insertChild(child2, 2);
+
+      root.calculateLayout(100, 100);
+
+      // Child1 at left edge
+      expect(child1.getComputedLeft()).toBe(0);
+      expect(child1.getComputedWidth()).toBe(30);
+
+      // Hidden child should have zero size
+      expect(hiddenChild.getComputedWidth()).toBe(0);
+      expect(hiddenChild.getComputedHeight()).toBe(0);
+
+      // Child2 should be right after child1, ignoring hidden child
+      expect(child2.getComputedLeft()).toBe(30);
+      expect(child2.getComputedWidth()).toBe(30);
     });
 
     it("should layout a column with fixed-height children", () => {
