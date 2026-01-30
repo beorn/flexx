@@ -19,6 +19,9 @@
     "build": "tsc",
     "test": "bun test",
     "test:watch": "bun test --watch",
+    "test:yoga": "bun scripts/ensure-yoga-tests.ts && bun test tests/yoga",
+    "test:yoga:impl": "bun scripts/ensure-yoga-tests.ts && bun test tests/yoga/implemented",
+    "test:yoga:pending": "bun scripts/ensure-yoga-tests.ts && bun test tests/yoga/pending",
     "bench": "bun bench/run.ts",
     "bench:compare": "bun bench/compare.ts",
     "typecheck": "tsc --noEmit"

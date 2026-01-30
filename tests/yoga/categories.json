@@ -1,0 +1,10 @@
+{
+  "pending": [
+    "BoxSizing",
+    "IntrinsicSize",
+    "StaticPosition"
+  ],
+  "unsupported": [
+    "AspectRatio"
+  ]
+}

@@ -500,6 +500,7 @@ function generateTestFile(
   fixtureName: string,
   tests: Array<{ test: ParsedTest; expected: ComputedLayout }>
 ): string {
+  // Import path is now one level deeper (tests/yoga/{category}/*.test.ts)
   const imports = `import { describe, expect, it } from "bun:test";
 import {
   DIRECTION_LTR,
@@ -543,7 +544,7 @@ import {
   OVERFLOW_HIDDEN,
   OVERFLOW_SCROLL,
   Node,
-} from "../../src/index.js";
+} from "../../../src/index.js";
 
 /**
  * Generated from Yoga test fixtures: ${fixtureName}
@@ -874,26 +875,50 @@ function generateAssertions(
 const YOGA_FIXTURES_BASE =
   "https://raw.githubusercontent.com/facebook/yoga/main/gentest/fixtures";
 
-// Fixture files to process
-const FIXTURE_FILES = [
-  "YGFlexDirectionTest.html",
-  "YGFlexTest.html",
-  "YGAlignItemsTest.html",
-  "YGAlignContentTest.html",
-  "YGAlignSelfTest.html",
-  "YGJustifyContentTest.html",
-  "YGFlexWrapTest.html",
-  "YGPaddingTest.html",
-  "YGMarginTest.html",
-  "YGBorderTest.html",
-  "YGGapTest.html",
-  "YGDimensionTest.html",
-  "YGMinMaxDimensionTest.html",
-  "YGPercentageTest.html",
-  "YGAbsolutePositionTest.html",
-  "YGDisplayTest.html",
-  "YGRoundingTest.html",
-];
+// GitHub API to list fixtures directory
+const YOGA_FIXTURES_API =
+  "https://api.github.com/repos/facebook/yoga/contents/gentest/fixtures";
+
+// Categories configuration
+interface Categories {
+  pending: string[];
+  unsupported: string[];
+}
+
+async function loadCategories(): Promise<Categories> {
+  const categoriesPath = new URL("../tests/yoga/categories.json", import.meta.url).pathname;
+  const content = await Bun.file(categoriesPath).text();
+  return JSON.parse(content);
+}
+
+function getCategoryForFixture(fixtureName: string, categories: Categories): string {
+  if (categories.pending.includes(fixtureName)) return "pending";
+  if (categories.unsupported.includes(fixtureName)) return "unsupported";
+  // Default to implemented for unknown fixtures
+  return "implemented";
+}
+
+async function fetchFixtureList(): Promise<string[]> {
+  console.log("📋 Fetching fixture list from GitHub...");
+  const response = await fetch(YOGA_FIXTURES_API, {
+    headers: {
+      Accept: "application/vnd.github.v3+json",
+      "User-Agent": "flexx-yoga-test-importer",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch fixture list: ${response.status}`);
+  }
+
+  const files = (await response.json()) as Array<{ name: string; type: string }>;
+  const fixtures = files
+    .filter((f) => f.type === "file" && f.name.endsWith(".html"))
+    .map((f) => f.name);
+
+  console.log(`   Found ${fixtures.length} fixture files`);
+  return fixtures;
+}
 
 async function fetchFixture(filename: string): Promise<string> {
   const url = `${YOGA_FIXTURES_BASE}/${filename}`;
@@ -911,11 +936,26 @@ async function main() {
   const specificFixture =
     fixtureArg !== -1 ? args[fixtureArg + 1] : null;
 
-  const fixturesToProcess = specificFixture
-    ? FIXTURE_FILES.filter((f) => f.includes(specificFixture))
-    : FIXTURE_FILES;
+  // Auto-detect fixtures from GitHub
+  const allFixtures = await fetchFixtureList();
 
+  const fixturesToProcess = specificFixture
+    ? allFixtures.filter((f) => f.includes(specificFixture))
+    : allFixtures;
+
+  // Load categories
+  const categories = await loadCategories();
   console.log(`Processing ${fixturesToProcess.length} fixture(s)...`);
+  console.log(`Categories: ${categories.pending.length} pending, ${categories.unsupported.length} unsupported (rest are implemented)`);
+
+  // Ensure output directories exist
+  if (!dryRun) {
+    const { mkdirSync } = await import("fs");
+    for (const category of ["implemented", "pending", "unsupported"]) {
+      const dir = new URL(`../tests/yoga/${category}`, import.meta.url).pathname;
+      mkdirSync(dir, { recursive: true });
+    }
+  }
 
   for (const filename of fixturesToProcess) {
     console.log(`\n📥 Fetching ${filename}...`);
@@ -946,18 +986,19 @@ async function main() {
       }
     }
 
-    // Generate test file
-    const fixtureName = filename.replace(".html", "").replace("YG", "");
+    // Determine category and output path
+    const fixtureName = filename.replace(".html", "").replace("YG", "").replace("Test", "");
+    const category = getCategoryForFixture(fixtureName, categories);
     const testCode = generateTestFile(fixtureName, testsWithExpected);
 
-    const outputPath = `tests/yoga/${fixtureName.toLowerCase()}.test.ts`;
+    const outputPath = `tests/yoga/${category}/${fixtureName.toLowerCase()}.test.ts`;
     if (dryRun) {
       console.log(`\n--- ${outputPath} (dry run) ---`);
       console.log(testCode.slice(0, 2000) + (testCode.length > 2000 ? "\n..." : ""));
     } else {
       const fullPath = new URL(`../${outputPath}`, import.meta.url).pathname;
       await Bun.write(fullPath, testCode);
-      console.log(`   ✅ Generated ${outputPath}`);
+      console.log(`   ✅ Generated ${outputPath} [${category}]`);
     }
   }
 
