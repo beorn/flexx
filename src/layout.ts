@@ -1344,14 +1344,24 @@ function layoutNode(
       // Check if cross axis is auto-sized (needed for deciding what to pass to layoutNode)
       const crossDimForLayoutCall = isRow ? childStyle.height : childStyle.width;
       const crossIsAutoForLayoutCall = crossDimForLayoutCall.unit === C.UNIT_AUTO || crossDimForLayoutCall.unit === C.UNIT_UNDEFINED;
+      const mainDimForLayoutCall = isRow ? childStyle.width : childStyle.height;
+      const mainIsPercentForLayoutCall = mainDimForLayoutCall.unit === C.UNIT_PERCENT;
+      const crossIsPercentForLayoutCall = crossDimForLayoutCall.unit === C.UNIT_PERCENT;
 
       // For auto-sized children (no flexGrow, no measureFunc), pass NaN to let them compute intrinsic size
       // Otherwise layoutNode would subtract margins from the available size
+      // IMPORTANT: For percent-sized children, pass parent's content size (not child's computed size)
+      // so that grandchildren's percents resolve correctly against the child's actual dimensions.
+      // The child will resolve its own percent against this value, getting the same result the parent computed.
       const passWidthToChild = (isRow && mainIsAuto && !hasFlexGrow) ? NaN :
                               (!isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross) ? NaN :
+                              (isRow && mainIsPercentForLayoutCall) ? mainAxisSize :
+                              (!isRow && crossIsPercentForLayoutCall) ? crossAxisSize :
                               childWidth;
       const passHeightToChild = (!isRow && mainIsAuto && !hasFlexGrow) ? NaN :
                                 (isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross) ? NaN :
+                                (!isRow && mainIsPercentForLayoutCall) ? mainAxisSize :
+                                (isRow && crossIsPercentForLayoutCall) ? crossAxisSize :
                                 childHeight;
 
       // Recurse to layout any grandchildren
