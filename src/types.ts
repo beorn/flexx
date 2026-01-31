@@ -24,6 +24,31 @@ export type MeasureFunc = (
 ) => { width: number; height: number };
 
 /**
+ * Cache entry for measure results.
+ * Stores input constraints (w, wm, h, hm) and output (rw, rh).
+ */
+export interface MeasureEntry {
+  w: number;
+  wm: number;
+  h: number;
+  hm: number;
+  rw: number;
+  rh: number;
+}
+
+/**
+ * Cache entry for layout results.
+ * Stores input available dimensions and computed size.
+ * Used to avoid redundant recursive layout calls during a single pass.
+ */
+export interface LayoutCacheEntry {
+  availW: number; // Available width (may be NaN)
+  availH: number; // Available height (may be NaN)
+  computedW: number; // Computed width
+  computedH: number; // Computed height
+}
+
+/**
  * Computed layout result for a node.
  */
 export interface Layout {

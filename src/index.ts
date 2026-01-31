@@ -98,3 +98,6 @@ export type { Layout, MeasureFunc, Style, Value } from "./types.js";
 
 // Utility functions
 export { createDefaultStyle, createValue } from "./types.js";
+
+// Layout stats (for debugging/benchmarking)
+export { layoutNodeCalls, resolveEdgeCalls, layoutSizingCalls, layoutPositioningCalls, layoutCacheHits, resetLayoutStats } from "./layout.js";

@@ -9,6 +9,13 @@ import * as C from "./constants.js";
 import { resolveValue, applyMinMax } from "./utils.js";
 const debug = createDebug("flexx:layout");
 // ============================================================================
+// Constants for Edge Indices (avoid magic numbers)
+// ============================================================================
+const EDGE_LEFT = 0;
+const EDGE_TOP = 1;
+const EDGE_RIGHT = 2;
+const EDGE_BOTTOM = 3;
+// ============================================================================
 // Helper Functions
 // ============================================================================
 /**
@@ -277,10 +284,26 @@ function distributeFlexSpace(children, initialFreeSpace) {
         freeSpace = containerInner - frozenSpace - unfrozenBase;
     }
 }
+// Layout statistics for debugging
+export let layoutNodeCalls = 0;
+export let resolveEdgeCalls = 0;
+export let layoutSizingCalls = 0; // Calls for intrinsic sizing (offset=0,0)
+export let layoutPositioningCalls = 0; // Calls for final positioning
+export let layoutCacheHits = 0;
+export function resetLayoutStats() {
+    layoutNodeCalls = 0;
+    resolveEdgeCalls = 0;
+    layoutSizingCalls = 0;
+    layoutPositioningCalls = 0;
+    layoutCacheHits = 0;
+}
 /**
  * Compute layout for a node tree.
  */
 export function computeLayout(root, availableWidth, availableHeight) {
+    resetLayoutStats();
+    // Clear layout cache from previous pass (important for correct layout after tree changes)
+    root.resetLayoutCache();
     // Pass absolute position (0,0) for root node - used for Yoga-compatible edge rounding
     layoutNode(root, availableWidth, availableHeight, 0, 0, 0, 0);
 }
@@ -291,6 +314,15 @@ export function computeLayout(root, availableWidth, availableHeight) {
  * @param absY - Absolute Y position from document root (for Yoga-compatible edge rounding)
  */
 function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, absX, absY) {
+    layoutNodeCalls++;
+    // Track sizing vs positioning calls
+    const isSizingPass = offsetX === 0 && offsetY === 0 && absX === 0 && absY === 0;
+    if (isSizingPass && node.children.length > 0) {
+        layoutSizingCalls++;
+    }
+    else {
+        layoutPositioningCalls++;
+    }
     debug('layoutNode called: availW=%d, availH=%d, offsetX=%d, offsetY=%d, absX=%d, absY=%d, children=%d', availableWidth, availableHeight, offsetX, offsetY, absX, absY, node.children.length);
     const style = node.style;
     const layout = node.layout;
@@ -411,7 +443,6 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
     }
     // Handle measure function (text nodes)
     if (node.hasMeasureFunc() && node.children.length === 0) {
-        const measureFunc = node.measureFunc;
         // For unconstrained dimensions (NaN), treat as auto-sizing
         const widthIsAuto = style.width.unit === C.UNIT_AUTO || style.width.unit === C.UNIT_UNDEFINED || Number.isNaN(nodeWidth);
         const heightIsAuto = style.height.unit === C.UNIT_AUTO || style.height.unit === C.UNIT_UNDEFINED || Number.isNaN(nodeHeight);
@@ -420,7 +451,8 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
         // For unconstrained width, use a large value; measureFunc should return intrinsic size
         const measureWidth = Number.isNaN(contentWidth) ? Infinity : contentWidth;
         const measureHeight = Number.isNaN(contentHeight) ? Infinity : contentHeight;
-        const measured = measureFunc(measureWidth, widthMode, measureHeight, heightMode);
+        // Use cached measure to avoid redundant calls within a layout pass
+        const measured = node.cachedMeasure(measureWidth, widthMode, measureHeight, heightMode);
         if (widthIsAuto) {
             nodeWidth = measured.width + innerLeft + innerRight;
         }
@@ -449,9 +481,19 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
         return;
     }
     // Separate relative and absolute children
-    // Filter out display:none children - they don't participate in layout at all
-    const relativeChildren = node.children.filter((c) => c.style.positionType !== C.POSITION_TYPE_ABSOLUTE && c.style.display !== C.DISPLAY_NONE);
-    const absoluteChildren = node.children.filter((c) => c.style.positionType === C.POSITION_TYPE_ABSOLUTE && c.style.display !== C.DISPLAY_NONE);
+    // Use a single loop instead of filter() to avoid intermediate array allocations
+    const relativeChildren = [];
+    const absoluteChildren = [];
+    for (const c of node.children) {
+        if (c.style.display === C.DISPLAY_NONE)
+            continue;
+        if (c.style.positionType === C.POSITION_TYPE_ABSOLUTE) {
+            absoluteChildren.push(c);
+        }
+        else {
+            relativeChildren.push(c);
+        }
+    }
     // Flex layout for relative children
     debug('layoutNode: node.children=%d, relativeChildren=%d, absolute=%d', node.children.length, relativeChildren.length, absoluteChildren.length);
     if (relativeChildren.length > 0) {
@@ -510,15 +552,28 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
                         : resolveEdgeValue(childStyle.margin, 0, style.flexDirection, contentWidth) +
                             resolveEdgeValue(childStyle.margin, 2, style.flexDirection, contentWidth);
                     const availCross = crossAxisSize - crossMargin;
-                    const measured = child.measureFunc(mainAxisSize, C.MEASURE_MODE_AT_MOST, availCross, C.MEASURE_MODE_UNDEFINED);
+                    // Use cached measure to avoid redundant calls within a layout pass
+                    const measured = child.cachedMeasure(mainAxisSize, C.MEASURE_MODE_AT_MOST, availCross, C.MEASURE_MODE_UNDEFINED);
                     baseSize = isRow ? measured.width : measured.height;
                 }
                 else if (child.children.length > 0) {
                     // For auto-sized children WITH children but no measureFunc,
                     // recursively compute intrinsic size by laying out with unconstrained main axis
-                    // Use 0,0 for absX/absY since this is just measurement, not final positioning
-                    layoutNode(child, isRow ? NaN : crossAxisSize, isRow ? crossAxisSize : NaN, 0, 0, 0, 0);
-                    baseSize = isRow ? child.layout.width : child.layout.height;
+                    // Check cache first to avoid redundant recursive calls
+                    const sizingW = isRow ? NaN : crossAxisSize;
+                    const sizingH = isRow ? crossAxisSize : NaN;
+                    const cached = child.getCachedLayout(sizingW, sizingH);
+                    if (cached) {
+                        layoutCacheHits++;
+                        baseSize = isRow ? cached.width : cached.height;
+                    }
+                    else {
+                        // Use 0,0 for absX/absY since this is just measurement, not final positioning
+                        layoutNode(child, sizingW, sizingH, 0, 0, 0, 0);
+                        baseSize = isRow ? child.layout.width : child.layout.height;
+                        // Cache the result for potential reuse
+                        child.setCachedLayout(sizingW, sizingH, child.layout.width, child.layout.height);
+                    }
                 }
                 else {
                     // For auto-sized LEAF children without measureFunc, use padding + border as minimum
@@ -689,9 +744,18 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
                 }
                 else {
                     // Auto height - need to layout to get intrinsic size
-                    // For now, do a preliminary layout (measurement, not final positioning)
-                    layoutNode(child, childLayout.mainSize, NaN, 0, 0, 0, 0);
-                    childHeight = child.layout.height;
+                    // Check cache first to avoid redundant recursive calls
+                    const cached = child.getCachedLayout(childLayout.mainSize, NaN);
+                    if (cached) {
+                        layoutCacheHits++;
+                        childHeight = cached.height;
+                    }
+                    else {
+                        // For now, do a preliminary layout (measurement, not final positioning)
+                        layoutNode(child, childLayout.mainSize, NaN, 0, 0, 0, 0);
+                        childHeight = child.layout.height;
+                        child.setCachedLayout(childLayout.mainSize, NaN, child.layout.width, child.layout.height);
+                    }
                 }
                 // Baseline for non-text elements is at the bottom of the margin box
                 // baseline = topMargin + height (distance from top of margin box to baseline)
@@ -896,7 +960,8 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
                         : childStyle.height.value;
                     const availW = Number.isNaN(rawAvailW) ? Infinity : rawAvailW;
                     const availH = Number.isNaN(rawAvailH) ? Infinity : rawAvailH;
-                    const measured = child.measureFunc(availW, widthMode, availH, heightMode);
+                    // Use cached measure to avoid redundant calls within a layout pass
+                    const measured = child.cachedMeasure(availW, widthMode, availH, heightMode);
                     // For measure function nodes without flexGrow, intrinsic size takes precedence
                     if (widthAuto) {
                         childWidth = measured.width;
@@ -1078,10 +1143,11 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
             const finalCrossSize = isRow ? child.layout.height : child.layout.width;
             let crossOffset = 0;
             // Check for auto margins on cross axis - they override alignment
-            const crossStartMargin = isRow ? childStyle.margin[1] : childStyle.margin[0]; // top for row, left for column
-            const crossEndMargin = isRow ? childStyle.margin[3] : childStyle.margin[2]; // bottom for row, right for column
-            const hasAutoStartMargin = crossStartMargin.unit === C.UNIT_AUTO;
-            const hasAutoEndMargin = crossEndMargin.unit === C.UNIT_AUTO;
+            // Use isEdgeAuto to correctly respect logical EDGE_START/END margins
+            const crossStartIndex = isRow ? 1 : 0; // top for row, left for column
+            const crossEndIndex = isRow ? 3 : 2; // bottom for row, right for column
+            const hasAutoStartMargin = isEdgeAuto(childStyle.margin, crossStartIndex, style.flexDirection);
+            const hasAutoEndMargin = isEdgeAuto(childStyle.margin, crossEndIndex, style.flexDirection);
             const availableCrossSpace = crossAxisSize - finalCrossSize - crossMargin;
             if (hasAutoStartMargin && hasAutoEndMargin) {
                 // Both auto: center the item

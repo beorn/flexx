@@ -33,6 +33,12 @@ flexDirection: number, availableSize: number): number;
 export declare function isEdgeAuto(arr: [Value, Value, Value, Value, Value, Value], physicalIndex: number, flexDirection: number): boolean;
 export declare function markSubtreeLayoutSeen(node: Node): void;
 export declare function countNodes(node: Node): number;
+export declare let layoutNodeCalls: number;
+export declare let resolveEdgeCalls: number;
+export declare let layoutSizingCalls: number;
+export declare let layoutPositioningCalls: number;
+export declare let layoutCacheHits: number;
+export declare function resetLayoutStats(): void;
 /**
  * Compute layout for a node tree.
  */

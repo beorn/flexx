@@ -52,4 +52,6 @@ MEASURE_MODE_UNDEFINED, MEASURE_MODE_EXACTLY, MEASURE_MODE_AT_MOST,
 UNIT_UNDEFINED, UNIT_POINT, UNIT_PERCENT, UNIT_AUTO, } from "./constants.js";
 // Utility functions
 export { createDefaultStyle, createValue } from "./types.js";
+// Layout stats (for debugging/benchmarking)
+export { layoutNodeCalls, resolveEdgeCalls, layoutSizingCalls, layoutPositioningCalls, layoutCacheHits, resetLayoutStats } from "./layout.js";
 //# sourceMappingURL=index.js.map

@@ -20,6 +20,28 @@ export class Node {
     _style = createDefaultStyle();
     // Measure function for intrinsic sizing
     _measureFunc = null;
+    // Measure cache - 4-entry numeric cache (faster than Map<string,...>)
+    // Each entry stores: w, wm, h, hm, rw, rh
+    // Cleared when markDirty() is called since content may have changed
+    _m0;
+    _m1;
+    _m2;
+    _m3;
+    // Layout cache - 2-entry cache for sizing pass (availW, availH -> computedW, computedH)
+    // Cleared at start of each calculateLayout pass via resetLayoutCache()
+    // This avoids redundant recursive layout calls during intrinsic sizing
+    _lc0;
+    _lc1;
+    // Static counters for cache statistics (reset per layout pass)
+    static measureCalls = 0;
+    static measureCacheHits = 0;
+    /**
+     * Reset measure statistics (call before calculateLayout).
+     */
+    static resetMeasureStats() {
+        Node.measureCalls = 0;
+        Node.measureCacheHits = 0;
+    }
     // Computed layout
     _layout = { left: 0, top: 0, width: 0, height: 0 };
     // Dirty flags
@@ -171,6 +193,84 @@ export class Node {
     hasMeasureFunc() {
         return this._measureFunc !== null;
     }
+    /**
+     * Call the measure function with caching.
+     * Uses a 4-entry numeric cache for fast lookup without allocations.
+     * Cache is cleared when markDirty() is called.
+     *
+     * @returns Measured dimensions or null if no measure function
+     */
+    cachedMeasure(w, wm, h, hm) {
+        if (!this._measureFunc)
+            return null;
+        Node.measureCalls++;
+        // Check 4-entry cache (most recent first)
+        const m0 = this._m0;
+        if (m0 && m0.w === w && m0.wm === wm && m0.h === h && m0.hm === hm) {
+            Node.measureCacheHits++;
+            return { width: m0.rw, height: m0.rh };
+        }
+        const m1 = this._m1;
+        if (m1 && m1.w === w && m1.wm === wm && m1.h === h && m1.hm === hm) {
+            Node.measureCacheHits++;
+            return { width: m1.rw, height: m1.rh };
+        }
+        const m2 = this._m2;
+        if (m2 && m2.w === w && m2.wm === wm && m2.h === h && m2.hm === hm) {
+            Node.measureCacheHits++;
+            return { width: m2.rw, height: m2.rh };
+        }
+        const m3 = this._m3;
+        if (m3 && m3.w === w && m3.wm === wm && m3.h === h && m3.hm === hm) {
+            Node.measureCacheHits++;
+            return { width: m3.rw, height: m3.rh };
+        }
+        // Call actual measure function
+        const result = this._measureFunc(w, wm, h, hm);
+        // Shift entries and store new result at front
+        this._m3 = this._m2;
+        this._m2 = this._m1;
+        this._m1 = this._m0;
+        this._m0 = { w, wm, h, hm, rw: result.width, rh: result.height };
+        return result;
+    }
+    // ============================================================================
+    // Layout Caching (for intrinsic sizing pass)
+    // ============================================================================
+    /**
+     * Check layout cache for a previously computed size with same available dimensions.
+     * Returns cached (width, height) or null if not found.
+     *
+     * NaN dimensions are handled specially via Object.is (NaN === NaN is false, but Object.is(NaN, NaN) is true).
+     */
+    getCachedLayout(availW, availH) {
+        const lc0 = this._lc0;
+        if (lc0 && Object.is(lc0.availW, availW) && Object.is(lc0.availH, availH)) {
+            return { width: lc0.computedW, height: lc0.computedH };
+        }
+        const lc1 = this._lc1;
+        if (lc1 && Object.is(lc1.availW, availW) && Object.is(lc1.availH, availH)) {
+            return { width: lc1.computedW, height: lc1.computedH };
+        }
+        return null;
+    }
+    /**
+     * Cache a computed layout result for the given available dimensions.
+     */
+    setCachedLayout(availW, availH, computedW, computedH) {
+        this._lc1 = this._lc0;
+        this._lc0 = { availW, availH, computedW, computedH };
+    }
+    /**
+     * Clear layout cache for this node and all descendants.
+     * Called at the start of each calculateLayout pass.
+     */
+    resetLayoutCache() {
+        this._lc0 = this._lc1 = undefined;
+        for (const child of this._children) {
+            child.resetLayoutCache();
+        }
+    }
     // ============================================================================
     // Dirty Tracking
     // ============================================================================
@@ -189,6 +289,8 @@ export class Node {
      */
     markDirty() {
         this._isDirty = true;
+        // Clear 4-entry measure cache since content may have changed
+        this._m0 = this._m1 = this._m2 = this._m3 = undefined;
         if (this._parent !== null) {
             this._parent.markDirty();
         }
@@ -243,6 +345,8 @@ export class Node {
         }
         const start = Date.now();
         const nodeCount = countNodes(this);
+        // Reset measure statistics for this layout pass
+        Node.resetMeasureStats();
         // Treat undefined as unconstrained (NaN signals content-based sizing)
         const availableWidth = width ?? NaN;
         const availableHeight = height ?? NaN;
@@ -252,7 +356,7 @@ export class Node {
         this._isDirty = false;
         this._hasNewLayout = true;
         markSubtreeLayoutSeen(this);
-        debug("layout: %dx%d, %d nodes in %dms", width, height, nodeCount, Date.now() - start);
+        debug("layout: %dx%d, %d nodes in %dms (measure: calls=%d hits=%d)", width, height, nodeCount, Date.now() - start, Node.measureCalls, Node.measureCacheHits);
     }
     // ============================================================================
     // Layout Results
