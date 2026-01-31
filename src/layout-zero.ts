@@ -1033,32 +1033,28 @@ function layoutNode(
     return;
   }
 
-  // Mark children with relativeIndex (-1 for absolute/hidden, 0+ for relative)
-  // This avoids allocating relativeChildren[]/absoluteChildren[] arrays each pass
-  let relativeCount = 0;
-  for (const c of node.children) {
-    if (c.style.display === C.DISPLAY_NONE || c.style.positionType === C.POSITION_TYPE_ABSOLUTE) {
-      c.flex.relativeIndex = -1;
-    } else {
-      c.flex.relativeIndex = relativeCount++;
-    }
-  }
-
   // Flex layout for relative children
-  debug('layoutNode: node.children=%d, relativeCount=%d', node.children.length, relativeCount);
-  if (relativeCount > 0) {
-    const isRow = isRowDirection(style.flexDirection);
-    const isReverse = isReverseDirection(style.flexDirection);
+  // Combined pass: mark relativeIndex + compute flex info + count auto margins + check baseline
+  const isRow = isRowDirection(style.flexDirection);
+  const isReverse = isReverseDirection(style.flexDirection);
 
-    const mainAxisSize = isRow ? contentWidth : contentHeight;
-    const crossAxisSize = isRow ? contentHeight : contentWidth;
-    const mainGap = isRow ? style.gap[0] : style.gap[1];
+  const mainAxisSize = isRow ? contentWidth : contentHeight;
+  const crossAxisSize = isRow ? contentHeight : contentWidth;
+  const mainGap = isRow ? style.gap[0] : style.gap[1];
 
-    // Prepare child flex info (stored on each child node - zero allocation)
-    let totalBaseMain = 0;
+  // Prepare child flex info (stored on each child node - zero allocation)
+  let totalBaseMain = 0;
+  let relativeCount = 0;
+  let totalAutoMargins = 0;  // Count auto margins during this pass
+  let hasBaselineAlignment = style.alignItems === C.ALIGN_BASELINE;
 
-    for (const child of node.children) {
-      if (child.flex.relativeIndex < 0) continue;
+  for (const child of node.children) {
+    // Mark relativeIndex (-1 for absolute/hidden, 0+ for relative)
+    if (child.style.display === C.DISPLAY_NONE || child.style.positionType === C.POSITION_TYPE_ABSOLUTE) {
+      child.flex.relativeIndex = -1;
+      continue;
+    }
+    child.flex.relativeIndex = relativeCount++;
       const childStyle = child.style;
       const flex = child.flex;
 
@@ -1171,8 +1167,19 @@ function layoutNode(
       // Free space calculation uses BASE sizes (per Yoga/CSS spec algorithm)
       // The freeze loop handles min/max clamping iteratively
       totalBaseMain += baseSize + flex.mainMargin;
+
+      // Count auto margins for later distribution
+      if (flex.mainStartMarginAuto) totalAutoMargins++;
+      if (flex.mainEndMarginAuto) totalAutoMargins++;
+
+      // Check for baseline alignment
+      if (!hasBaselineAlignment && childStyle.alignSelf === C.ALIGN_BASELINE) {
+        hasBaselineAlignment = true;
+      }
     }
 
+  debug('layoutNode: node.children=%d, relativeCount=%d', node.children.length, relativeCount);
+  if (relativeCount > 0) {
     // Break children into flex lines for wrap support (zero allocation - sets child.flex.lineIndex)
     const numLines = breakIntoLines(node, relativeCount, mainAxisSize, mainGap, style.flexWrap);
     const crossGap = isRow ? style.gap[1] : style.gap[0];
@@ -1231,15 +1238,9 @@ function layoutNode(
     // Use NaN check instead of style check - handles minWidth/minHeight constraints properly
     const remainingSpace = Number.isNaN(mainAxisSize) ? 0 : mainAxisSize - usedMain;
 
-    // Handle auto margins on main axis
+    // Handle auto margins on main axis (totalAutoMargins computed in flex info pass)
     // Auto margins absorb free space BEFORE justify-content
-    let totalAutoMargins = 0;
-    for (const c of node.children) {
-      if (c.flex.relativeIndex < 0) continue;
-      if (c.flex.mainStartMarginAuto) totalAutoMargins++;
-      if (c.flex.mainEndMarginAuto) totalAutoMargins++;
-    }
-    let hasAutoMargins = totalAutoMargins > 0;
+    const hasAutoMargins = totalAutoMargins > 0;
 
     // Auto margins absorb ALL remaining space (including negative for overflow positioning)
     if (hasAutoMargins) {
@@ -1296,19 +1297,9 @@ function layoutNode(
     // This ensures adjacent elements share exact boundaries without gaps.
     // The key insight: round(pos) gives the edge position, width = round(end) - round(start)
 
-    // Compute baseline alignment info if needed
+    // Compute baseline alignment info if needed (hasBaselineAlignment computed in flex info pass)
     // For ALIGN_BASELINE in row direction, we need to know the max baseline first
     let maxBaseline = 0;
-    let hasBaselineAlignment = style.alignItems === C.ALIGN_BASELINE;
-    if (!hasBaselineAlignment) {
-      for (const c of node.children) {
-        if (c.flex.relativeIndex < 0) continue;
-        if (c.style.alignSelf === C.ALIGN_BASELINE) {
-          hasBaselineAlignment = true;
-          break;
-        }
-      }
-    }
 
     if (hasBaselineAlignment && isRow) {
       // First pass: compute each child's baseline and find the maximum
