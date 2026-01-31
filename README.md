@@ -117,19 +117,19 @@ Same constants, same method names, same behavior for supported features.
 
 ## Use Cases
 
-**Use Flexx when:**
+Flexx was built primarily for **terminal UIs**, but works anywhere you need flexbox layout:
 
-- Building terminal UIs (where layout complexity is bounded)
-- CLI tools where startup time matters
-- Edge runtimes with size limits
-- Bundlers that struggle with WASM
-- You want synchronous initialization
+- **Terminal UIs** - our primary target (used by [inkx](https://github.com/beorn/inkx))
+- **CLI tools** - synchronous init, fast startup
+- **Canvas/game UIs** - calculate layout, render however you want
+- **Edge runtimes** - 7KB bundle, no WASM complexity
+- **PDF/document generation** - layout before rendering
 
-**Use Yoga when:**
+**Use Yoga instead when:**
 
-- You need RTL, baseline alignment, or aspect-ratio
+- You need RTL or baseline alignment
 - You're in the React Native ecosystem
-- You need battle-tested stability
+- You need battle-tested stability across diverse environments
 
 ## Code Structure
 
