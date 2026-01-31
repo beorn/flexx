@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  ALIGN_BASELINE,
   ALIGN_CENTER,
   ALIGN_FLEX_END,
   ALIGN_FLEX_START,
@@ -7,12 +8,15 @@ import {
   createDefaultStyle,
   createValue,
   DIRECTION_LTR,
+  DIRECTION_RTL,
   DISPLAY_FLEX,
   DISPLAY_NONE,
   EDGE_ALL,
   EDGE_BOTTOM,
+  EDGE_END,
   EDGE_LEFT,
   EDGE_RIGHT,
+  EDGE_START,
   EDGE_TOP,
   FLEX_DIRECTION_COLUMN,
   FLEX_DIRECTION_ROW,
@@ -825,6 +829,362 @@ describe("Flexx Layout Engine", () => {
         style1.padding[0] = { value: 10, unit: UNIT_POINT };
         expect(style2.padding[0]).toEqual({ value: 0, unit: UNIT_UNDEFINED });
       });
+    });
+  });
+
+  describe("Baseline Alignment", () => {
+    it("should align items by bottom edge when no baselineFunc provided", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setHeight(50);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+      root.setAlignItems(ALIGN_BASELINE);
+
+      const child1 = Node.create();
+      child1.setWidth(30);
+      child1.setHeight(20);
+      root.insertChild(child1, 0);
+
+      const child2 = Node.create();
+      child2.setWidth(30);
+      child2.setHeight(40);
+      root.insertChild(child2, 1);
+
+      root.calculateLayout(100, 50, DIRECTION_LTR);
+
+      // Without baselineFunc, baseline is at bottom of each child
+      // child2 has baseline at 40, child1 has baseline at 20
+      // To align baselines: child1 moves down by (40-20)=20
+      expect(child1.getComputedTop()).toBe(20);
+      expect(child2.getComputedTop()).toBe(0);
+
+      root.free();
+    });
+
+    it("should use baselineFunc when provided", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setHeight(50);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+      root.setAlignItems(ALIGN_BASELINE);
+
+      const child1 = Node.create();
+      child1.setWidth(30);
+      child1.setHeight(20);
+      // Baseline at 80% of height (16px from top)
+      child1.setBaselineFunc((w, h) => h * 0.8);
+      root.insertChild(child1, 0);
+
+      const child2 = Node.create();
+      child2.setWidth(30);
+      child2.setHeight(40);
+      // Baseline at 80% of height (32px from top)
+      child2.setBaselineFunc((w, h) => h * 0.8);
+      root.insertChild(child2, 1);
+
+      root.calculateLayout(100, 50, DIRECTION_LTR);
+
+      // child1 baseline at 16, child2 baseline at 32
+      // Max baseline is 32, so child1 moves down by (32-16)=16
+      expect(child1.getComputedTop()).toBe(16);
+      expect(child2.getComputedTop()).toBe(0);
+
+      root.free();
+    });
+
+    it("should align text-like nodes with different font sizes", () => {
+      const root = Node.create();
+      root.setWidth(200);
+      root.setHeight(50);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+      root.setAlignItems(ALIGN_BASELINE);
+
+      // Small text: 12px height, baseline at 10px from top (typical for text)
+      const small = Node.create();
+      small.setWidth(50);
+      small.setHeight(12);
+      small.setBaselineFunc(() => 10);
+      root.insertChild(small, 0);
+
+      // Large text: 24px height, baseline at 20px from top
+      const large = Node.create();
+      large.setWidth(50);
+      large.setHeight(24);
+      large.setBaselineFunc(() => 20);
+      root.insertChild(large, 1);
+
+      root.calculateLayout(200, 50, DIRECTION_LTR);
+
+      // Max baseline is 20, so small text moves down by (20-10)=10
+      expect(small.getComputedTop()).toBe(10);
+      expect(large.getComputedTop()).toBe(0);
+
+      root.free();
+    });
+
+    it("should support align-self baseline", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setHeight(50);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+      root.setAlignItems(ALIGN_FLEX_START); // Default is flex-start
+
+      const child1 = Node.create();
+      child1.setWidth(30);
+      child1.setHeight(20);
+      child1.setAlignSelf(ALIGN_BASELINE);
+      root.insertChild(child1, 0);
+
+      const child2 = Node.create();
+      child2.setWidth(30);
+      child2.setHeight(40);
+      child2.setAlignSelf(ALIGN_BASELINE);
+      root.insertChild(child2, 1);
+
+      root.calculateLayout(100, 50, DIRECTION_LTR);
+
+      // Both have align-self: baseline, so they align by bottom edge
+      expect(child1.getComputedTop()).toBe(20);
+      expect(child2.getComputedTop()).toBe(0);
+
+      root.free();
+    });
+
+    it("should not affect column direction", () => {
+      const root = Node.create();
+      root.setWidth(50);
+      root.setHeight(100);
+      root.setFlexDirection(FLEX_DIRECTION_COLUMN);
+      root.setAlignItems(ALIGN_BASELINE);
+
+      const child1 = Node.create();
+      child1.setWidth(30);
+      child1.setHeight(20);
+      root.insertChild(child1, 0);
+
+      const child2 = Node.create();
+      child2.setWidth(40);
+      child2.setHeight(30);
+      root.insertChild(child2, 1);
+
+      root.calculateLayout(50, 100, DIRECTION_LTR);
+
+      // In column direction, baseline alignment falls back to flex-start
+      expect(child1.getComputedTop()).toBe(0);
+      expect(child2.getComputedTop()).toBe(20);
+
+      root.free();
+    });
+
+    it("should handle hasBaselineFunc correctly", () => {
+      const node = Node.create();
+
+      expect(node.hasBaselineFunc()).toBe(false);
+
+      node.setBaselineFunc(() => 10);
+      expect(node.hasBaselineFunc()).toBe(true);
+
+      node.unsetBaselineFunc();
+      expect(node.hasBaselineFunc()).toBe(false);
+
+      node.free();
+    });
+  });
+
+  describe("RTL Direction", () => {
+    it("should position row children from right in RTL", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setHeight(50);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+
+      const child1 = Node.create();
+      child1.setWidth(30);
+      child1.setHeight(50);
+      root.insertChild(child1, 0);
+
+      const child2 = Node.create();
+      child2.setWidth(20);
+      child2.setHeight(50);
+      root.insertChild(child2, 1);
+
+      // LTR: child1 at left (0), child2 at 30
+      root.calculateLayout(100, 50, DIRECTION_LTR);
+      expect(child1.getComputedLeft()).toBe(0);
+      expect(child2.getComputedLeft()).toBe(30);
+
+      // RTL: child1 at right (70), child2 at 50
+      root.markDirty();
+      root.calculateLayout(100, 50, DIRECTION_RTL);
+      expect(child1.getComputedLeft()).toBe(70); // 100 - 30 = 70
+      expect(child2.getComputedLeft()).toBe(50); // 70 - 20 = 50
+
+      root.free();
+    });
+
+    it("should handle EDGE_START/END correctly in RTL", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setHeight(50);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+
+      const child = Node.create();
+      child.setWidth(30);
+      child.setHeight(50);
+      child.setMargin(EDGE_START, 10); // Start margin
+      root.insertChild(child, 0);
+
+      // LTR: START means left, so left margin = 10, child at x=10
+      root.calculateLayout(100, 50, DIRECTION_LTR);
+      expect(child.getComputedLeft()).toBe(10);
+
+      // RTL: START means right, so right margin = 10, child at x=100-30-10=60
+      root.markDirty();
+      root.calculateLayout(100, 50, DIRECTION_RTL);
+      expect(child.getComputedLeft()).toBe(60);
+
+      root.free();
+    });
+
+    it("should not affect column direction in RTL", () => {
+      const root = Node.create();
+      root.setWidth(50);
+      root.setHeight(100);
+      root.setFlexDirection(FLEX_DIRECTION_COLUMN);
+
+      const child1 = Node.create();
+      child1.setWidth(50);
+      child1.setHeight(30);
+      root.insertChild(child1, 0);
+
+      const child2 = Node.create();
+      child2.setWidth(50);
+      child2.setHeight(20);
+      root.insertChild(child2, 1);
+
+      // Column direction should be unaffected by RTL
+      root.calculateLayout(50, 100, DIRECTION_LTR);
+      expect(child1.getComputedTop()).toBe(0);
+      expect(child2.getComputedTop()).toBe(30);
+
+      root.markDirty();
+      root.calculateLayout(50, 100, DIRECTION_RTL);
+      expect(child1.getComputedTop()).toBe(0);
+      expect(child2.getComputedTop()).toBe(30);
+
+      root.free();
+    });
+
+    it("should handle EDGE_END margin correctly in RTL", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setHeight(50);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+
+      const child = Node.create();
+      child.setWidth(30);
+      child.setHeight(50);
+      child.setMargin(EDGE_END, 15); // End margin
+      root.insertChild(child, 0);
+
+      // LTR: END means right margin, child at x=0
+      root.calculateLayout(100, 50, DIRECTION_LTR);
+      expect(child.getComputedLeft()).toBe(0);
+
+      // RTL: END means left margin (trailing edge when positioned from right)
+      // Child at x=70 (100-30), plus no effect on position (margin is on trailing side)
+      root.markDirty();
+      root.calculateLayout(100, 50, DIRECTION_RTL);
+      expect(child.getComputedLeft()).toBe(70);
+
+      root.free();
+    });
+
+    it("should handle justify-content flex-end in RTL", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setHeight(50);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+      root.setJustifyContent(JUSTIFY_FLEX_END);
+
+      const child = Node.create();
+      child.setWidth(30);
+      child.setHeight(50);
+      root.insertChild(child, 0);
+
+      // LTR + flex-end: child pushed to right (x=70)
+      root.calculateLayout(100, 50, DIRECTION_LTR);
+      expect(child.getComputedLeft()).toBe(70);
+
+      // RTL + flex-end: flex-end means left in RTL
+      root.markDirty();
+      root.calculateLayout(100, 50, DIRECTION_RTL);
+      expect(child.getComputedLeft()).toBe(0);
+
+      root.free();
+    });
+
+    it("should distribute flex-grow correctly in RTL", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setHeight(50);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+
+      const child1 = Node.create();
+      child1.setFlexGrow(1);
+      child1.setHeight(50);
+      root.insertChild(child1, 0);
+
+      const child2 = Node.create();
+      child2.setFlexGrow(1);
+      child2.setHeight(50);
+      root.insertChild(child2, 1);
+
+      // LTR: child1 at 0-50, child2 at 50-100
+      root.calculateLayout(100, 50, DIRECTION_LTR);
+      expect(child1.getComputedLeft()).toBe(0);
+      expect(child1.getComputedWidth()).toBe(50);
+      expect(child2.getComputedLeft()).toBe(50);
+      expect(child2.getComputedWidth()).toBe(50);
+
+      // RTL: child1 at 50-100, child2 at 0-50 (visual order reversed)
+      root.markDirty();
+      root.calculateLayout(100, 50, DIRECTION_RTL);
+      expect(child1.getComputedLeft()).toBe(50);
+      expect(child1.getComputedWidth()).toBe(50);
+      expect(child2.getComputedLeft()).toBe(0);
+      expect(child2.getComputedWidth()).toBe(50);
+
+      root.free();
+    });
+
+    it("should handle padding with EDGE_START/END in RTL", () => {
+      const root = Node.create();
+      root.setWidth(100);
+      root.setHeight(50);
+      root.setFlexDirection(FLEX_DIRECTION_ROW);
+      root.setPadding(EDGE_START, 10);
+      root.setPadding(EDGE_END, 20);
+
+      const child = Node.create();
+      child.setFlexGrow(1);
+      child.setHeight(50);
+      root.insertChild(child, 0);
+
+      // LTR: START=left (10), END=right (20), child spans 10-80 (width=70)
+      root.calculateLayout(100, 50, DIRECTION_LTR);
+      expect(child.getComputedLeft()).toBe(10);
+      expect(child.getComputedWidth()).toBe(70);
+
+      // RTL: START=right (10), END=left (20), child still spans 20-90
+      // But in RTL, content area starts from right-10=90, ends at left+20=20
+      // Child: from right, position is (90-70)=20
+      root.markDirty();
+      root.calculateLayout(100, 50, DIRECTION_RTL);
+      expect(child.getComputedLeft()).toBe(20);
+      expect(child.getComputedWidth()).toBe(70);
+
+      root.free();
     });
   });
 });

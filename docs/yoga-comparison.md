@@ -2,7 +2,7 @@
 
 Flexx is a pure JavaScript flexbox layout engine with a Yoga-compatible API.
 
-**TL;DR:** Flexx is **2.5x faster** and **5x smaller** than Yoga for terminal UI workloads, with a synchronous API and zero dependencies. Trade-off: Flexx is new and doesn't support RTL or baseline alignment.
+**TL;DR:** Flexx is **2.5x faster** and **5x smaller** than Yoga for terminal UI workloads, with a synchronous API and zero dependencies.
 
 ## Status
 
@@ -47,7 +47,7 @@ Flexx is **5-7x smaller** than Yoga, which matters for:
 
 **Use Yoga when:**
 
-- You need features Flexx doesn't implement (RTL, baseline alignment)
+- You need wrap-reverse (not yet implemented in Flexx)
 - You're already using React Native or another Yoga-based system
 - You need the battle-tested stability of a mature project
 
@@ -104,8 +104,8 @@ console.log(child.getComputedWidth()); // Same output
 | **absolute positioning**                  | ✅   | ✅    |                            |
 | **measure functions**                     | ✅   | ✅    | For text nodes             |
 | **flex-wrap**                             | ✅   | ✅    |                            |
-| **baseline alignment**                    | ✅   | ❌    | Not implemented            |
-| **RTL direction**                         | ✅   | ❌    | LTR only                   |
+| **baseline alignment**                    | ✅   | ✅    |                            |
+| **RTL direction**                         | ✅   | ✅    |                            |
 | **aspect-ratio**                          | ✅   | ✅    |                            |
 
 \*Flexx uses proportional shrink (simpler), not CSS spec's basis-weighted shrink. This matches real-world behavior for most layouts.
@@ -207,10 +207,7 @@ bun bench bench/compare.ts      # Overall comparison
 
 ### What Flexx Doesn't Support
 
-1. **RTL layouts** - Constants exported for API compatibility, but layout is always LTR
-2. **Baseline alignment** - `ALIGN_BASELINE` is declared but not implemented
-3. **Aspect ratio** - Not implemented
-4. **Wrap reverse** - `WRAP_WRAP_REVERSE` declared but not tested
+1. **Wrap reverse** - `WRAP_WRAP_REVERSE` declared but not tested
 
 ### Intentional Simplifications
 
@@ -241,7 +238,7 @@ root.setFlexDirection(FLEX_DIRECTION_ROW);
 
 1. **No async init** - Remove `await Yoga.init()`
 2. **Import from package** - `import { Node, FLEX_DIRECTION_ROW } from '@beorn/flexx'`
-3. **Check unsupported features** - RTL, baseline, aspect-ratio
+3. **Check unsupported features** - wrap-reverse
 
 ---
 

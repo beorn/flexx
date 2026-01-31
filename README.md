@@ -45,8 +45,8 @@ We've written thorough tests and use Flexx in production ourselves, but it hasn'
 | Aspect ratio                                  | ✅ Complete        |
 | Flex-wrap (multi-line layouts)                | ✅ Complete        |
 | Logical edges (EDGE_START/END)                | ✅ Complete        |
-| RTL support                                   | ❌ Not implemented |
-| Baseline alignment                            | ⚠️ Partial         |
+| RTL support                                   | ✅ Complete        |
+| Baseline alignment                            | ✅ Complete        |
 
 ## Installation
 
@@ -127,7 +127,7 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 
 **Use Yoga instead when:**
 
-- You need RTL or baseline alignment
+- You need wrap-reverse (not yet implemented)
 - You're in the React Native ecosystem
 - You need battle-tested stability across diverse environments
 

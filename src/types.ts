@@ -24,6 +24,17 @@ export type MeasureFunc = (
 ) => { width: number; height: number };
 
 /**
+ * Baseline function signature for baseline alignment.
+ * Called by the layout algorithm to determine a node's baseline offset from its top edge.
+ * Used with ALIGN_BASELINE to align text baselines across siblings.
+ *
+ * @param width - The computed width of the node
+ * @param height - The computed height of the node
+ * @returns The baseline offset from the top of the node (in points)
+ */
+export type BaselineFunc = (width: number, height: number) => number;
+
+/**
  * Cache entry for measure results.
  * Stores input constraints (w, wm, h, hm) and output (rw, rh).
  */
