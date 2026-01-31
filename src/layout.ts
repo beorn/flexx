@@ -932,6 +932,85 @@ function layoutNode(
       cumulativeCrossOffset += line.crossSize + crossGap;
     }
 
+    // Apply alignContent to distribute lines in the cross axis
+    // This affects how multiple flex lines are positioned within the container
+    const isWrapReverse = style.flexWrap === C.WRAP_WRAP_REVERSE;
+    const numLines = lines.length;
+    if (!Number.isNaN(crossAxisSize) && numLines > 0) {
+      const totalLineCrossSize = cumulativeCrossOffset - crossGap; // Remove trailing gap
+      const freeSpace = crossAxisSize - totalLineCrossSize;
+      const alignContent = style.alignContent;
+
+      // Reset offsets based on alignContent
+      if (freeSpace > 0 || alignContent === C.ALIGN_STRETCH) {
+        switch (alignContent) {
+          case C.ALIGN_FLEX_END:
+            // Lines packed at end
+            for (let i = 0; i < numLines; i++) {
+              lineCrossOffsets[i] += freeSpace;
+            }
+            break;
+
+          case C.ALIGN_CENTER:
+            // Lines centered
+            const centerOffset = freeSpace / 2;
+            for (let i = 0; i < numLines; i++) {
+              lineCrossOffsets[i] += centerOffset;
+            }
+            break;
+
+          case C.ALIGN_SPACE_BETWEEN:
+            // First line at start, last at end, evenly distributed
+            if (numLines > 1) {
+              const gap = freeSpace / (numLines - 1);
+              for (let i = 1; i < numLines; i++) {
+                lineCrossOffsets[i] += gap * i;
+              }
+            }
+            break;
+
+          case C.ALIGN_SPACE_AROUND:
+            // Even spacing with half-space at edges
+            const halfGap = freeSpace / (numLines * 2);
+            for (let i = 0; i < numLines; i++) {
+              lineCrossOffsets[i] += halfGap + halfGap * 2 * i;
+            }
+            break;
+
+          case C.ALIGN_STRETCH:
+            // Distribute extra space evenly among lines
+            if (freeSpace > 0 && numLines > 0) {
+              const extraPerLine = freeSpace / numLines;
+              for (let i = 0; i < numLines; i++) {
+                lines[i]!.crossSize += extraPerLine;
+                // Recalculate offset for subsequent lines
+                if (i > 0) {
+                  lineCrossOffsets[i] = lineCrossOffsets[i - 1] + lines[i - 1]!.crossSize + crossGap;
+                }
+              }
+            }
+            break;
+
+          // ALIGN_FLEX_START is the default - lines already at start
+        }
+      }
+
+      // For wrap-reverse, lines should be positioned from the end of the cross axis
+      // The lines are already in reversed order from breakIntoLines().
+      // We just need to shift them so they align to the end instead of the start.
+      if (isWrapReverse) {
+        let totalLineCrossSize = 0;
+        for (let i = 0; i < numLines; i++) {
+          totalLineCrossSize += lines[i]!.crossSize;
+        }
+        totalLineCrossSize += crossGap * (numLines - 1);
+        const crossStartOffset = crossAxisSize - totalLineCrossSize;
+        for (let i = 0; i < numLines; i++) {
+          lineCrossOffsets[i] += crossStartOffset;
+        }
+      }
+    }
+
     // Position and layout children
     // For reverse directions, start from the END of the container
     // For RTL row layouts, treat as reversed (children flow right-to-left)
@@ -1237,15 +1316,44 @@ function layoutNode(
       // Check if cross axis is auto-sized (needed for deciding what to pass to layoutNode)
       const crossDimForLayoutCall = isRow ? childStyle.height : childStyle.width;
       const crossIsAutoForLayoutCall = crossDimForLayoutCall.unit === C.UNIT_AUTO || crossDimForLayoutCall.unit === C.UNIT_UNDEFINED;
+      const mainDimForLayoutCall = isRow ? childStyle.width : childStyle.height;
 
       // For auto-sized children (no flexGrow, no measureFunc), pass NaN to let them compute intrinsic size
       // Otherwise layoutNode would subtract margins from the available size
-      const passWidthToChild = (isRow && mainIsAuto && !hasFlexGrow) ? NaN :
-                              (!isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross) ? NaN :
-                              childWidth;
-      const passHeightToChild = (!isRow && mainIsAuto && !hasFlexGrow) ? NaN :
-                                (isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross) ? NaN :
-                                childHeight;
+      // IMPORTANT: For percent-sized children, pass PARENT's content size so the child resolves its
+      // percent against the correct containing block. This ensures grandchildren also resolve correctly.
+      const mainIsPercent = mainDimForLayoutCall.unit === C.UNIT_PERCENT;
+      const crossIsPercent = crossDimForLayoutCall.unit === C.UNIT_PERCENT;
+
+      let passWidthToChild: number;
+      if (isRow && mainIsAuto && !hasFlexGrow) {
+        passWidthToChild = NaN;
+      } else if (!isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross) {
+        passWidthToChild = NaN;
+      } else if (isRow && mainIsPercent) {
+        // Percent width (main axis in row): pass parent's content width
+        passWidthToChild = contentWidth;
+      } else if (!isRow && crossIsPercent) {
+        // Percent width (cross axis in column): pass parent's content width
+        passWidthToChild = contentWidth;
+      } else {
+        passWidthToChild = childWidth;
+      }
+
+      let passHeightToChild: number;
+      if (!isRow && mainIsAuto && !hasFlexGrow) {
+        passHeightToChild = NaN;
+      } else if (isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross) {
+        passHeightToChild = NaN;
+      } else if (!isRow && mainIsPercent) {
+        // Percent height (main axis in column): pass parent's content height
+        passHeightToChild = contentHeight;
+      } else if (isRow && crossIsPercent) {
+        // Percent height (cross axis in row): pass parent's content height
+        passHeightToChild = contentHeight;
+      } else {
+        passHeightToChild = childHeight;
+      }
 
       // Recurse to layout any grandchildren
       // Pass the child's FLOAT absolute position (margin box start, before child's own margin)
@@ -1401,12 +1509,14 @@ function layoutNode(
       maxCrossSize = Math.max(maxCrossSize, childCross + childMargin);
     }
     // Cross-axis shrink-wrap for auto-sized dimension
-    if (isRow && style.height.unit !== C.UNIT_POINT && style.height.unit !== C.UNIT_PERCENT) {
-      // Auto-height row: shrink-wrap to max child height
+    // Only shrink-wrap if the original available size was truly unconstrained (NaN)
+    // If a definite size was passed to calculateLayout, keep that size
+    if (isRow && style.height.unit !== C.UNIT_POINT && style.height.unit !== C.UNIT_PERCENT && Number.isNaN(availableHeight)) {
+      // Auto-height row with unconstrained height: shrink-wrap to max child height
       nodeHeight = maxCrossSize + innerTop + innerBottom;
     }
-    if (!isRow && style.width.unit !== C.UNIT_POINT && style.width.unit !== C.UNIT_PERCENT) {
-      // Auto-width column: shrink-wrap to max child width
+    if (!isRow && style.width.unit !== C.UNIT_POINT && style.width.unit !== C.UNIT_PERCENT && Number.isNaN(availableWidth)) {
+      // Auto-width column with unconstrained width: shrink-wrap to max child width
       nodeWidth = maxCrossSize + innerLeft + innerRight;
     }
   }
