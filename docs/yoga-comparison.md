@@ -47,7 +47,7 @@ Flexx is **5-7x smaller** than Yoga, which matters for:
 
 **Use Yoga when:**
 
-- You need features Flexx doesn't implement (RTL, baseline alignment, aspect-ratio)
+- You need features Flexx doesn't implement (RTL, baseline alignment)
 - You're already using React Native or another Yoga-based system
 - You need the battle-tested stability of a mature project
 
@@ -103,10 +103,10 @@ console.log(child.getComputedWidth()); // Same output
 | **percent values**                        | ✅   | ✅    |                            |
 | **absolute positioning**                  | ✅   | ✅    |                            |
 | **measure functions**                     | ✅   | ✅    | For text nodes             |
-| **flex-wrap**                             | ✅   | ⚠️    | Declared, not fully tested |
+| **flex-wrap**                             | ✅   | ✅    |                            |
 | **baseline alignment**                    | ✅   | ❌    | Not implemented            |
 | **RTL direction**                         | ✅   | ❌    | LTR only                   |
-| **aspect-ratio**                          | ✅   | ❌    | Not implemented            |
+| **aspect-ratio**                          | ✅   | ✅    |                            |
 
 \*Flexx uses proportional shrink (simpler), not CSS spec's basis-weighted shrink. This matches real-world behavior for most layouts.
 
@@ -155,17 +155,17 @@ Different flexbox features have different performance characteristics:
 
 | Feature                | Winner    | Speed Difference |
 | ---------------------- | --------- | ---------------- |
-| **AbsolutePositioning** | **Flexx** | 3.24x faster     |
-| **Gap**                 | **Flexx** | 2.34x faster     |
-| **AlignContent**        | **Flexx** | 2.17x faster     |
-| **FlexShrink**          | **Flexx** | 1.99x faster     |
-| **FlexGrow**            | **Flexx** | 1.84x faster     |
-| **FlexWrap**            | **Flexx** | 1.23x faster     |
-| **MeasureFunc**         | **Flexx** | 1.23x faster     |
-| **NestedLayouts**       | Yoga      | 1.08x faster     |
-| **PercentValues**       | Yoga      | 1.10x faster     |
+| **AbsolutePositioning** | **Flexx** | 3.6x faster      |
+| **AlignContent**        | **Flexx** | 2.2x faster      |
+| **FlexShrink**          | **Flexx** | 2.2x faster      |
+| **Gap**                 | **Flexx** | 2.2x faster      |
+| **FlexGrow**            | **Flexx** | 1.8x faster      |
+| **FlexWrap**            | **Flexx** | 1.5x faster      |
+| **PercentValues**       | **Flexx** | 1.2x faster      |
+| **MeasureFunc**         | **Flexx** | 1.2x faster      |
+| **NestedLayouts**       | Yoga      | 1.1x faster      |
 
-**Flexx wins 7 of 9 features.** Yoga has a slight edge in deeply nested layouts and percent calculations.
+**Flexx wins 8 of 9 features.** Yoga has a slight edge only in deeply nested layouts.
 
 ### Tree Shape Performance
 
@@ -177,7 +177,7 @@ At large scale (5000+ nodes), tree shape matters:
 | **Wide-flat (grid)**       | Yoga      | 9% faster at 5000 nodes             |
 | **Deep-chain (linear)**    | **Flexx** | 17% faster, pure JS recursion wins  |
 
-**Summary: Flexx is faster for most real-world layouts. Yoga has slight advantages for very flat grids and deeply nested percent layouts.**
+**Summary: Flexx is faster for most real-world layouts. Yoga has a slight advantage only for deeply nested layouts.**
 
 ### Why is Pure JavaScript Faster Than WASM?
 
