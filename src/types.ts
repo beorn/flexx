@@ -99,6 +99,11 @@ export interface FlexInfo {
   mainStartMarginValue: number;
   /** Resolved main-end margin value (0 if auto, computed later) */
   mainEndMarginValue: number;
+  /** Cached resolved margin values [left, top, right, bottom] */
+  marginL: number;
+  marginT: number;
+  marginR: number;
+  marginB: number;
   /** Frozen in flex distribution (clamped to min/max constraint) */
   frozen: boolean;
   /** Line index for flex-wrap (0-based, which line this child belongs to) */

@@ -1073,12 +1073,20 @@ function layoutNode(
       flex.mainStartMarginAuto = isEdgeAuto(childStyle.margin, mainStartIndex, style.flexDirection);
       flex.mainEndMarginAuto = isEdgeAuto(childStyle.margin, mainEndIndex, style.flexDirection);
 
+      // Cache all 4 resolved margins once (CSS spec: percentages resolve against containing block's WIDTH)
+      // This avoids repeated resolveEdgeValue calls throughout the layout pass
+      flex.marginL = resolveEdgeValue(childStyle.margin, 0, style.flexDirection, contentWidth);
+      flex.marginT = resolveEdgeValue(childStyle.margin, 1, style.flexDirection, contentWidth);
+      flex.marginR = resolveEdgeValue(childStyle.margin, 2, style.flexDirection, contentWidth);
+      flex.marginB = resolveEdgeValue(childStyle.margin, 3, style.flexDirection, contentWidth);
+
       // Resolve non-auto margins (auto margins resolve to 0 initially)
-      // CSS spec: percentage margins resolve against containing block's WIDTH only
-      // For row: mainAxisSize is contentWidth; for column: crossAxisSize is contentWidth
-      const parentWidth = isRow ? mainAxisSize : crossAxisSize;
-      flex.mainStartMarginValue = flex.mainStartMarginAuto ? 0 : resolveEdgeValue(childStyle.margin, mainStartIndex, style.flexDirection, parentWidth);
-      flex.mainEndMarginValue = flex.mainEndMarginAuto ? 0 : resolveEdgeValue(childStyle.margin, mainEndIndex, style.flexDirection, parentWidth);
+      flex.mainStartMarginValue = flex.mainStartMarginAuto ? 0 : (isRow
+        ? (isReverse ? flex.marginR : flex.marginL)
+        : (isReverse ? flex.marginB : flex.marginT));
+      flex.mainEndMarginValue = flex.mainEndMarginAuto ? 0 : (isRow
+        ? (isReverse ? flex.marginL : flex.marginR)
+        : (isReverse ? flex.marginT : flex.marginB));
 
       // Total non-auto margin for flex calculations
       flex.mainMargin = flex.mainStartMarginValue + flex.mainEndMarginValue;
@@ -1098,13 +1106,10 @@ function layoutNode(
         } else if (child.hasMeasureFunc() && childStyle.flexGrow === 0) {
           // For auto-sized children with measureFunc but no flexGrow,
           // pre-measure to get intrinsic size for justify-content calculation
-          // CSS spec: percentage margins resolve against containing block's WIDTH only
-          // Use resolveEdgeValue to respect logical EDGE_START/END
+          // Use cached margins
           const crossMargin = isRow
-            ? resolveEdgeValue(childStyle.margin, 1, style.flexDirection, contentWidth) +
-              resolveEdgeValue(childStyle.margin, 3, style.flexDirection, contentWidth)
-            : resolveEdgeValue(childStyle.margin, 0, style.flexDirection, contentWidth) +
-              resolveEdgeValue(childStyle.margin, 2, style.flexDirection, contentWidth);
+            ? flex.marginT + flex.marginB
+            : flex.marginL + flex.marginR;
           const availCross = crossAxisSize - crossMargin;
           // Use cached measure to avoid redundant calls within a layout pass
           const measured = child.cachedMeasure(
@@ -1312,9 +1317,8 @@ function layoutNode(
         if (child.flex.relativeIndex < 0) continue;
         const childStyle = child.style;
 
-        // Get cross-axis (top/bottom) margins for this child
-        // Use resolveEdgeValue to respect logical EDGE_START/END
-        const topMargin = resolveEdgeValue(childStyle.margin, 1, style.flexDirection, contentWidth);
+        // Get cross-axis (top) margin for this child - use cached value
+        const topMargin = child.flex.marginT;
 
         // Compute child's height - need to do a mini-layout or use the cached size
         // For children with explicit height, use that
@@ -1365,12 +1369,9 @@ function layoutNode(
         // Estimate child cross size (will be computed more precisely during layout)
         const childStyle = child.style;
         const crossDim = isRow ? childStyle.height : childStyle.width;
-        const crossMarginStart = isRow
-          ? resolveEdgeValue(childStyle.margin, 1, style.flexDirection, contentWidth)
-          : resolveEdgeValue(childStyle.margin, 0, style.flexDirection, contentWidth);
-        const crossMarginEnd = isRow
-          ? resolveEdgeValue(childStyle.margin, 3, style.flexDirection, contentWidth)
-          : resolveEdgeValue(childStyle.margin, 2, style.flexDirection, contentWidth);
+        // Use cached margins
+        const crossMarginStart = isRow ? child.flex.marginT : child.flex.marginL;
+        const crossMarginEnd = isRow ? child.flex.marginB : child.flex.marginR;
 
         let childCross = 0;
         if (crossDim.unit === C.UNIT_POINT) {
@@ -1508,36 +1509,35 @@ function layoutNode(
       const lineCrossOffset = childLineIdx < MAX_FLEX_LINES ? _lineCrossOffsets[childLineIdx] : 0;
 
       // For main-axis margins, use computed auto margin values
-      // For cross-axis margins, resolve normally (auto margins on cross axis handled separately)
+      // For cross-axis margins, use cached values (auto margins on cross axis handled separately)
       let childMarginLeft: number;
       let childMarginTop: number;
       let childMarginRight: number;
       let childMarginBottom: number;
 
-      // CSS spec: percentage margins resolve against containing block's WIDTH only
-      // Use resolveEdgeValue to respect logical EDGE_START/END
+      // Use cached margins, with auto margin override for main axis
       if (isRow) {
         // Row: main axis is horizontal
         // In row-reverse, mainStart=right(2), mainEnd=left(0)
         childMarginLeft = flex.mainStartMarginAuto && !isReverse ? flex.mainStartMarginValue :
                           flex.mainEndMarginAuto && isReverse ? flex.mainEndMarginValue :
-                          resolveEdgeValue(childStyle.margin, 0, style.flexDirection, contentWidth);
+                          flex.marginL;
         childMarginRight = flex.mainEndMarginAuto && !isReverse ? flex.mainEndMarginValue :
                            flex.mainStartMarginAuto && isReverse ? flex.mainStartMarginValue :
-                           resolveEdgeValue(childStyle.margin, 2, style.flexDirection, contentWidth);
-        childMarginTop = resolveEdgeValue(childStyle.margin, 1, style.flexDirection, contentWidth);
-        childMarginBottom = resolveEdgeValue(childStyle.margin, 3, style.flexDirection, contentWidth);
+                           flex.marginR;
+        childMarginTop = flex.marginT;
+        childMarginBottom = flex.marginB;
       } else {
         // Column: main axis is vertical
         // In column-reverse, mainStart=bottom(3), mainEnd=top(1)
         childMarginTop = flex.mainStartMarginAuto && !isReverse ? flex.mainStartMarginValue :
                          flex.mainEndMarginAuto && isReverse ? flex.mainEndMarginValue :
-                         resolveEdgeValue(childStyle.margin, 1, style.flexDirection, contentWidth);
+                         flex.marginT;
         childMarginBottom = flex.mainEndMarginAuto && !isReverse ? flex.mainEndMarginValue :
                             flex.mainStartMarginAuto && isReverse ? flex.mainStartMarginValue :
-                            resolveEdgeValue(childStyle.margin, 3, style.flexDirection, contentWidth);
-        childMarginLeft = resolveEdgeValue(childStyle.margin, 0, style.flexDirection, contentWidth);
-        childMarginRight = resolveEdgeValue(childStyle.margin, 2, style.flexDirection, contentWidth);
+                            flex.marginB;
+        childMarginLeft = flex.marginL;
+        childMarginRight = flex.marginR;
       }
 
       // Main axis size comes from flex algorithm (already rounded)
