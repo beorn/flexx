@@ -114,6 +114,18 @@ export interface FlexInfo {
    * 0+ = index among relative children (participates in flex layout)
    */
   relativeIndex: number;
+
+  // Constraint fingerprinting for layout caching
+  /** Last availableWidth passed to layoutNode */
+  lastAvailW: number;
+  /** Last availableHeight passed to layoutNode */
+  lastAvailH: number;
+  /** Last offsetX passed to layoutNode */
+  lastOffsetX: number;
+  /** Last offsetY passed to layoutNode */
+  lastOffsetY: number;
+  /** Whether cached layout is valid (fingerprint matched, not dirty) */
+  layoutValid: boolean;
 }
 
 /**

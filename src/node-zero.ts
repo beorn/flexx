@@ -93,6 +93,12 @@ export class Node {
     frozen: false,
     lineIndex: 0,
     relativeIndex: -1,
+    // Constraint fingerprinting
+    lastAvailW: NaN,
+    lastAvailH: NaN,
+    lastOffsetX: NaN,
+    lastOffsetY: NaN,
+    layoutValid: false,
   };
 
   // Dirty flags
@@ -371,6 +377,8 @@ export class Node {
    */
   markDirty(): void {
     this._isDirty = true;
+    // Invalidate layout fingerprint
+    this._flex.layoutValid = false;
     // Clear 4-entry measure cache since content may have changed
     this._m0 = this._m1 = this._m2 = this._m3 = undefined;
     if (this._parent !== null) {

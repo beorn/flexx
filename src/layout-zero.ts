@@ -567,6 +567,22 @@ function distributeFlexSpaceForLine(
   }
 }
 
+/**
+ * Propagate position delta to all descendants.
+ * Used when parent position changes but layout is cached.
+ */
+function propagatePositionDelta(node: Node, deltaX: number, deltaY: number): void {
+  for (const child of node.children) {
+    child.layout.left += deltaX;
+    child.layout.top += deltaY;
+    child.flex.lastOffsetX += deltaX;
+    child.flex.lastOffsetY += deltaY;
+    if (child.children.length > 0) {
+      propagatePositionDelta(child, deltaX, deltaY);
+    }
+  }
+}
+
 // Layout statistics for debugging
 export let layoutNodeCalls = 0;
 export let measureNodeCalls = 0;
@@ -858,6 +874,26 @@ function layoutNode(
     layout.top = 0;
     layout.width = 0;
     layout.height = 0;
+    return;
+  }
+
+  // Constraint fingerprinting: skip layout if constraints unchanged and node not dirty
+  const flex = node.flex;
+  if (flex.layoutValid &&
+      !node.isDirty() &&
+      flex.lastAvailW === availableWidth &&
+      flex.lastAvailH === availableHeight) {
+    // Constraints unchanged - just update position based on offset delta
+    const deltaX = offsetX - flex.lastOffsetX;
+    const deltaY = offsetY - flex.lastOffsetY;
+    if (deltaX !== 0 || deltaY !== 0) {
+      layout.left += deltaX;
+      layout.top += deltaY;
+      flex.lastOffsetX = offsetX;
+      flex.lastOffsetY = offsetY;
+      // Propagate position delta to all children
+      propagatePositionDelta(node, deltaX, deltaY);
+    }
     return;
   }
 
@@ -2206,4 +2242,11 @@ function layoutNode(
     child.layout.left = Math.round(absInnerLeft + childX);
     child.layout.top = Math.round(absInnerTop + childY);
   }
+
+  // Update constraint fingerprint - layout is now valid for these constraints
+  flex.lastAvailW = availableWidth;
+  flex.lastAvailH = availableHeight;
+  flex.lastOffsetX = offsetX;
+  flex.lastOffsetY = offsetY;
+  flex.layoutValid = true;
 }
