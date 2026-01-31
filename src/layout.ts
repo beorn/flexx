@@ -920,6 +920,7 @@ function layoutNode(
     const childLineIndex = new Map<ChildLayout, number>();
     const lineCrossOffsets: number[] = [];
     let cumulativeCrossOffset = 0;
+    const isWrapReverse = style.flexWrap === C.WRAP_WRAP_REVERSE;
 
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
       const line = lines[lineIdx]!;
@@ -952,6 +953,16 @@ function layoutNode(
       }
       line.crossSize = maxLineCross > 0 ? maxLineCross : (crossAxisSize / lines.length);
       cumulativeCrossOffset += line.crossSize + crossGap;
+    }
+
+    // For wrap-reverse, lines should be positioned from the end of the cross axis
+    // Shift all offsets so the last line is at the bottom (for row) or right (for column)
+    if (isWrapReverse && !Number.isNaN(crossAxisSize)) {
+      const totalLineCrossSize = cumulativeCrossOffset - crossGap; // Remove trailing gap
+      const crossStartOffset = crossAxisSize - totalLineCrossSize;
+      for (let i = 0; i < lineCrossOffsets.length; i++) {
+        lineCrossOffsets[i] += crossStartOffset;
+      }
     }
 
     // Position and layout children
