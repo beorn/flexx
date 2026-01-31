@@ -765,7 +765,10 @@ function layoutNode(
       if (lineChildren.length === 0) continue;
 
       // Calculate total base main and gaps for this line
-      const lineTotalBaseMain = lineChildren.reduce((sum, c) => sum + c.baseSize + c.mainMargin, 0);
+      let lineTotalBaseMain = 0;
+      for (const c of lineChildren) {
+        lineTotalBaseMain += c.baseSize + c.mainMargin;
+      }
       const lineTotalGaps = lineChildren.length > 1 ? mainGap * (lineChildren.length - 1) : 0;
 
       // Distribute free space using grow or shrink factors
@@ -796,19 +799,22 @@ function layoutNode(
     // Calculate final used space and justify-content
     // For single-line, use all children; for multi-line, this applies per-line during positioning
     const totalGaps = children.length > 1 ? mainGap * (children.length - 1) : 0;
-    const usedMain =
-      children.reduce((sum, c) => sum + c.mainSize + c.mainMargin, 0) +
-      totalGaps;
+    let usedMain = 0;
+    for (const c of children) {
+      usedMain += c.mainSize + c.mainMargin;
+    }
+    usedMain += totalGaps;
     // For auto-sized containers (NaN mainAxisSize), there's no remaining space to justify
     // Use NaN check instead of style check - handles minWidth/minHeight constraints properly
     const remainingSpace = Number.isNaN(mainAxisSize) ? 0 : mainAxisSize - usedMain;
 
     // Handle auto margins on main axis
     // Auto margins absorb free space BEFORE justify-content
-    const totalAutoMargins = children.reduce(
-      (sum, c) => sum + (c.mainStartMarginAuto ? 1 : 0) + (c.mainEndMarginAuto ? 1 : 0),
-      0
-    );
+    let totalAutoMargins = 0;
+    for (const c of children) {
+      if (c.mainStartMarginAuto) totalAutoMargins++;
+      if (c.mainEndMarginAuto) totalAutoMargins++;
+    }
     let hasAutoMargins = totalAutoMargins > 0;
 
     // Auto margins absorb ALL remaining space (including negative for overflow positioning)
@@ -869,8 +875,15 @@ function layoutNode(
     // For ALIGN_BASELINE in row direction, we need to know the max baseline first
     let maxBaseline = 0;
     const childBaselines: number[] = [];
-    const hasBaselineAlignment = style.alignItems === C.ALIGN_BASELINE ||
-      relativeChildren.some(c => c.style.alignSelf === C.ALIGN_BASELINE);
+    let hasBaselineAlignment = style.alignItems === C.ALIGN_BASELINE;
+    if (!hasBaselineAlignment) {
+      for (const c of relativeChildren) {
+        if (c.style.alignSelf === C.ALIGN_BASELINE) {
+          hasBaselineAlignment = true;
+          break;
+        }
+      }
+    }
 
     if (hasBaselineAlignment && isRow) {
       // First pass: compute each child's baseline and find the maximum
