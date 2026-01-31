@@ -134,38 +134,71 @@ Both engines iterate to handle min/max constraints:
 
 ## Performance
 
-Benchmarks run on Apple M1 Max, Bun 1.3.6 (January 2026).
-Measures tree creation + layout together (the fair comparison).
+Benchmarks run on Apple M1 Max, Bun 1.3.7 (January 2026).
+
+### Overall Performance
+
+Tree creation + layout together (the fair comparison):
 
 | Benchmark                     | Flexx  | Yoga    | Comparison        |
 | ----------------------------- | ------ | ------- | ----------------- |
-| **Flat 100 nodes**            | 50 µs  | 168 µs  | Flexx 3.4x faster |
-| **Flat 500 nodes**            | 251 µs | 862 µs  | Flexx 3.4x faster |
-| **Flat 1000 nodes**           | 479 µs | 1857 µs | Flexx 3.9x faster |
-| **Deep 50 levels**            | 55 µs  | 105 µs  | Flexx 1.9x faster |
+| **Flat 100 nodes**            | 77 µs  | 189 µs  | Flexx 2.4x faster |
+| **Flat 500 nodes**            | 345 µs | 987 µs  | Flexx 2.9x faster |
+| **Flat 1000 nodes**           | 681 µs | 2097 µs | Flexx 3.1x faster |
+| **Deep 50 levels**            | 41 µs  | 97 µs   | Flexx 2.4x faster |
 | **Kanban 3×50 (~156 nodes)**  | 125 µs | 316 µs  | Flexx 2.5x faster |
 | **Kanban 3×100 (~306 nodes)** | 246 µs | 613 µs  | Flexx 2.5x faster |
 
-**Summary: Flexx is ~2.5x faster on average**
+### Feature-Specific Performance
 
-**Why is pure JavaScript faster than WASM?**
+Different flexbox features have different performance characteristics:
+
+| Feature                | Winner    | Speed Difference |
+| ---------------------- | --------- | ---------------- |
+| **AbsolutePositioning** | **Flexx** | 3.38x faster     |
+| **FlexShrink**          | **Flexx** | 2.20x faster     |
+| **Gap**                 | **Flexx** | 2.02x faster     |
+| **FlexGrow**            | **Flexx** | 1.85x faster     |
+| **FlexWrap**            | **Flexx** | 1.78x faster     |
+| **AlignContent**        | **Flexx** | 1.38x faster     |
+| **MeasureFunc**         | **Flexx** | 1.14x faster     |
+| **NestedLayouts**       | Yoga      | 1.32x faster     |
+| **PercentValues**       | Yoga      | 1.14x faster     |
+
+**Flexx wins 7 of 9 features.** Yoga has an edge in deeply nested layouts and percent calculations.
+
+### Tree Shape Performance
+
+At large scale (5000+ nodes), tree shape matters:
+
+| Shape                      | Winner    | Notes                               |
+| -------------------------- | --------- | ----------------------------------- |
+| **Kanban (wide, shallow)** | **Flexx** | 2-3x faster, scales linearly        |
+| **Wide-flat (grid)**       | Yoga      | 9% faster at 5000 nodes             |
+| **Deep-chain (linear)**    | **Flexx** | 17% faster, pure JS recursion wins  |
+
+**Summary: Flexx is faster for most real-world layouts. Yoga has slight advantages for very flat grids and deeply nested percent layouts.**
+
+### Why is Pure JavaScript Faster Than WASM?
 
 - Flexx avoids WASM ↔ JS boundary crossing overhead
-- Bun's JS engine is highly optimized
-- Yoga's WASM includes features Flexx doesn't (RTL, baseline, etc.)
+- Bun's JS engine is highly optimized for this workload
+- No FFI marshalling for node properties
 - Tree creation dominates these benchmarks (both allocate nodes)
 
-**Key takeaways:**
+### Key Takeaways
 
 - Both engines handle terminal UIs (<500 nodes) in under 1ms
 - Both are fast enough for 60fps (16.67ms budget per frame)
-- Choose based on features, not performance
+- Flexx excels at absolute positioning and flex distribution
+- Yoga excels at deeply nested layouts with percent values
 
 Run benchmarks yourself:
 
 ```bash
-bun bench/run.ts      # Flexx standalone
-bun bench/compare.ts  # Flexx vs Yoga comparison
+bun bench                       # All benchmarks
+bun bench bench/features.bench.ts  # Feature comparison
+bun bench bench/compare.ts      # Overall comparison
 ```
 
 ---

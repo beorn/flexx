@@ -68,6 +68,17 @@ Benchmarks on Apple M1 Max, Bun 1.3.7 (tree creation + layout):
 | Deep 50 levels   | 41 µs   | 97 µs   | Flexx 2.4x faster |
 | Kanban 150 nodes | 125 µs  | 316 µs  | Flexx 2.5x faster |
 
+### Feature-Specific (Flexx wins 7/9)
+
+| Feature              | Winner    | Difference   |
+| -------------------- | --------- | ------------ |
+| AbsolutePositioning  | **Flexx** | 3.38x faster |
+| FlexShrink           | **Flexx** | 2.20x faster |
+| Gap                  | **Flexx** | 2.02x faster |
+| FlexGrow/Wrap        | **Flexx** | ~1.8x faster |
+| NestedLayouts        | Yoga      | 1.32x faster |
+| PercentValues        | Yoga      | 1.14x faster |
+
 **Why is pure JS faster than WASM?**
 
 - Avoids WASM ↔ JS boundary crossing overhead
@@ -75,7 +86,7 @@ Benchmarks on Apple M1 Max, Bun 1.3.7 (tree creation + layout):
 - Tree creation dominates these benchmarks
 - No FFI marshalling for node properties
 
-Run benchmarks: `bun bench` (uses Vitest bench)
+Run benchmarks: `bun bench` or `bun bench bench/features.bench.ts`
 
 ## Bundle Size
 
