@@ -1030,8 +1030,24 @@ function layoutNode(
 
     // Position and layout children
     // For reverse directions, start from the END of the container
+    // For shrink-wrap containers, compute effective main size first
+    let effectiveMainAxisSize = mainAxisSize;
+    const mainIsAuto = isRow
+      ? (style.width.unit !== C.UNIT_POINT && style.width.unit !== C.UNIT_PERCENT)
+      : (style.height.unit !== C.UNIT_POINT && style.height.unit !== C.UNIT_PERCENT);
+
+    if (isReverse && mainIsAuto) {
+      // For reverse with auto size, compute total content size for positioning
+      let totalContent = 0;
+      for (const childLayout of children) {
+        totalContent += childLayout.mainSize + childLayout.mainStartMarginValue + childLayout.mainEndMarginValue;
+      }
+      totalContent += totalGaps;
+      effectiveMainAxisSize = totalContent;
+    }
+
     // Use fractional mainPos for edge-based rounding
-    let mainPos = isReverse ? mainAxisSize - startOffset : startOffset;
+    let mainPos = isReverse ? effectiveMainAxisSize - startOffset : startOffset;
     let currentLineIdx = -1;
 
     debug('positioning children: isRow=%s, startOffset=%d, relativeChildren=%d, isReverse=%s, lines=%d', isRow, startOffset, relativeChildren.length, isReverse, lines.length);
@@ -1046,7 +1062,7 @@ function layoutNode(
       if (childLineIdx !== currentLineIdx) {
         currentLineIdx = childLineIdx;
         // Reset mainPos for new line
-        mainPos = isReverse ? mainAxisSize - startOffset : startOffset;
+        mainPos = isReverse ? effectiveMainAxisSize - startOffset : startOffset;
       }
 
       // Get cross-axis offset for this child's line
