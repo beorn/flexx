@@ -1556,10 +1556,17 @@ function layoutNode(
     const childStyle = child.style;
     // CSS spec: percentage margins resolve against containing block's WIDTH only
     // Use resolveEdgeValue to respect logical EDGE_START/END
+    // Note: Auto margins will resolve to 0 here, we handle them separately below
     const childMarginLeft = resolveEdgeValue(childStyle.margin, 0, style.flexDirection, nodeWidth);
     const childMarginTop = resolveEdgeValue(childStyle.margin, 1, style.flexDirection, nodeWidth);
     const childMarginRight = resolveEdgeValue(childStyle.margin, 2, style.flexDirection, nodeWidth);
     const childMarginBottom = resolveEdgeValue(childStyle.margin, 3, style.flexDirection, nodeWidth);
+
+    // Check for auto margins (used for centering absolute children)
+    const hasAutoMarginLeft = isEdgeAuto(childStyle.margin, 0, style.flexDirection);
+    const hasAutoMarginRight = isEdgeAuto(childStyle.margin, 2, style.flexDirection);
+    const hasAutoMarginTop = isEdgeAuto(childStyle.margin, 1, style.flexDirection);
+    const hasAutoMarginBottom = isEdgeAuto(childStyle.margin, 3, style.flexDirection);
 
     // Position offsets from setPosition(edge, value)
     const leftPos = childStyle.position[0];
@@ -1673,9 +1680,23 @@ function layoutNode(
     } else if (!hasLeft && hasRight) {
       // Position from right edge
       childX = contentW - rightOffset - childMarginRight - childWidth;
-    } else if (hasLeft && hasRight && widthIsAuto) {
-      // Stretch width already handled above
-      child.layout.width = Math.round(childAvailWidth);
+    } else if (hasLeft && hasRight) {
+      // Both left and right are set
+      if (widthIsAuto) {
+        // Stretch width already handled above
+        child.layout.width = Math.round(childAvailWidth);
+      } else if (hasAutoMarginLeft || hasAutoMarginRight) {
+        // Auto margins absorb remaining space for centering
+        const freeSpace = contentW - leftOffset - rightOffset - childWidth;
+        if (hasAutoMarginLeft && hasAutoMarginRight) {
+          // Both auto: center
+          childX = leftOffset + freeSpace / 2;
+        } else if (hasAutoMarginLeft) {
+          // Only left auto: push to right
+          childX = leftOffset + freeSpace;
+        }
+        // Only right auto: childX already set to leftOffset + childMarginLeft
+      }
     }
 
     if (!hasTop && !hasBottom) {
@@ -1696,9 +1717,23 @@ function layoutNode(
     } else if (!hasTop && hasBottom) {
       // Position from bottom edge
       childY = contentH - bottomOffset - childMarginBottom - childHeight;
-    } else if (hasTop && hasBottom && heightIsAuto) {
-      // Stretch height already handled above
-      child.layout.height = Math.round(childAvailHeight);
+    } else if (hasTop && hasBottom) {
+      // Both top and bottom are set
+      if (heightIsAuto) {
+        // Stretch height already handled above
+        child.layout.height = Math.round(childAvailHeight);
+      } else if (hasAutoMarginTop || hasAutoMarginBottom) {
+        // Auto margins absorb remaining space for centering
+        const freeSpace = contentH - topOffset - bottomOffset - childHeight;
+        if (hasAutoMarginTop && hasAutoMarginBottom) {
+          // Both auto: center
+          childY = topOffset + freeSpace / 2;
+        } else if (hasAutoMarginTop) {
+          // Only top auto: push to bottom
+          childY = topOffset + freeSpace;
+        }
+        // Only bottom auto: childY already set to topOffset + childMarginTop
+      }
     }
 
     // Set final position (relative to container padding box)
