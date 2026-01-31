@@ -237,3 +237,234 @@ describe("Flexx vs Yoga - Layout Only (no allocation)", () => {
     yogaTree.calculateLayout(120, 40, yoga.DIRECTION_LTR)
   })
 })
+
+// ============================================================================
+// Tree Generators with Measure Functions (simulating text nodes)
+// ============================================================================
+
+/**
+ * Create a tree with measure functions on leaf nodes.
+ * This simulates inkx Text nodes which use measure functions for intrinsic sizing.
+ */
+function flexxTreeWithMeasure(nodeCount: number): Flexx.Node {
+  const root = Flexx.Node.create()
+  root.setWidth(250)
+  root.setHeight(120)
+  root.setFlexDirection(Flexx.FLEX_DIRECTION_COLUMN)
+
+  // Create columns (like TUI columns view)
+  const numCols = 5
+  const itemsPerCol = Math.floor(nodeCount / numCols / 2) // /2 because each item has a text child
+
+  for (let col = 0; col < numCols; col++) {
+    const column = Flexx.Node.create()
+    column.setFlexGrow(1)
+    column.setFlexDirection(Flexx.FLEX_DIRECTION_COLUMN)
+
+    for (let item = 0; item < itemsPerCol; item++) {
+      // Item container
+      const itemNode = Flexx.Node.create()
+      itemNode.setFlexDirection(Flexx.FLEX_DIRECTION_ROW)
+      itemNode.setPadding(Flexx.EDGE_LEFT, 1)
+
+      // Text node with measure function
+      const textNode = Flexx.Node.create()
+      const textContent = `Item ${col}-${item} with some text content`
+      textNode.setMeasureFunc((width, _widthMode, _height, _heightMode) => {
+        // Simulate text measurement (simplified)
+        const textWidth = textContent.length
+        const maxWidth = Number.isNaN(width) ? Number.POSITIVE_INFINITY : width
+        const lines = Math.ceil(textWidth / Math.max(1, maxWidth))
+        return {
+          width: Math.min(textWidth, maxWidth),
+          height: lines,
+        }
+      })
+      itemNode.insertChild(textNode, 0)
+      column.insertChild(itemNode, item)
+    }
+    root.insertChild(column, col)
+  }
+
+  return root
+}
+
+function yogaTreeWithMeasure(nodeCount: number) {
+  const root = yoga.Node.create()
+  root.setWidth(250)
+  root.setHeight(120)
+  root.setFlexDirection(yoga.FLEX_DIRECTION_COLUMN)
+
+  const numCols = 5
+  const itemsPerCol = Math.floor(nodeCount / numCols / 2)
+
+  for (let col = 0; col < numCols; col++) {
+    const column = yoga.Node.create()
+    column.setFlexGrow(1)
+    column.setFlexDirection(yoga.FLEX_DIRECTION_COLUMN)
+
+    for (let item = 0; item < itemsPerCol; item++) {
+      const itemNode = yoga.Node.create()
+      itemNode.setFlexDirection(yoga.FLEX_DIRECTION_ROW)
+      itemNode.setPadding(yoga.EDGE_LEFT, 1)
+
+      const textNode = yoga.Node.create()
+      const textContent = `Item ${col}-${item} with some text content`
+      textNode.setMeasureFunc((width, _widthMode, _height, _heightMode) => {
+        const textWidth = textContent.length
+        const maxWidth = Number.isNaN(width) ? Number.POSITIVE_INFINITY : width
+        const lines = Math.ceil(textWidth / Math.max(1, maxWidth))
+        return {
+          width: Math.min(textWidth, maxWidth),
+          height: lines,
+        }
+      })
+      itemNode.insertChild(textNode, 0)
+      column.insertChild(itemNode, item)
+    }
+    root.insertChild(column, col)
+  }
+
+  return root
+}
+
+// ============================================================================
+// Benchmarks - With Measure Functions (real-world TUI pattern)
+// ============================================================================
+
+describe("Flexx vs Yoga - With Measure Functions", () => {
+  for (const nodeCount of [200, 500, 1000, 1500]) {
+    bench(`Flexx: ~${nodeCount} nodes with measure - create + layout`, () => {
+      const tree = flexxTreeWithMeasure(nodeCount)
+      tree.calculateLayout(250, 120, Flexx.DIRECTION_LTR)
+    })
+
+    bench(`Yoga: ~${nodeCount} nodes with measure - create + layout`, () => {
+      const tree = yogaTreeWithMeasure(nodeCount)
+      tree.calculateLayout(250, 120, yoga.DIRECTION_LTR)
+      tree.freeRecursive()
+    })
+  }
+})
+
+// ============================================================================
+// Benchmarks - Incremental Updates (single node dirty)
+// ============================================================================
+
+describe("Flexx vs Yoga - Incremental Update", () => {
+  let flexxTree: Flexx.Node
+  let flexxLeaf: Flexx.Node
+  let yogaTree: ReturnType<typeof yogaKanbanTree>
+  let yogaLeaf: ReturnType<typeof yoga.Node.create>
+
+  beforeAll(() => {
+    // Create trees
+    flexxTree = flexxKanbanTree(100)
+    yogaTree = yogaKanbanTree(100)
+
+    // Get a deep leaf node to mark dirty
+    flexxLeaf = flexxTree.getChild(1)!.getChild(50)!
+    yogaLeaf = yogaTree.getChild(1)!.getChild(50)!
+
+    // Initial layout
+    flexxTree.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+    yogaTree.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+  })
+
+  bench("Flexx: Single leaf dirty - relayout", () => {
+    flexxLeaf.markDirty()
+    flexxTree.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+  })
+
+  bench("Yoga: Single leaf dirty - relayout", () => {
+    yogaLeaf.markDirty()
+    yogaTree.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+  })
+})
+
+// ============================================================================
+// Benchmarks - Large Scale (1500+ nodes like real km app)
+// ============================================================================
+
+describe("Flexx vs Yoga - Large Scale TUI", () => {
+  // Simulate a large TUI with multiple columns and many items
+  function createLargeTUI(engine: "flexx" | "yoga", nodeCount: number) {
+    const cols = 8
+    const itemsPerCol = Math.floor(nodeCount / cols / 3) // 3 nodes per item: container + icon + text
+
+    if (engine === "flexx") {
+      const root = Flexx.Node.create()
+      root.setWidth(250)
+      root.setHeight(120)
+      root.setFlexDirection(Flexx.FLEX_DIRECTION_ROW)
+      root.setGap(Flexx.GUTTER_ALL, 1)
+
+      for (let c = 0; c < cols; c++) {
+        const col = Flexx.Node.create()
+        col.setFlexGrow(1)
+        col.setFlexDirection(Flexx.FLEX_DIRECTION_COLUMN)
+
+        for (let i = 0; i < itemsPerCol; i++) {
+          const item = Flexx.Node.create()
+          item.setFlexDirection(Flexx.FLEX_DIRECTION_ROW)
+          item.setHeight(1)
+
+          const icon = Flexx.Node.create()
+          icon.setWidth(2)
+          item.insertChild(icon, 0)
+
+          const text = Flexx.Node.create()
+          text.setFlexGrow(1)
+          item.insertChild(text, 1)
+
+          col.insertChild(item, i)
+        }
+        root.insertChild(col, c)
+      }
+      return root
+    } else {
+      const root = yoga.Node.create()
+      root.setWidth(250)
+      root.setHeight(120)
+      root.setFlexDirection(yoga.FLEX_DIRECTION_ROW)
+      root.setGap(yoga.GUTTER_ALL, 1)
+
+      for (let c = 0; c < cols; c++) {
+        const col = yoga.Node.create()
+        col.setFlexGrow(1)
+        col.setFlexDirection(yoga.FLEX_DIRECTION_COLUMN)
+
+        for (let i = 0; i < itemsPerCol; i++) {
+          const item = yoga.Node.create()
+          item.setFlexDirection(yoga.FLEX_DIRECTION_ROW)
+          item.setHeight(1)
+
+          const icon = yoga.Node.create()
+          icon.setWidth(2)
+          item.insertChild(icon, 0)
+
+          const text = yoga.Node.create()
+          text.setFlexGrow(1)
+          item.insertChild(text, 1)
+
+          col.insertChild(item, i)
+        }
+        root.insertChild(col, c)
+      }
+      return root
+    }
+  }
+
+  for (const nodeCount of [500, 1000, 1500, 2000]) {
+    bench(`Flexx: Large TUI ~${nodeCount} nodes`, () => {
+      const tree = createLargeTUI("flexx", nodeCount)
+      tree.calculateLayout(250, 120, Flexx.DIRECTION_LTR)
+    })
+
+    bench(`Yoga: Large TUI ~${nodeCount} nodes`, () => {
+      const tree = createLargeTUI("yoga", nodeCount) as ReturnType<typeof yoga.Node.create>
+      tree.calculateLayout(250, 120, yoga.DIRECTION_LTR)
+      tree.freeRecursive()
+    })
+  }
+})
