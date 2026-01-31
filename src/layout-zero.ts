@@ -43,31 +43,36 @@ export function isReverseDirection(flexDirection: number): boolean {
  * Get the logical edge value (START/END) for a given physical index.
  * Returns undefined if no logical value applies to this physical edge.
  *
- * The mapping depends on flex direction:
- * - Row: left↔START/END, right↔END/START (swapped if reverse)
- * - Column: top↔START/END, bottom↔END/START (swapped if reverse)
+ * The mapping depends on flex direction and text direction:
+ * - Row LTR: START→left, END→right (swapped if reverse)
+ * - Row RTL: START→right, END→left (swapped if reverse)
+ * - Column: START→top, END→bottom (swapped if reverse)
  */
 function getLogicalEdgeValue(
   arr: [Value, Value, Value, Value, Value, Value],
   physicalIndex: number,
   flexDirection: number,
+  direction: number = C.DIRECTION_LTR,
 ): Value | undefined {
   const isRow = isRowDirection(flexDirection);
   const isReverse = isReverseDirection(flexDirection);
+  const isRTL = direction === C.DIRECTION_RTL;
+  // For row + RTL, the effective reverse is XOR'd
+  const effectiveReverse = isRow ? (isRTL !== isReverse) : isReverse;
 
   if (isRow) {
     // Horizontal main axis: START/END apply to left/right
     if (physicalIndex === 0) {
-      return isReverse ? arr[5] : arr[4]; // Left: START or END
+      return effectiveReverse ? arr[5] : arr[4]; // Left: START or END
     } else if (physicalIndex === 2) {
-      return isReverse ? arr[4] : arr[5]; // Right: END or START
+      return effectiveReverse ? arr[4] : arr[5]; // Right: END or START
     }
   } else {
     // Vertical main axis: START/END apply to top/bottom
     if (physicalIndex === 1) {
-      return isReverse ? arr[5] : arr[4]; // Top: START or END
+      return effectiveReverse ? arr[5] : arr[4]; // Top: START or END
     } else if (physicalIndex === 3) {
-      return isReverse ? arr[4] : arr[5]; // Bottom: END or START
+      return effectiveReverse ? arr[4] : arr[5]; // Bottom: END or START
     }
   }
   return undefined;
@@ -89,8 +94,9 @@ export function resolveEdgeValue(
   physicalIndex: number, // 0=left, 1=top, 2=right, 3=bottom
   flexDirection: number,
   availableSize: number,
+  direction: number = C.DIRECTION_LTR,
 ): number {
-  const logicalValue = getLogicalEdgeValue(arr, physicalIndex, flexDirection);
+  const logicalValue = getLogicalEdgeValue(arr, physicalIndex, flexDirection, direction);
 
   // Logical takes precedence if defined
   if (logicalValue && logicalValue.unit !== C.UNIT_UNDEFINED) {
@@ -108,8 +114,9 @@ export function isEdgeAuto(
   arr: [Value, Value, Value, Value, Value, Value],
   physicalIndex: number,
   flexDirection: number,
+  direction: number = C.DIRECTION_LTR,
 ): boolean {
-  const logicalValue = getLogicalEdgeValue(arr, physicalIndex, flexDirection);
+  const logicalValue = getLogicalEdgeValue(arr, physicalIndex, flexDirection, direction);
 
   // Check logical first
   if (logicalValue && logicalValue.unit !== C.UNIT_UNDEFINED) {
@@ -833,12 +840,13 @@ export function computeLayout(
   root: Node,
   availableWidth: number,
   availableHeight: number,
+  direction: number = C.DIRECTION_LTR,
 ): void {
   resetLayoutStats();
   // Clear layout cache from previous pass (important for correct layout after tree changes)
   root.resetLayoutCache();
   // Pass absolute position (0,0) for root node - used for Yoga-compatible edge rounding
-  layoutNode(root, availableWidth, availableHeight, 0, 0, 0, 0);
+  layoutNode(root, availableWidth, availableHeight, 0, 0, 0, 0, direction);
 }
 
 /**
@@ -855,6 +863,7 @@ function layoutNode(
   offsetY: number,
   absX: number,
   absY: number,
+  direction: number = C.DIRECTION_LTR,
 ): void {
   layoutNodeCalls++;
   // Track sizing vs positioning calls
@@ -1073,6 +1082,9 @@ function layoutNode(
   // Combined pass: mark relativeIndex + compute flex info + count auto margins + check baseline
   const isRow = isRowDirection(style.flexDirection);
   const isReverse = isReverseDirection(style.flexDirection);
+  // For RTL, row direction is reversed (XOR with isReverse)
+  const isRTL = direction === C.DIRECTION_RTL;
+  const effectiveReverse = isRow ? (isRTL !== isReverse) : isReverse;
 
   const mainAxisSize = isRow ? contentWidth : contentHeight;
   const crossAxisSize = isRow ? contentHeight : contentWidth;
@@ -1835,7 +1847,7 @@ function layoutNode(
       // absChildLeft/Top include the child's margins, so subtract them to get margin box start
       const childAbsX = absChildLeft - childMarginLeft;
       const childAbsY = absChildTop - childMarginTop;
-      layoutNode(child, passWidthToChild, passHeightToChild, childLeft, childTop, childAbsX, childAbsY);
+      layoutNode(child, passWidthToChild, passHeightToChild, childLeft, childTop, childAbsX, childAbsY, direction);
 
       // Enforce box model constraint: child can't be smaller than its padding + border
       // (using childMinW/childMinH computed earlier for edge-based rounding)
@@ -2149,6 +2161,7 @@ function layoutNode(
       layout.top + absInnerTop + childY,
       childAbsX,
       childAbsY,
+      direction,
     );
 
     // Now compute final position based on right/bottom if left/top not set

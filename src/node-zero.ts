@@ -435,7 +435,7 @@ export class Node {
   calculateLayout(
     width?: number,
     height?: number,
-    _direction: number = C.DIRECTION_LTR,
+    direction: number = C.DIRECTION_LTR,
   ): void {
     if (!this._isDirty) {
       debug("layout skip (not dirty)");
@@ -453,7 +453,7 @@ export class Node {
     const availableHeight = height ?? NaN;
 
     // Run the layout algorithm
-    computeLayout(this, availableWidth, availableHeight);
+    computeLayout(this, availableWidth, availableHeight, direction);
 
     // Mark layout computed
     this._isDirty = false;
