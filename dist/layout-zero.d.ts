@@ -4,7 +4,7 @@
  * Core flexbox layout computation extracted from node.ts.
  * Based on Planning-nl/flexbox.js reference implementation.
  */
-import type { Node } from "./node.js";
+import type { Node } from "./node-zero.js";
 import type { Value } from "./types.js";
 /**
  * Check if flex direction is row-oriented (horizontal main axis).
@@ -33,14 +33,26 @@ flexDirection: number, availableSize: number): number;
 export declare function isEdgeAuto(arr: [Value, Value, Value, Value, Value, Value], physicalIndex: number, flexDirection: number): boolean;
 export declare function markSubtreeLayoutSeen(node: Node): void;
 export declare function countNodes(node: Node): number;
-/**
- * Compute layout for a node tree.
- */
-export declare function computeLayout(root: Node, availableWidth: number, availableHeight: number): void;
 export declare let layoutNodeCalls: number;
+export declare let measureNodeCalls: number;
 export declare let resolveEdgeCalls: number;
 export declare let layoutSizingCalls: number;
 export declare let layoutPositioningCalls: number;
 export declare let layoutCacheHits: number;
 export declare function resetLayoutStats(): void;
-//# sourceMappingURL=layout.d.ts.map
+/**
+ * Measure a node to get its intrinsic size without computing positions.
+ * This is a lightweight alternative to layoutNode for sizing-only passes.
+ *
+ * Sets layout.width and layout.height but NOT layout.left/top.
+ *
+ * @param node - The node to measure
+ * @param availableWidth - Available width (NaN for unconstrained)
+ * @param availableHeight - Available height (NaN for unconstrained)
+ */
+export declare function measureNode(node: Node, availableWidth: number, availableHeight: number): void;
+/**
+ * Compute layout for a node tree.
+ */
+export declare function computeLayout(root: Node, availableWidth: number, availableHeight: number): void;
+//# sourceMappingURL=layout-zero.d.ts.map

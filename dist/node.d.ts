@@ -12,18 +12,6 @@ export declare class Node {
     private _children;
     private _style;
     private _measureFunc;
-    private _m0?;
-    private _m1?;
-    private _m2?;
-    private _m3?;
-    private _lc0?;
-    private _lc1?;
-    static measureCalls: number;
-    static measureCacheHits: number;
-    /**
-     * Reset measure statistics (call before calculateLayout).
-     */
-    static resetMeasureStats(): void;
     private _layout;
     private _isDirty;
     private _hasNewLayout;
@@ -121,36 +109,6 @@ export declare class Node {
      * @returns True if a measure function is set
      */
     hasMeasureFunc(): boolean;
-    /**
-     * Call the measure function with caching.
-     * Uses a 4-entry numeric cache for fast lookup without allocations.
-     * Cache is cleared when markDirty() is called.
-     *
-     * @returns Measured dimensions or null if no measure function
-     */
-    cachedMeasure(w: number, wm: number, h: number, hm: number): {
-        width: number;
-        height: number;
-    } | null;
-    /**
-     * Check layout cache for a previously computed size with same available dimensions.
-     * Returns cached (width, height) or null if not found.
-     *
-     * NaN dimensions are handled specially via Object.is (NaN === NaN is false, but Object.is(NaN, NaN) is true).
-     */
-    getCachedLayout(availW: number, availH: number): {
-        width: number;
-        height: number;
-    } | null;
-    /**
-     * Cache a computed layout result for the given available dimensions.
-     */
-    setCachedLayout(availW: number, availH: number, computedW: number, computedH: number): void;
-    /**
-     * Clear layout cache for this node and all descendants.
-     * Called at the start of each calculateLayout pass.
-     */
-    resetLayoutCache(): void;
     /**
      * Check if this node needs layout recalculation.
      *

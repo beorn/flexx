@@ -3,31 +3,31 @@
  *
  * Yoga-compatible Node class for flexbox layout.
  */
-import createDebug from "debug";
-import * as C from "./constants.js";
-import { computeLayout, countNodes, markSubtreeLayoutSeen, } from "./layout.js";
-import { createDefaultStyle, } from "./types.js";
-import { setEdgeValue, setEdgeBorder, getEdgeValue, getEdgeBorderValue, } from "./utils.js";
-const debug = createDebug("flexx:layout");
+import { type FlexInfo, type Layout, type MeasureFunc, type Style, type Value } from "./types.js";
 /**
  * A layout node in the flexbox tree.
  */
-export class Node {
-    // Tree structure
-    _parent = null;
-    _children = [];
-    // Style
-    _style = createDefaultStyle();
-    // Measure function for intrinsic sizing
-    _measureFunc = null;
-    // Computed layout
-    _layout = { left: 0, top: 0, width: 0, height: 0 };
-    // Dirty flags
-    _isDirty = true;
-    _hasNewLayout = false;
-    // ============================================================================
-    // Static Factory
-    // ============================================================================
+export declare class Node {
+    private _parent;
+    private _children;
+    private _style;
+    private _measureFunc;
+    private _m0?;
+    private _m1?;
+    private _m2?;
+    private _m3?;
+    private _lc0?;
+    private _lc1?;
+    static measureCalls: number;
+    static measureCacheHits: number;
+    /**
+     * Reset measure statistics (call before calculateLayout).
+     */
+    static resetMeasureStats(): void;
+    private _layout;
+    private _flex;
+    private _isDirty;
+    private _hasNewLayout;
     /**
      * Create a new layout node.
      *
@@ -39,37 +39,26 @@ export class Node {
      * root.setHeight(200);
      * ```
      */
-    static create() {
-        return new Node();
-    }
-    // ============================================================================
-    // Tree Operations
-    // ============================================================================
+    static create(): Node;
     /**
      * Get the number of child nodes.
      *
      * @returns The number of children
      */
-    getChildCount() {
-        return this._children.length;
-    }
+    getChildCount(): number;
     /**
      * Get a child node by index.
      *
      * @param index - Zero-based child index
      * @returns The child node at the given index, or undefined if index is out of bounds
      */
-    getChild(index) {
-        return this._children[index];
-    }
+    getChild(index: number): Node | undefined;
     /**
      * Get the parent node.
      *
      * @returns The parent node, or null if this is a root node
      */
-    getParent() {
-        return this._parent;
-    }
+    getParent(): Node | null;
     /**
      * Insert a child node at the specified index.
      * If the child already has a parent, it will be removed from that parent first.
@@ -86,14 +75,7 @@ export class Node {
      * parent.insertChild(child2, 1);
      * ```
      */
-    insertChild(child, index) {
-        if (child._parent !== null) {
-            child._parent.removeChild(child);
-        }
-        child._parent = this;
-        this._children.splice(index, 0, child);
-        this.markDirty();
-    }
+    insertChild(child: Node, index: number): void;
     /**
      * Remove a child node from this node.
      * The child's parent reference will be cleared.
@@ -101,40 +83,17 @@ export class Node {
      *
      * @param child - The child node to remove
      */
-    removeChild(child) {
-        const index = this._children.indexOf(child);
-        if (index !== -1) {
-            this._children.splice(index, 1);
-            child._parent = null;
-            this.markDirty();
-        }
-    }
+    removeChild(child: Node): void;
     /**
      * Free this node and clean up all references.
      * Removes the node from its parent, clears all children, and removes the measure function.
      * This does not recursively free child nodes.
      */
-    free() {
-        // Remove from parent
-        if (this._parent !== null) {
-            this._parent.removeChild(this);
-        }
-        // Clear children
-        for (const child of this._children) {
-            child._parent = null;
-        }
-        this._children = [];
-        this._measureFunc = null;
-    }
+    free(): void;
     /**
      * Dispose the node (calls free)
      */
-    [Symbol.dispose]() {
-        this.free();
-    }
-    // ============================================================================
-    // Measure Function
-    // ============================================================================
+    [Symbol.dispose](): void;
     /**
      * Set a measure function for intrinsic sizing.
      * The measure function is called during layout to determine the node's natural size.
@@ -151,66 +110,71 @@ export class Node {
      * });
      * ```
      */
-    setMeasureFunc(measureFunc) {
-        this._measureFunc = measureFunc;
-        this.markDirty();
-    }
+    setMeasureFunc(measureFunc: MeasureFunc): void;
     /**
      * Remove the measure function from this node.
      * Marks the node as dirty to trigger layout recalculation.
      */
-    unsetMeasureFunc() {
-        this._measureFunc = null;
-        this.markDirty();
-    }
+    unsetMeasureFunc(): void;
     /**
      * Check if this node has a measure function.
      *
      * @returns True if a measure function is set
      */
-    hasMeasureFunc() {
-        return this._measureFunc !== null;
-    }
-    // ============================================================================
-    // Dirty Tracking
-    // ============================================================================
+    hasMeasureFunc(): boolean;
+    /**
+     * Call the measure function with caching.
+     * Uses a 4-entry numeric cache for fast lookup without allocations.
+     * Cache is cleared when markDirty() is called.
+     *
+     * @returns Measured dimensions or null if no measure function
+     */
+    cachedMeasure(w: number, wm: number, h: number, hm: number): {
+        width: number;
+        height: number;
+    } | null;
+    /**
+     * Check layout cache for a previously computed size with same available dimensions.
+     * Returns cached (width, height) or null if not found.
+     *
+     * NaN dimensions are handled specially via Object.is (NaN === NaN is false, but Object.is(NaN, NaN) is true).
+     */
+    getCachedLayout(availW: number, availH: number): {
+        width: number;
+        height: number;
+    } | null;
+    /**
+     * Cache a computed layout result for the given available dimensions.
+     */
+    setCachedLayout(availW: number, availH: number, computedW: number, computedH: number): void;
+    /**
+     * Clear layout cache for this node and all descendants.
+     * Called at the start of each calculateLayout pass.
+     */
+    resetLayoutCache(): void;
     /**
      * Check if this node needs layout recalculation.
      *
      * @returns True if the node is dirty and needs layout
      */
-    isDirty() {
-        return this._isDirty;
-    }
+    isDirty(): boolean;
     /**
      * Mark this node and all ancestors as dirty.
      * A dirty node needs layout recalculation.
      * This is automatically called by all style setters and tree operations.
      */
-    markDirty() {
-        this._isDirty = true;
-        if (this._parent !== null) {
-            this._parent.markDirty();
-        }
-    }
+    markDirty(): void;
     /**
      * Check if this node has new layout results since the last check.
      *
      * @returns True if layout was recalculated since the last call to markLayoutSeen
      */
-    hasNewLayout() {
-        return this._hasNewLayout;
-    }
+    hasNewLayout(): boolean;
     /**
      * Mark that the current layout has been seen/processed.
      * Clears the hasNewLayout flag.
      */
-    markLayoutSeen() {
-        this._hasNewLayout = false;
-    }
-    // ============================================================================
-    // Layout Calculation
-    // ============================================================================
+    markLayoutSeen(): void;
     /**
      * Calculate layout for this node and all descendants.
      * This runs the flexbox layout algorithm to compute positions and sizes.
@@ -236,217 +200,116 @@ export class Node {
      * console.log(child.getComputedWidth());
      * ```
      */
-    calculateLayout(width, height, _direction = C.DIRECTION_LTR) {
-        if (!this._isDirty) {
-            debug("layout skip (not dirty)");
-            return;
-        }
-        const start = Date.now();
-        const nodeCount = countNodes(this);
-        // Treat undefined as unconstrained (NaN signals content-based sizing)
-        const availableWidth = width ?? NaN;
-        const availableHeight = height ?? NaN;
-        // Run the layout algorithm
-        computeLayout(this, availableWidth, availableHeight);
-        // Mark layout computed
-        this._isDirty = false;
-        this._hasNewLayout = true;
-        markSubtreeLayoutSeen(this);
-        debug("layout: %dx%d, %d nodes in %dms", width, height, nodeCount, Date.now() - start);
-    }
-    // ============================================================================
-    // Layout Results
-    // ============================================================================
+    calculateLayout(width?: number, height?: number, _direction?: number): void;
     /**
      * Get the computed left position after layout.
      *
      * @returns The left position in points
      */
-    getComputedLeft() {
-        return this._layout.left;
-    }
+    getComputedLeft(): number;
     /**
      * Get the computed top position after layout.
      *
      * @returns The top position in points
      */
-    getComputedTop() {
-        return this._layout.top;
-    }
+    getComputedTop(): number;
     /**
      * Get the computed width after layout.
      *
      * @returns The width in points
      */
-    getComputedWidth() {
-        return this._layout.width;
-    }
+    getComputedWidth(): number;
     /**
      * Get the computed height after layout.
      *
      * @returns The height in points
      */
-    getComputedHeight() {
-        return this._layout.height;
-    }
-    // ============================================================================
-    // Internal Accessors (for layout algorithm)
-    // ============================================================================
-    get children() {
-        return this._children;
-    }
-    get style() {
-        return this._style;
-    }
-    get layout() {
-        return this._layout;
-    }
-    get measureFunc() {
-        return this._measureFunc;
-    }
-    // ============================================================================
-    // Width Setters
-    // ============================================================================
+    getComputedHeight(): number;
+    get children(): readonly Node[];
+    get style(): Style;
+    get layout(): Layout;
+    get measureFunc(): MeasureFunc | null;
+    get flex(): FlexInfo;
     /**
      * Set the width to a fixed value in points.
      *
      * @param value - Width in points
      */
-    setWidth(value) {
-        // NaN means "auto" in Yoga API
-        if (Number.isNaN(value)) {
-            this._style.width = { value: 0, unit: C.UNIT_AUTO };
-        }
-        else {
-            this._style.width = { value, unit: C.UNIT_POINT };
-        }
-        this.markDirty();
-    }
+    setWidth(value: number): void;
     /**
      * Set the width as a percentage of the parent's width.
      *
      * @param value - Width as a percentage (0-100)
      */
-    setWidthPercent(value) {
-        this._style.width = { value, unit: C.UNIT_PERCENT };
-        this.markDirty();
-    }
+    setWidthPercent(value: number): void;
     /**
      * Set the width to auto (determined by layout algorithm).
      */
-    setWidthAuto() {
-        this._style.width = { value: 0, unit: C.UNIT_AUTO };
-        this.markDirty();
-    }
-    // ============================================================================
-    // Height Setters
-    // ============================================================================
+    setWidthAuto(): void;
     /**
      * Set the height to a fixed value in points.
      *
      * @param value - Height in points
      */
-    setHeight(value) {
-        // NaN means "auto" in Yoga API
-        if (Number.isNaN(value)) {
-            this._style.height = { value: 0, unit: C.UNIT_AUTO };
-        }
-        else {
-            this._style.height = { value, unit: C.UNIT_POINT };
-        }
-        this.markDirty();
-    }
+    setHeight(value: number): void;
     /**
      * Set the height as a percentage of the parent's height.
      *
      * @param value - Height as a percentage (0-100)
      */
-    setHeightPercent(value) {
-        this._style.height = { value, unit: C.UNIT_PERCENT };
-        this.markDirty();
-    }
+    setHeightPercent(value: number): void;
     /**
      * Set the height to auto (determined by layout algorithm).
      */
-    setHeightAuto() {
-        this._style.height = { value: 0, unit: C.UNIT_AUTO };
-        this.markDirty();
-    }
-    // ============================================================================
-    // Min/Max Size Setters
-    // ============================================================================
+    setHeightAuto(): void;
     /**
      * Set the minimum width in points.
      *
      * @param value - Minimum width in points
      */
-    setMinWidth(value) {
-        this._style.minWidth = { value, unit: C.UNIT_POINT };
-        this.markDirty();
-    }
+    setMinWidth(value: number): void;
     /**
      * Set the minimum width as a percentage of the parent's width.
      *
      * @param value - Minimum width as a percentage (0-100)
      */
-    setMinWidthPercent(value) {
-        this._style.minWidth = { value, unit: C.UNIT_PERCENT };
-        this.markDirty();
-    }
+    setMinWidthPercent(value: number): void;
     /**
      * Set the minimum height in points.
      *
      * @param value - Minimum height in points
      */
-    setMinHeight(value) {
-        this._style.minHeight = { value, unit: C.UNIT_POINT };
-        this.markDirty();
-    }
+    setMinHeight(value: number): void;
     /**
      * Set the minimum height as a percentage of the parent's height.
      *
      * @param value - Minimum height as a percentage (0-100)
      */
-    setMinHeightPercent(value) {
-        this._style.minHeight = { value, unit: C.UNIT_PERCENT };
-        this.markDirty();
-    }
+    setMinHeightPercent(value: number): void;
     /**
      * Set the maximum width in points.
      *
      * @param value - Maximum width in points
      */
-    setMaxWidth(value) {
-        this._style.maxWidth = { value, unit: C.UNIT_POINT };
-        this.markDirty();
-    }
+    setMaxWidth(value: number): void;
     /**
      * Set the maximum width as a percentage of the parent's width.
      *
      * @param value - Maximum width as a percentage (0-100)
      */
-    setMaxWidthPercent(value) {
-        this._style.maxWidth = { value, unit: C.UNIT_PERCENT };
-        this.markDirty();
-    }
+    setMaxWidthPercent(value: number): void;
     /**
      * Set the maximum height in points.
      *
      * @param value - Maximum height in points
      */
-    setMaxHeight(value) {
-        this._style.maxHeight = { value, unit: C.UNIT_POINT };
-        this.markDirty();
-    }
+    setMaxHeight(value: number): void;
     /**
      * Set the maximum height as a percentage of the parent's height.
      *
      * @param value - Maximum height as a percentage (0-100)
      */
-    setMaxHeightPercent(value) {
-        this._style.maxHeight = { value, unit: C.UNIT_PERCENT };
-        this.markDirty();
-    }
+    setMaxHeightPercent(value: number): void;
     /**
      * Set the aspect ratio of the node.
      * When set, the node's width/height relationship is constrained.
@@ -455,13 +318,7 @@ export class Node {
      *
      * @param value - Aspect ratio (width/height). Use NaN to unset.
      */
-    setAspectRatio(value) {
-        this._style.aspectRatio = value;
-        this.markDirty();
-    }
-    // ============================================================================
-    // Flex Setters
-    // ============================================================================
+    setAspectRatio(value: number): void;
     /**
      * Set the flex grow factor.
      * Determines how much the node will grow relative to siblings when there is extra space.
@@ -473,46 +330,31 @@ export class Node {
      * child.setFlexGrow(1); // Will grow to fill available space
      * ```
      */
-    setFlexGrow(value) {
-        this._style.flexGrow = value;
-        this.markDirty();
-    }
+    setFlexGrow(value: number): void;
     /**
      * Set the flex shrink factor.
      * Determines how much the node will shrink relative to siblings when there is insufficient space.
      *
      * @param value - Flex shrink factor (default is 1)
      */
-    setFlexShrink(value) {
-        this._style.flexShrink = value;
-        this.markDirty();
-    }
+    setFlexShrink(value: number): void;
     /**
      * Set the flex basis to a fixed value in points.
      * The initial size of the node before flex grow/shrink is applied.
      *
      * @param value - Flex basis in points
      */
-    setFlexBasis(value) {
-        this._style.flexBasis = { value, unit: C.UNIT_POINT };
-        this.markDirty();
-    }
+    setFlexBasis(value: number): void;
     /**
      * Set the flex basis as a percentage of the parent's size.
      *
      * @param value - Flex basis as a percentage (0-100)
      */
-    setFlexBasisPercent(value) {
-        this._style.flexBasis = { value, unit: C.UNIT_PERCENT };
-        this.markDirty();
-    }
+    setFlexBasisPercent(value: number): void;
     /**
      * Set the flex basis to auto (based on the node's width/height).
      */
-    setFlexBasisAuto() {
-        this._style.flexBasis = { value: 0, unit: C.UNIT_AUTO };
-        this.markDirty();
-    }
+    setFlexBasisAuto(): void;
     /**
      * Set the flex direction (main axis direction).
      *
@@ -523,22 +365,13 @@ export class Node {
      * container.setFlexDirection(FLEX_DIRECTION_ROW); // Lay out children horizontally
      * ```
      */
-    setFlexDirection(direction) {
-        this._style.flexDirection = direction;
-        this.markDirty();
-    }
+    setFlexDirection(direction: number): void;
     /**
      * Set the flex wrap behavior.
      *
      * @param wrap - WRAP_NO_WRAP, WRAP_WRAP, or WRAP_WRAP_REVERSE
      */
-    setFlexWrap(wrap) {
-        this._style.flexWrap = wrap;
-        this.markDirty();
-    }
-    // ============================================================================
-    // Alignment Setters
-    // ============================================================================
+    setFlexWrap(wrap: number): void;
     /**
      * Set how children are aligned along the cross axis.
      *
@@ -550,30 +383,21 @@ export class Node {
      * container.setAlignItems(ALIGN_CENTER); // Center children vertically
      * ```
      */
-    setAlignItems(align) {
-        this._style.alignItems = align;
-        this.markDirty();
-    }
+    setAlignItems(align: number): void;
     /**
      * Set how this node is aligned along the parent's cross axis.
      * Overrides the parent's alignItems for this specific child.
      *
      * @param align - ALIGN_AUTO, ALIGN_FLEX_START, ALIGN_CENTER, ALIGN_FLEX_END, ALIGN_STRETCH, or ALIGN_BASELINE
      */
-    setAlignSelf(align) {
-        this._style.alignSelf = align;
-        this.markDirty();
-    }
+    setAlignSelf(align: number): void;
     /**
      * Set how lines are aligned in a multi-line flex container.
      * Only affects containers with wrap enabled and multiple lines.
      *
      * @param align - ALIGN_FLEX_START, ALIGN_CENTER, ALIGN_FLEX_END, ALIGN_STRETCH, ALIGN_SPACE_BETWEEN, or ALIGN_SPACE_AROUND
      */
-    setAlignContent(align) {
-        this._style.alignContent = align;
-        this.markDirty();
-    }
+    setAlignContent(align: number): void;
     /**
      * Set how children are distributed along the main axis.
      *
@@ -584,13 +408,7 @@ export class Node {
      * container.setJustifyContent(JUSTIFY_SPACE_BETWEEN); // Space children evenly with edges at start/end
      * ```
      */
-    setJustifyContent(justify) {
-        this._style.justifyContent = justify;
-        this.markDirty();
-    }
-    // ============================================================================
-    // Spacing Setters
-    // ============================================================================
+    setJustifyContent(justify: number): void;
     /**
      * Set padding for one or more edges.
      *
@@ -602,10 +420,7 @@ export class Node {
      * node.setPadding(EDGE_HORIZONTAL, 5); // Set 5pt padding on left and right
      * ```
      */
-    setPadding(edge, value) {
-        setEdgeValue(this._style.padding, edge, value, C.UNIT_POINT);
-        this.markDirty();
-    }
+    setPadding(edge: number, value: number): void;
     /**
      * Set padding as a percentage of the parent's width.
      * Per CSS spec, percentage padding always resolves against the containing block's width.
@@ -613,10 +428,7 @@ export class Node {
      * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
      * @param value - Padding as a percentage (0-100)
      */
-    setPaddingPercent(edge, value) {
-        setEdgeValue(this._style.padding, edge, value, C.UNIT_PERCENT);
-        this.markDirty();
-    }
+    setPaddingPercent(edge: number, value: number): void;
     /**
      * Set margin for one or more edges.
      *
@@ -628,39 +440,27 @@ export class Node {
      * node.setMargin(EDGE_TOP, 10); // Set 10pt margin on top only
      * ```
      */
-    setMargin(edge, value) {
-        setEdgeValue(this._style.margin, edge, value, C.UNIT_POINT);
-        this.markDirty();
-    }
+    setMargin(edge: number, value: number): void;
     /**
      * Set margin as a percentage of the parent's size.
      *
      * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
      * @param value - Margin as a percentage (0-100)
      */
-    setMarginPercent(edge, value) {
-        setEdgeValue(this._style.margin, edge, value, C.UNIT_PERCENT);
-        this.markDirty();
-    }
+    setMarginPercent(edge: number, value: number): void;
     /**
      * Set margin to auto (for centering items with margin: auto).
      *
      * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
      */
-    setMarginAuto(edge) {
-        setEdgeValue(this._style.margin, edge, 0, C.UNIT_AUTO);
-        this.markDirty();
-    }
+    setMarginAuto(edge: number): void;
     /**
      * Set border width for one or more edges.
      *
      * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
      * @param value - Border width in points
      */
-    setBorder(edge, value) {
-        setEdgeBorder(this._style.border, edge, value);
-        this.markDirty();
-    }
+    setBorder(edge: number, value: number): void;
     /**
      * Set gap between flex items.
      *
@@ -672,22 +472,7 @@ export class Node {
      * container.setGap(GUTTER_COLUMN, 10); // Set 10pt horizontal gap only
      * ```
      */
-    setGap(gutter, value) {
-        if (gutter === C.GUTTER_COLUMN) {
-            this._style.gap[0] = value;
-        }
-        else if (gutter === C.GUTTER_ROW) {
-            this._style.gap[1] = value;
-        }
-        else if (gutter === C.GUTTER_ALL) {
-            this._style.gap[0] = value;
-            this._style.gap[1] = value;
-        }
-        this.markDirty();
-    }
-    // ============================================================================
-    // Position Setters
-    // ============================================================================
+    setGap(gutter: number, value: number): void;
     /**
      * Set the position type.
      *
@@ -699,10 +484,7 @@ export class Node {
      * node.setPosition(EDGE_TOP, 20);
      * ```
      */
-    setPositionType(positionType) {
-        this._style.positionType = positionType;
-        this.markDirty();
-    }
+    setPositionType(positionType: number): void;
     /**
      * Set position offset for one or more edges.
      * Only applies when position type is ABSOLUTE or RELATIVE.
@@ -710,252 +492,174 @@ export class Node {
      * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
      * @param value - Position offset in points
      */
-    setPosition(edge, value) {
-        // NaN means "auto" (unset) in Yoga API
-        if (Number.isNaN(value)) {
-            setEdgeValue(this._style.position, edge, 0, C.UNIT_UNDEFINED);
-        }
-        else {
-            setEdgeValue(this._style.position, edge, value, C.UNIT_POINT);
-        }
-        this.markDirty();
-    }
+    setPosition(edge: number, value: number): void;
     /**
      * Set position offset as a percentage.
      *
      * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
      * @param value - Position offset as a percentage of parent's corresponding dimension
      */
-    setPositionPercent(edge, value) {
-        setEdgeValue(this._style.position, edge, value, C.UNIT_PERCENT);
-        this.markDirty();
-    }
-    // ============================================================================
-    // Other Setters
-    // ============================================================================
+    setPositionPercent(edge: number, value: number): void;
     /**
      * Set the display type.
      *
      * @param display - DISPLAY_FLEX or DISPLAY_NONE
      */
-    setDisplay(display) {
-        this._style.display = display;
-        this.markDirty();
-    }
+    setDisplay(display: number): void;
     /**
      * Set the overflow behavior.
      *
      * @param overflow - OVERFLOW_VISIBLE, OVERFLOW_HIDDEN, or OVERFLOW_SCROLL
      */
-    setOverflow(overflow) {
-        this._style.overflow = overflow;
-        this.markDirty();
-    }
-    // ============================================================================
-    // Style Getters
-    // ============================================================================
+    setOverflow(overflow: number): void;
     /**
      * Get the width style value.
      *
      * @returns Width value with unit (points, percent, or auto)
      */
-    getWidth() {
-        return this._style.width;
-    }
+    getWidth(): Value;
     /**
      * Get the height style value.
      *
      * @returns Height value with unit (points, percent, or auto)
      */
-    getHeight() {
-        return this._style.height;
-    }
+    getHeight(): Value;
     /**
      * Get the minimum width style value.
      *
      * @returns Minimum width value with unit
      */
-    getMinWidth() {
-        return this._style.minWidth;
-    }
+    getMinWidth(): Value;
     /**
      * Get the minimum height style value.
      *
      * @returns Minimum height value with unit
      */
-    getMinHeight() {
-        return this._style.minHeight;
-    }
+    getMinHeight(): Value;
     /**
      * Get the maximum width style value.
      *
      * @returns Maximum width value with unit
      */
-    getMaxWidth() {
-        return this._style.maxWidth;
-    }
+    getMaxWidth(): Value;
     /**
      * Get the maximum height style value.
      *
      * @returns Maximum height value with unit
      */
-    getMaxHeight() {
-        return this._style.maxHeight;
-    }
+    getMaxHeight(): Value;
     /**
      * Get the aspect ratio.
      *
      * @returns Aspect ratio value (NaN if not set)
      */
-    getAspectRatio() {
-        return this._style.aspectRatio;
-    }
+    getAspectRatio(): number;
     /**
      * Get the flex grow factor.
      *
      * @returns Flex grow value
      */
-    getFlexGrow() {
-        return this._style.flexGrow;
-    }
+    getFlexGrow(): number;
     /**
      * Get the flex shrink factor.
      *
      * @returns Flex shrink value
      */
-    getFlexShrink() {
-        return this._style.flexShrink;
-    }
+    getFlexShrink(): number;
     /**
      * Get the flex basis style value.
      *
      * @returns Flex basis value with unit
      */
-    getFlexBasis() {
-        return this._style.flexBasis;
-    }
+    getFlexBasis(): Value;
     /**
      * Get the flex direction.
      *
      * @returns Flex direction constant
      */
-    getFlexDirection() {
-        return this._style.flexDirection;
-    }
+    getFlexDirection(): number;
     /**
      * Get the flex wrap setting.
      *
      * @returns Flex wrap constant
      */
-    getFlexWrap() {
-        return this._style.flexWrap;
-    }
+    getFlexWrap(): number;
     /**
      * Get the align items setting.
      *
      * @returns Align items constant
      */
-    getAlignItems() {
-        return this._style.alignItems;
-    }
+    getAlignItems(): number;
     /**
      * Get the align self setting.
      *
      * @returns Align self constant
      */
-    getAlignSelf() {
-        return this._style.alignSelf;
-    }
+    getAlignSelf(): number;
     /**
      * Get the align content setting.
      *
      * @returns Align content constant
      */
-    getAlignContent() {
-        return this._style.alignContent;
-    }
+    getAlignContent(): number;
     /**
      * Get the justify content setting.
      *
      * @returns Justify content constant
      */
-    getJustifyContent() {
-        return this._style.justifyContent;
-    }
+    getJustifyContent(): number;
     /**
      * Get the padding for a specific edge.
      *
      * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, or EDGE_BOTTOM
      * @returns Padding value with unit
      */
-    getPadding(edge) {
-        return getEdgeValue(this._style.padding, edge);
-    }
+    getPadding(edge: number): Value;
     /**
      * Get the margin for a specific edge.
      *
      * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, or EDGE_BOTTOM
      * @returns Margin value with unit
      */
-    getMargin(edge) {
-        return getEdgeValue(this._style.margin, edge);
-    }
+    getMargin(edge: number): Value;
     /**
      * Get the border width for a specific edge.
      *
      * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, or EDGE_BOTTOM
      * @returns Border width in points
      */
-    getBorder(edge) {
-        return getEdgeBorderValue(this._style.border, edge);
-    }
+    getBorder(edge: number): number;
     /**
      * Get the position offset for a specific edge.
      *
      * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, or EDGE_BOTTOM
      * @returns Position value with unit
      */
-    getPosition(edge) {
-        return getEdgeValue(this._style.position, edge);
-    }
+    getPosition(edge: number): Value;
     /**
      * Get the position type.
      *
      * @returns Position type constant
      */
-    getPositionType() {
-        return this._style.positionType;
-    }
+    getPositionType(): number;
     /**
      * Get the display type.
      *
      * @returns Display constant
      */
-    getDisplay() {
-        return this._style.display;
-    }
+    getDisplay(): number;
     /**
      * Get the overflow setting.
      *
      * @returns Overflow constant
      */
-    getOverflow() {
-        return this._style.overflow;
-    }
+    getOverflow(): number;
     /**
      * Get the gap for column or row.
      *
      * @param gutter - GUTTER_COLUMN or GUTTER_ROW
      * @returns Gap size in points
      */
-    getGap(gutter) {
-        if (gutter === C.GUTTER_COLUMN) {
-            return this._style.gap[0];
-        }
-        else if (gutter === C.GUTTER_ROW) {
-            return this._style.gap[1];
-        }
-        return this._style.gap[0]; // Default to column gap
-    }
+    getGap(gutter: number): number;
 }
-//# sourceMappingURL=node.js.map
+//# sourceMappingURL=node-zero.d.ts.map

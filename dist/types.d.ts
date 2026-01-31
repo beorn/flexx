@@ -42,6 +42,57 @@ export interface LayoutCacheEntry {
     computedH: number;
 }
 /**
+ * Per-node flex calculation state for zero-allocation layout.
+ *
+ * This interface enables the layout engine to avoid heap allocations during
+ * layout passes by storing all intermediate calculation state directly on
+ * each Node. Fields are mutated (not recreated) each pass.
+ *
+ * Design rationale:
+ * - Eliminates ChildLayout object allocation (previously created per child per pass)
+ * - Enables filtered iteration via relativeIndex (avoids temporary array allocation)
+ * - Stores line membership for flex-wrap (avoids FlexLine[] allocation)
+ *
+ * All numeric fields use number (Float64 in V8) for precision. Boolean fields
+ * track state that affects the CSS Flexbox algorithm's iterative distribution.
+ *
+ * @see layout.ts for usage in layoutNode() and distributeFlexSpaceForLine()
+ */
+export interface FlexInfo {
+    /** Computed main-axis size after flex distribution */
+    mainSize: number;
+    /** Original base size before flex distribution (used for weighted shrink) */
+    baseSize: number;
+    /** Total main-axis margin (non-auto margins only) */
+    mainMargin: number;
+    /** flex-grow factor from style */
+    flexGrow: number;
+    /** flex-shrink factor from style */
+    flexShrink: number;
+    /** Resolved min-width/height constraint on main axis */
+    minMain: number;
+    /** Resolved max-width/height constraint on main axis (Infinity if none) */
+    maxMain: number;
+    /** Whether main-start margin is auto (absorbs free space) */
+    mainStartMarginAuto: boolean;
+    /** Whether main-end margin is auto (absorbs free space) */
+    mainEndMarginAuto: boolean;
+    /** Resolved main-start margin value (0 if auto, computed later) */
+    mainStartMarginValue: number;
+    /** Resolved main-end margin value (0 if auto, computed later) */
+    mainEndMarginValue: number;
+    /** Frozen in flex distribution (clamped to min/max constraint) */
+    frozen: boolean;
+    /** Line index for flex-wrap (0-based, which line this child belongs to) */
+    lineIndex: number;
+    /**
+     * Relative index for filtered iteration.
+     * -1 = absolute positioned or display:none (skip in flex layout)
+     * 0+ = index among relative children (participates in flex layout)
+     */
+    relativeIndex: number;
+}
+/**
  * Computed layout result for a node.
  */
 export interface Layout {
