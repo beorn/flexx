@@ -955,13 +955,76 @@ function layoutNode(
       cumulativeCrossOffset += line.crossSize + crossGap;
     }
 
-    // For wrap-reverse, lines should be positioned from the end of the cross axis
-    // Shift all offsets so the last line is at the bottom (for row) or right (for column)
-    if (isWrapReverse && !Number.isNaN(crossAxisSize)) {
+    // Apply alignContent to distribute lines in the cross axis
+    // This affects how multiple flex lines are positioned within the container
+    if (!Number.isNaN(crossAxisSize) && lines.length > 0) {
       const totalLineCrossSize = cumulativeCrossOffset - crossGap; // Remove trailing gap
-      const crossStartOffset = crossAxisSize - totalLineCrossSize;
-      for (let i = 0; i < lineCrossOffsets.length; i++) {
-        lineCrossOffsets[i] += crossStartOffset;
+      const freeSpace = crossAxisSize - totalLineCrossSize;
+      const alignContent = style.alignContent;
+
+      // Reset offsets based on alignContent
+      if (freeSpace > 0 || alignContent === C.ALIGN_STRETCH) {
+        switch (alignContent) {
+          case C.ALIGN_FLEX_END:
+            // Lines packed at end
+            for (let i = 0; i < lineCrossOffsets.length; i++) {
+              lineCrossOffsets[i] += freeSpace;
+            }
+            break;
+
+          case C.ALIGN_CENTER:
+            // Lines centered
+            const centerOffset = freeSpace / 2;
+            for (let i = 0; i < lineCrossOffsets.length; i++) {
+              lineCrossOffsets[i] += centerOffset;
+            }
+            break;
+
+          case C.ALIGN_SPACE_BETWEEN:
+            // First line at start, last at end, evenly distributed
+            if (lines.length > 1) {
+              const gap = freeSpace / (lines.length - 1);
+              for (let i = 1; i < lineCrossOffsets.length; i++) {
+                lineCrossOffsets[i] += gap * i;
+              }
+            }
+            break;
+
+          case C.ALIGN_SPACE_AROUND:
+            // Even spacing with half-space at edges
+            const halfGap = freeSpace / (lines.length * 2);
+            for (let i = 0; i < lineCrossOffsets.length; i++) {
+              lineCrossOffsets[i] += halfGap + halfGap * 2 * i;
+            }
+            break;
+
+          case C.ALIGN_STRETCH:
+            // Distribute extra space evenly among lines
+            if (freeSpace > 0 && lines.length > 0) {
+              const extraPerLine = freeSpace / lines.length;
+              for (let i = 0; i < lines.length; i++) {
+                lines[i]!.crossSize += extraPerLine;
+                // Recalculate offset for subsequent lines
+                if (i > 0) {
+                  lineCrossOffsets[i] = lineCrossOffsets[i - 1]! + lines[i - 1]!.crossSize + crossGap;
+                }
+              }
+            }
+            break;
+
+          // ALIGN_FLEX_START is the default - lines already at start
+        }
+      }
+
+      // For wrap-reverse, lines should be positioned from the end of the cross axis
+      // The lines are already in reversed order from breakIntoLines().
+      // We just need to shift them so they align to the end instead of the start.
+      if (isWrapReverse) {
+        const totalLineCrossSize = lines.reduce((sum, line) => sum + line.crossSize, 0) + crossGap * (lines.length - 1);
+        const crossStartOffset = crossAxisSize - totalLineCrossSize;
+        for (let i = 0; i < lineCrossOffsets.length; i++) {
+          lineCrossOffsets[i] += crossStartOffset;
+        }
       }
     }
 
