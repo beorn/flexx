@@ -81,6 +81,7 @@ for (const { cols, rows } of sizes) {
   console.log(`${cols}x${rows} (${nodeCount} nodes):`);
   console.log(`  Time: ${elapsed.toFixed(2)}ms (${usPerNode}µs/node)`);
   console.log(`  layoutNode: ${layout.layoutNodeCalls} (${(layout.layoutNodeCalls/nodeCount).toFixed(1)}x/node)`);
+  console.log(`  measureNode: ${layout.measureNodeCalls} (${(layout.measureNodeCalls/nodeCount).toFixed(1)}x/node)`);
   console.log(`  sizing: ${layout.layoutSizingCalls}, positioning: ${layout.layoutPositioningCalls}, cache: ${layout.layoutCacheHits}`);
   console.log(`  measure: ${Node.measureCalls} calls, ${Node.measureCacheHits} hits (${Node.measureCalls > 0 ? (100*Node.measureCacheHits/Node.measureCalls).toFixed(0) : 0}%)`);
   console.log();

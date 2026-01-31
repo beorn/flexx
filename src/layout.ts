@@ -366,6 +366,7 @@ function distributeFlexSpace(
 
 // Layout statistics for debugging
 export let layoutNodeCalls = 0;
+export let measureNodeCalls = 0;
 export let resolveEdgeCalls = 0;
 export let layoutSizingCalls = 0; // Calls for intrinsic sizing (offset=0,0)
 export let layoutPositioningCalls = 0; // Calls for final positioning
@@ -373,10 +374,237 @@ export let layoutCacheHits = 0;
 
 export function resetLayoutStats(): void {
   layoutNodeCalls = 0;
+  measureNodeCalls = 0;
   resolveEdgeCalls = 0;
   layoutSizingCalls = 0;
   layoutPositioningCalls = 0;
   layoutCacheHits = 0;
+}
+
+/**
+ * Measure a node to get its intrinsic size without computing positions.
+ * This is a lightweight alternative to layoutNode for sizing-only passes.
+ *
+ * Sets layout.width and layout.height but NOT layout.left/top.
+ *
+ * @param node - The node to measure
+ * @param availableWidth - Available width (NaN for unconstrained)
+ * @param availableHeight - Available height (NaN for unconstrained)
+ */
+export function measureNode(
+  node: Node,
+  availableWidth: number,
+  availableHeight: number,
+): void {
+  measureNodeCalls++;
+  const style = node.style;
+  const layout = node.layout;
+
+  // Handle display: none
+  if (style.display === C.DISPLAY_NONE) {
+    layout.width = 0;
+    layout.height = 0;
+    return;
+  }
+
+  // Calculate spacing
+  const marginLeft = resolveEdgeValue(style.margin, 0, style.flexDirection, availableWidth);
+  const marginTop = resolveEdgeValue(style.margin, 1, style.flexDirection, availableWidth);
+  const marginRight = resolveEdgeValue(style.margin, 2, style.flexDirection, availableWidth);
+  const marginBottom = resolveEdgeValue(style.margin, 3, style.flexDirection, availableWidth);
+
+  const paddingLeft = resolveEdgeValue(style.padding, 0, style.flexDirection, availableWidth);
+  const paddingTop = resolveEdgeValue(style.padding, 1, style.flexDirection, availableWidth);
+  const paddingRight = resolveEdgeValue(style.padding, 2, style.flexDirection, availableWidth);
+  const paddingBottom = resolveEdgeValue(style.padding, 3, style.flexDirection, availableWidth);
+
+  const borderLeft = style.border[0];
+  const borderTop = style.border[1];
+  const borderRight = style.border[2];
+  const borderBottom = style.border[3];
+
+  // Calculate node dimensions
+  let nodeWidth: number;
+  if (style.width.unit === C.UNIT_POINT) {
+    nodeWidth = style.width.value;
+  } else if (style.width.unit === C.UNIT_PERCENT) {
+    nodeWidth = resolveValue(style.width, availableWidth);
+  } else if (Number.isNaN(availableWidth)) {
+    nodeWidth = NaN;
+  } else {
+    nodeWidth = availableWidth - marginLeft - marginRight;
+  }
+  nodeWidth = applyMinMax(nodeWidth, style.minWidth, style.maxWidth, availableWidth);
+
+  let nodeHeight: number;
+  if (style.height.unit === C.UNIT_POINT) {
+    nodeHeight = style.height.value;
+  } else if (style.height.unit === C.UNIT_PERCENT) {
+    nodeHeight = resolveValue(style.height, availableHeight);
+  } else if (Number.isNaN(availableHeight)) {
+    nodeHeight = NaN;
+  } else {
+    nodeHeight = availableHeight - marginTop - marginBottom;
+  }
+
+  // Apply aspect ratio
+  const aspectRatio = style.aspectRatio;
+  if (!Number.isNaN(aspectRatio) && aspectRatio > 0) {
+    const widthIsAuto = Number.isNaN(nodeWidth) || style.width.unit === C.UNIT_AUTO;
+    const heightIsAuto = Number.isNaN(nodeHeight) || style.height.unit === C.UNIT_AUTO;
+    if (widthIsAuto && !heightIsAuto && !Number.isNaN(nodeHeight)) {
+      nodeWidth = nodeHeight * aspectRatio;
+    } else if (heightIsAuto && !widthIsAuto && !Number.isNaN(nodeWidth)) {
+      nodeHeight = nodeWidth / aspectRatio;
+    }
+  }
+
+  nodeHeight = applyMinMax(nodeHeight, style.minHeight, style.maxHeight, availableHeight);
+
+  // Content area
+  const innerLeft = borderLeft + paddingLeft;
+  const innerTop = borderTop + paddingTop;
+  const innerRight = borderRight + paddingRight;
+  const innerBottom = borderBottom + paddingBottom;
+
+  const minInnerWidth = innerLeft + innerRight;
+  const minInnerHeight = innerTop + innerBottom;
+  if (!Number.isNaN(nodeWidth) && nodeWidth < minInnerWidth) {
+    nodeWidth = minInnerWidth;
+  }
+  if (!Number.isNaN(nodeHeight) && nodeHeight < minInnerHeight) {
+    nodeHeight = minInnerHeight;
+  }
+
+  const contentWidth = Number.isNaN(nodeWidth) ? NaN : Math.max(0, nodeWidth - innerLeft - innerRight);
+  const contentHeight = Number.isNaN(nodeHeight) ? NaN : Math.max(0, nodeHeight - innerTop - innerBottom);
+
+  // Handle measure function (text nodes)
+  if (node.hasMeasureFunc() && node.children.length === 0) {
+    const widthIsAuto = style.width.unit === C.UNIT_AUTO || style.width.unit === C.UNIT_UNDEFINED || Number.isNaN(nodeWidth);
+    const heightIsAuto = style.height.unit === C.UNIT_AUTO || style.height.unit === C.UNIT_UNDEFINED || Number.isNaN(nodeHeight);
+    const widthMode = widthIsAuto ? C.MEASURE_MODE_AT_MOST : C.MEASURE_MODE_EXACTLY;
+    const heightMode = heightIsAuto ? C.MEASURE_MODE_UNDEFINED : C.MEASURE_MODE_EXACTLY;
+    const measureWidth = Number.isNaN(contentWidth) ? Infinity : contentWidth;
+    const measureHeight = Number.isNaN(contentHeight) ? Infinity : contentHeight;
+
+    const measured = node.cachedMeasure(measureWidth, widthMode, measureHeight, heightMode)!;
+
+    if (widthIsAuto) {
+      nodeWidth = measured.width + innerLeft + innerRight;
+    }
+    if (heightIsAuto) {
+      nodeHeight = measured.height + innerTop + innerBottom;
+    }
+
+    layout.width = Math.round(nodeWidth);
+    layout.height = Math.round(nodeHeight);
+    return;
+  }
+
+  // Handle leaf nodes without measureFunc
+  if (node.children.length === 0) {
+    if (Number.isNaN(nodeWidth)) {
+      nodeWidth = innerLeft + innerRight;
+    }
+    if (Number.isNaN(nodeHeight)) {
+      nodeHeight = innerTop + innerBottom;
+    }
+    layout.width = Math.round(nodeWidth);
+    layout.height = Math.round(nodeHeight);
+    return;
+  }
+
+  // For container nodes, we need to measure children to compute intrinsic size
+  // Filter relative children only (absolute children don't affect intrinsic size)
+  const relativeChildren: Node[] = [];
+  for (const c of node.children) {
+    if (c.style.display === C.DISPLAY_NONE) continue;
+    if (c.style.positionType !== C.POSITION_TYPE_ABSOLUTE) {
+      relativeChildren.push(c);
+    }
+  }
+
+  if (relativeChildren.length === 0) {
+    // No relative children - size is just padding+border
+    if (Number.isNaN(nodeWidth)) nodeWidth = minInnerWidth;
+    if (Number.isNaN(nodeHeight)) nodeHeight = minInnerHeight;
+    layout.width = Math.round(nodeWidth);
+    layout.height = Math.round(nodeHeight);
+    return;
+  }
+
+  const isRow = isRowDirection(style.flexDirection);
+  const mainAxisSize = isRow ? contentWidth : contentHeight;
+  const crossAxisSize = isRow ? contentHeight : contentWidth;
+  const mainGap = isRow ? style.gap[0] : style.gap[1];
+  const crossGap = isRow ? style.gap[1] : style.gap[0];
+
+  // Measure each child and sum for intrinsic size
+  let totalMainSize = 0;
+  let maxCrossSize = 0;
+  let itemCount = 0;
+
+  for (const child of relativeChildren) {
+    const childStyle = child.style;
+
+    // Get child margins
+    const childMarginMain = isRow
+      ? resolveEdgeValue(childStyle.margin, 0, style.flexDirection, contentWidth) +
+        resolveEdgeValue(childStyle.margin, 2, style.flexDirection, contentWidth)
+      : resolveEdgeValue(childStyle.margin, 1, style.flexDirection, contentWidth) +
+        resolveEdgeValue(childStyle.margin, 3, style.flexDirection, contentWidth);
+    const childMarginCross = isRow
+      ? resolveEdgeValue(childStyle.margin, 1, style.flexDirection, contentWidth) +
+        resolveEdgeValue(childStyle.margin, 3, style.flexDirection, contentWidth)
+      : resolveEdgeValue(childStyle.margin, 0, style.flexDirection, contentWidth) +
+        resolveEdgeValue(childStyle.margin, 2, style.flexDirection, contentWidth);
+
+    // Measure child with appropriate constraints
+    // For shrink-wrap: pass NaN for main axis, cross axis constraint for cross
+    const childAvailW = isRow ? NaN : crossAxisSize;
+    const childAvailH = isRow ? crossAxisSize : NaN;
+
+    // Check cache first
+    const cached = child.getCachedLayout(childAvailW, childAvailH);
+    if (cached) {
+      layoutCacheHits++;
+    } else {
+      measureNode(child, childAvailW, childAvailH);
+      child.setCachedLayout(childAvailW, childAvailH, child.layout.width, child.layout.height);
+    }
+
+    const childMainSize = cached
+      ? (isRow ? cached.width : cached.height)
+      : (isRow ? child.layout.width : child.layout.height);
+    const childCrossSize = cached
+      ? (isRow ? cached.height : cached.width)
+      : (isRow ? child.layout.height : child.layout.width);
+
+    totalMainSize += childMainSize + childMarginMain;
+    maxCrossSize = Math.max(maxCrossSize, childCrossSize + childMarginCross);
+    itemCount++;
+  }
+
+  // Add gaps
+  if (itemCount > 1) {
+    totalMainSize += mainGap * (itemCount - 1);
+  }
+
+  // Compute final node size
+  if (Number.isNaN(nodeWidth)) {
+    nodeWidth = (isRow ? totalMainSize : maxCrossSize) + innerLeft + innerRight;
+  }
+  if (Number.isNaN(nodeHeight)) {
+    nodeHeight = (isRow ? maxCrossSize : totalMainSize) + innerTop + innerBottom;
+  }
+
+  // Apply min/max again after shrink-wrap
+  nodeWidth = applyMinMax(nodeWidth, style.minWidth, style.maxWidth, availableWidth);
+  nodeHeight = applyMinMax(nodeHeight, style.minHeight, style.maxHeight, availableHeight);
+
+  layout.width = Math.round(nodeWidth);
+  layout.height = Math.round(nodeHeight);
 }
 
 /**
@@ -696,8 +924,8 @@ function layoutNode(
             layoutCacheHits++;
             baseSize = isRow ? cached.width : cached.height;
           } else {
-            // Use 0,0 for absX/absY since this is just measurement, not final positioning
-            layoutNode(child, sizingW, sizingH, 0, 0, 0, 0);
+            // Use measureNode for sizing-only pass (faster than full layoutNode)
+            measureNode(child, sizingW, sizingH);
             baseSize = isRow ? child.layout.width : child.layout.height;
             // Cache the result for potential reuse
             child.setCachedLayout(sizingW, sizingH, child.layout.width, child.layout.height);
@@ -913,8 +1141,8 @@ function layoutNode(
             layoutCacheHits++;
             childHeight = cached.height;
           } else {
-            // For now, do a preliminary layout (measurement, not final positioning)
-            layoutNode(child, childLayout.mainSize, NaN, 0, 0, 0, 0);
+            // Use measureNode for sizing-only pass (faster than full layoutNode)
+            measureNode(child, childLayout.mainSize, NaN);
             childHeight = child.layout.height;
             child.setCachedLayout(childLayout.mainSize, NaN, child.layout.width, child.layout.height);
           }
