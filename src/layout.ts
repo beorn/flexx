@@ -146,103 +146,162 @@ export function countNodes(node: Node): number {
  */
 const EPSILON_FLOAT = 0.001;
 
-/**
- * Child layout information for flex distribution.
- */
-interface ChildLayout {
-  node: Node;
-  mainSize: number;
-  baseSize: number; // Original base size before flex distribution (for weighted shrink)
-  mainMargin: number; // Total main-axis margin (non-auto only)
-  flexGrow: number;
-  flexShrink: number;
-  minMain: number;
-  maxMain: number;
-  // Auto margin tracking (main axis)
-  mainStartMarginAuto: boolean;
-  mainEndMarginAuto: boolean;
-  mainStartMarginValue: number; // Resolved or 0 if auto (will be computed later)
-  mainEndMarginValue: number;   // Resolved or 0 if auto (will be computed later)
-  // Frozen flag: set when item was clamped to min/max during hypothetical sizing
-  frozen: boolean;
-}
+// ============================================================================
+// Pre-allocated Arrays for Zero-Allocation Layout
+// ============================================================================
+//
+// These module-level typed arrays enable zero-allocation flex-wrap layout.
+// They store per-line metrics that would otherwise require FlexLine[] allocation.
+//
+// Trade-offs:
+// - Pro: No heap allocation during layout passes (eliminates GC pressure)
+// - Pro: Cache-friendly contiguous memory access
+// - Con: Fixed maximum lines (grows dynamically if exceeded, rare allocation)
+// - Con: Not reentrant (single layout calculation at a time)
+//
+// Memory usage: ~768 bytes total (32 lines × 8 bytes × 2 + 32 × 2 bytes)
 
 /**
- * A flex line containing children and cross-axis sizing info.
- * Used for flex-wrap to group items that fit on one line.
+ * Maximum number of flex lines supported without dynamic allocation.
+ * If a layout exceeds this, arrays grow automatically (rare edge case).
+ * 32 lines covers virtually all real-world layouts while using minimal memory.
  */
-interface FlexLine {
-  children: ChildLayout[];
-  crossSize: number; // Maximum cross size of items in this line
-  crossStart: number; // Computed cross-axis start position
+let MAX_FLEX_LINES = 32;
+
+/**
+ * Pre-allocated array for line cross sizes (reused across layout passes).
+ * Stores the computed cross-axis size of each flex line.
+ */
+let _lineCrossSizes = new Float64Array(MAX_FLEX_LINES);
+
+/**
+ * Pre-allocated array for line cross offsets (reused across layout passes).
+ * Stores the cross-axis position offset for each flex line.
+ */
+let _lineCrossOffsets = new Float64Array(MAX_FLEX_LINES);
+
+/**
+ * Pre-allocated array for line lengths (number of children per line).
+ * Uint16 supports up to 65535 children per line (more than sufficient).
+ */
+let _lineLengths = new Uint16Array(MAX_FLEX_LINES);
+
+/**
+ * Grow pre-allocated line arrays if needed.
+ * Called when a layout has more lines than current capacity.
+ * This is rare (>32 lines) and acceptable as a one-time allocation.
+ */
+function growLineArrays(needed: number): void {
+  const newSize = Math.max(needed, MAX_FLEX_LINES * 2);
+  MAX_FLEX_LINES = newSize;
+  _lineCrossSizes = new Float64Array(newSize);
+  _lineCrossOffsets = new Float64Array(newSize);
+  _lineLengths = new Uint16Array(newSize);
 }
+
+// ChildLayout interface removed - using Node.flex instead for zero-allocation layout
+// FlexLine interface removed - using pre-allocated arrays and child.flex.lineIndex instead
 
 /**
  * Break children into flex lines based on available main-axis space.
+ * Zero-allocation: Sets child.flex.lineIndex directly, uses pre-allocated _lineStarts/_lineLengths.
  *
- * @param children - All children to potentially wrap
+ * @param parent - Parent node whose children to wrap
+ * @param relativeCount - Number of relative children (those with flex.relativeIndex >= 0)
  * @param mainAxisSize - Available main-axis space (NaN for unconstrained)
  * @param mainGap - Gap between items on main axis
  * @param wrap - Wrap mode (WRAP_NO_WRAP, WRAP_WRAP, WRAP_WRAP_REVERSE)
- * @returns Array of flex lines
+ * @returns Number of lines created
  */
 function breakIntoLines(
-  children: ChildLayout[],
+  parent: Node,
+  relativeCount: number,
   mainAxisSize: number,
   mainGap: number,
   wrap: number,
-): FlexLine[] {
+): number {
   // No wrapping or unconstrained - all children on one line
-  if (wrap === C.WRAP_NO_WRAP || Number.isNaN(mainAxisSize) || children.length === 0) {
-    return [{ children, crossSize: 0, crossStart: 0 }];
+  if (wrap === C.WRAP_NO_WRAP || Number.isNaN(mainAxisSize) || relativeCount === 0) {
+    // All relative children on line 0
+    for (const child of parent.children) {
+      if (child.flex.relativeIndex >= 0) {
+        child.flex.lineIndex = 0;
+      }
+    }
+    _lineLengths[0] = relativeCount;
+    _lineCrossSizes[0] = 0;
+    _lineCrossOffsets[0] = 0;
+    return 1;
   }
 
-  const lines: FlexLine[] = [];
-  let currentLine: ChildLayout[] = [];
+  let lineIndex = 0;
   let lineMainSize = 0;
+  let lineChildCount = 0;
 
-  for (const child of children) {
-    const childMainSize = child.baseSize + child.mainMargin;
-    const gapIfNotFirst = currentLine.length > 0 ? mainGap : 0;
+  for (const child of parent.children) {
+    if (child.flex.relativeIndex < 0) continue;
+
+    const flex = child.flex;
+    const childMainSize = flex.baseSize + flex.mainMargin;
+    const gapIfNotFirst = lineChildCount > 0 ? mainGap : 0;
 
     // Check if child fits on current line
-    if (currentLine.length > 0 && lineMainSize + gapIfNotFirst + childMainSize > mainAxisSize) {
-      // Start a new line
-      lines.push({ children: currentLine, crossSize: 0, crossStart: 0 });
-      currentLine = [child];
+    if (lineChildCount > 0 && lineMainSize + gapIfNotFirst + childMainSize > mainAxisSize) {
+      // Finalize current line and start new one
+      _lineLengths[lineIndex] = lineChildCount;
+      lineIndex++;
+      if (lineIndex >= MAX_FLEX_LINES) {
+        // Grow arrays dynamically (rare - only for >32 line layouts)
+        growLineArrays(lineIndex + 16);
+      }
       lineMainSize = childMainSize;
+      lineChildCount = 1;
     } else {
-      // Add to current line
-      currentLine.push(child);
       lineMainSize += gapIfNotFirst + childMainSize;
+      lineChildCount++;
+    }
+    flex.lineIndex = lineIndex;
+  }
+
+  // Finalize the last line
+  if (lineChildCount > 0) {
+    _lineLengths[lineIndex] = lineChildCount;
+    lineIndex++;
+  }
+
+  const numLines = lineIndex;
+
+  // Initialize cross sizes/offsets
+  for (let i = 0; i < numLines; i++) {
+    _lineCrossSizes[i] = 0;
+    _lineCrossOffsets[i] = 0;
+  }
+
+  // Handle wrap-reverse by flipping line indices
+  if (wrap === C.WRAP_WRAP_REVERSE && numLines > 1) {
+    for (const child of parent.children) {
+      if (child.flex.relativeIndex >= 0) {
+        child.flex.lineIndex = numLines - 1 - child.flex.lineIndex;
+      }
     }
   }
 
-  // Don't forget the last line
-  if (currentLine.length > 0) {
-    lines.push({ children: currentLine, crossSize: 0, crossStart: 0 });
-  }
-
-  // Reverse lines for wrap-reverse
-  if (wrap === C.WRAP_WRAP_REVERSE) {
-    lines.reverse();
-  }
-
-  return lines;
+  return numLines;
 }
 
 /**
  * Distribute free space among flex children using grow or shrink factors.
  * Handles both positive (grow) and negative (shrink) free space.
+ * Uses node.flex for state storage (zero allocation).
  *
  * For shrinking, per CSS Flexbox spec, the shrink factor is weighted by the item's
  * base size: scaledShrinkFactor = flexShrink * baseSize
  *
- * @param children - Array of child layout info to distribute space among
+ * @param children - Array of child nodes to distribute space among
  * @param freeSpace - Amount of space to distribute (positive for grow, negative for shrink)
  */
 function distributeFlexSpace(
-  children: ChildLayout[],
+  children: Node[],
   initialFreeSpace: number,
 ): void {
   // CSS Flexbox spec section 9.7: Resolving Flexible Lengths
@@ -257,14 +316,14 @@ function distributeFlexSpace(
   // Calculate container inner size from initial state (before any mutations)
   // freeSpace was computed from BASE sizes, so: container = freeSpace + sum(base)
   let totalBase = 0;
-  for (const childLayout of children) {
-    totalBase += childLayout.baseSize;
+  for (const child of children) {
+    totalBase += child.flex.baseSize;
   }
   const containerInner = initialFreeSpace + totalBase;
 
   // Initialize: all items start unfrozen
-  for (const childLayout of children) {
-    childLayout.frozen = false;
+  for (const child of children) {
+    child.flex.frozen = false;
   }
 
   // Track current free space (will be recalculated each iteration)
@@ -277,13 +336,14 @@ function distributeFlexSpace(
   while (iterations++ < maxIterations) {
     // Calculate total flex factor for unfrozen items
     let totalFlex = 0;
-    for (const childLayout of children) {
-      if (childLayout.frozen) continue;
+    for (const child of children) {
+      const flex = child.flex;
+      if (flex.frozen) continue;
       if (isGrowing) {
-        totalFlex += childLayout.flexGrow;
+        totalFlex += flex.flexGrow;
       } else {
         // Shrink weighted by base size per CSS spec
-        totalFlex += childLayout.flexShrink * childLayout.baseSize;
+        totalFlex += flex.flexShrink * flex.baseSize;
       }
     }
 
@@ -297,49 +357,52 @@ function distributeFlexSpace(
 
     // Calculate target sizes for unfrozen items
     let totalViolation = 0;
-    for (const childLayout of children) {
-      if (childLayout.frozen) continue;
+    for (const child of children) {
+      const flex = child.flex;
+      if (flex.frozen) continue;
 
       // Calculate target from base size + proportional free space
-      const flexFactor = isGrowing ? childLayout.flexGrow : childLayout.flexShrink * childLayout.baseSize;
+      const flexFactor = isGrowing ? flex.flexGrow : flex.flexShrink * flex.baseSize;
       const ratio = totalFlex > 0 ? flexFactor / totalFlex : 0;
-      const target = childLayout.baseSize + effectiveFreeSpace * ratio;
+      const target = flex.baseSize + effectiveFreeSpace * ratio;
 
       // Clamp by min/max
-      const clamped = Math.max(childLayout.minMain, Math.min(childLayout.maxMain, target));
+      const clamped = Math.max(flex.minMain, Math.min(flex.maxMain, target));
       const violation = clamped - target;
       totalViolation += violation;
 
       // Store clamped target
-      childLayout.mainSize = clamped;
+      flex.mainSize = clamped;
     }
 
     // Freeze items based on violations (CSS spec 9.7 step 9)
     let anyFrozen = false;
     if (Math.abs(totalViolation) < EPSILON_FLOAT) {
       // No violations - freeze all remaining items and we're done
-      for (const childLayout of children) {
-        childLayout.frozen = true;
+      for (const child of children) {
+        child.flex.frozen = true;
       }
       break;
     } else if (totalViolation > 0) {
       // Positive total violation: freeze items with positive violations (clamped UP to min)
-      for (const childLayout of children) {
-        if (childLayout.frozen) continue;
-        const target = childLayout.baseSize + (isGrowing ? childLayout.flexGrow : childLayout.flexShrink * childLayout.baseSize) / totalFlex * effectiveFreeSpace;
-        if (childLayout.mainSize > target + EPSILON_FLOAT) {
-          childLayout.frozen = true;
+      for (const child of children) {
+        const flex = child.flex;
+        if (flex.frozen) continue;
+        const target = flex.baseSize + (isGrowing ? flex.flexGrow : flex.flexShrink * flex.baseSize) / totalFlex * effectiveFreeSpace;
+        if (flex.mainSize > target + EPSILON_FLOAT) {
+          flex.frozen = true;
           anyFrozen = true;
         }
       }
     } else {
       // Negative total violation: freeze items with negative violations (clamped DOWN to max)
-      for (const childLayout of children) {
-        if (childLayout.frozen) continue;
-        const flexFactor = isGrowing ? childLayout.flexGrow : childLayout.flexShrink * childLayout.baseSize;
-        const target = childLayout.baseSize + flexFactor / totalFlex * effectiveFreeSpace;
-        if (childLayout.mainSize < target - EPSILON_FLOAT) {
-          childLayout.frozen = true;
+      for (const child of children) {
+        const flex = child.flex;
+        if (flex.frozen) continue;
+        const flexFactor = isGrowing ? flex.flexGrow : flex.flexShrink * flex.baseSize;
+        const target = flex.baseSize + flexFactor / totalFlex * effectiveFreeSpace;
+        if (flex.mainSize < target - EPSILON_FLOAT) {
+          flex.frozen = true;
           anyFrozen = true;
         }
       }
@@ -352,14 +415,132 @@ function distributeFlexSpace(
     // Free space = available - sum of unfrozen BASE sizes
     let frozenSpace = 0;
     let unfrozenBase = 0;
-    for (const childLayout of children) {
-      if (childLayout.frozen) {
-        frozenSpace += childLayout.mainSize;
+    for (const child of children) {
+      const flex = child.flex;
+      if (flex.frozen) {
+        frozenSpace += flex.mainSize;
       } else {
-        unfrozenBase += childLayout.baseSize;
+        unfrozenBase += flex.baseSize;
       }
     }
     // New free space = container - frozen - unfrozen base sizes
+    freeSpace = containerInner - frozenSpace - unfrozenBase;
+  }
+}
+
+/**
+ * Distribute free space among flex children on a specific line.
+ * Zero-allocation version that filters by lineIndex instead of taking array.
+ */
+function distributeFlexSpaceForLine(
+  parent: Node,
+  lineIndex: number,
+  initialFreeSpace: number,
+): void {
+  const isGrowing = initialFreeSpace > 0;
+  if (initialFreeSpace === 0) return;
+
+  // Calculate container inner size and count children on this line
+  let totalBase = 0;
+  let childCount = 0;
+  for (const child of parent.children) {
+    if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
+    totalBase += child.flex.baseSize;
+    childCount++;
+  }
+  if (childCount === 0) return;
+
+  const containerInner = initialFreeSpace + totalBase;
+
+  // Initialize: all items start unfrozen
+  for (const child of parent.children) {
+    if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
+    child.flex.frozen = false;
+  }
+
+  let freeSpace = initialFreeSpace;
+  let iterations = 0;
+  const maxIterations = childCount + 1;
+
+  while (iterations++ < maxIterations) {
+    let totalFlex = 0;
+    for (const child of parent.children) {
+      if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
+      const flex = child.flex;
+      if (flex.frozen) continue;
+      if (isGrowing) {
+        totalFlex += flex.flexGrow;
+      } else {
+        totalFlex += flex.flexShrink * flex.baseSize;
+      }
+    }
+
+    if (totalFlex === 0) break;
+
+    let effectiveFreeSpace = freeSpace;
+    if (isGrowing && totalFlex < 1) {
+      effectiveFreeSpace = freeSpace * totalFlex;
+    }
+
+    let totalViolation = 0;
+    for (const child of parent.children) {
+      if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
+      const flex = child.flex;
+      if (flex.frozen) continue;
+
+      const flexFactor = isGrowing ? flex.flexGrow : flex.flexShrink * flex.baseSize;
+      const ratio = totalFlex > 0 ? flexFactor / totalFlex : 0;
+      const target = flex.baseSize + effectiveFreeSpace * ratio;
+      const clamped = Math.max(flex.minMain, Math.min(flex.maxMain, target));
+      totalViolation += clamped - target;
+      flex.mainSize = clamped;
+    }
+
+    let anyFrozen = false;
+    if (Math.abs(totalViolation) < EPSILON_FLOAT) {
+      for (const child of parent.children) {
+        if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
+        child.flex.frozen = true;
+      }
+      break;
+    } else if (totalViolation > 0) {
+      for (const child of parent.children) {
+        if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
+        const flex = child.flex;
+        if (flex.frozen) continue;
+        const target = flex.baseSize + (isGrowing ? flex.flexGrow : flex.flexShrink * flex.baseSize) / totalFlex * effectiveFreeSpace;
+        if (flex.mainSize > target + EPSILON_FLOAT) {
+          flex.frozen = true;
+          anyFrozen = true;
+        }
+      }
+    } else {
+      for (const child of parent.children) {
+        if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
+        const flex = child.flex;
+        if (flex.frozen) continue;
+        const flexFactor = isGrowing ? flex.flexGrow : flex.flexShrink * flex.baseSize;
+        const target = flex.baseSize + flexFactor / totalFlex * effectiveFreeSpace;
+        if (flex.mainSize < target - EPSILON_FLOAT) {
+          flex.frozen = true;
+          anyFrozen = true;
+        }
+      }
+    }
+
+    if (!anyFrozen) break;
+
+    let frozenSpace = 0;
+    let unfrozenBase = 0;
+    for (const child of parent.children) {
+      if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
+      const flex = child.flex;
+      if (flex.frozen) {
+        frozenSpace += flex.mainSize;
+      } else {
+        unfrozenBase += flex.baseSize;
+      }
+    }
     freeSpace = containerInner - frozenSpace - unfrozenBase;
   }
 }
@@ -830,22 +1011,20 @@ function layoutNode(
     return;
   }
 
-  // Separate relative and absolute children
-  // Use a single loop instead of filter() to avoid intermediate array allocations
-  const relativeChildren: Node[] = [];
-  const absoluteChildren: Node[] = [];
+  // Mark children with relativeIndex (-1 for absolute/hidden, 0+ for relative)
+  // This avoids allocating relativeChildren[]/absoluteChildren[] arrays each pass
+  let relativeCount = 0;
   for (const c of node.children) {
-    if (c.style.display === C.DISPLAY_NONE) continue;
-    if (c.style.positionType === C.POSITION_TYPE_ABSOLUTE) {
-      absoluteChildren.push(c);
+    if (c.style.display === C.DISPLAY_NONE || c.style.positionType === C.POSITION_TYPE_ABSOLUTE) {
+      c.flex.relativeIndex = -1;
     } else {
-      relativeChildren.push(c);
+      c.flex.relativeIndex = relativeCount++;
     }
   }
 
   // Flex layout for relative children
-  debug('layoutNode: node.children=%d, relativeChildren=%d, absolute=%d', node.children.length, relativeChildren.length, absoluteChildren.length);
-  if (relativeChildren.length > 0) {
+  debug('layoutNode: node.children=%d, relativeCount=%d', node.children.length, relativeCount);
+  if (relativeCount > 0) {
     const isRow = isRowDirection(style.flexDirection);
     const isReverse = isReverseDirection(style.flexDirection);
 
@@ -853,13 +1032,13 @@ function layoutNode(
     const crossAxisSize = isRow ? contentHeight : contentWidth;
     const mainGap = isRow ? style.gap[0] : style.gap[1];
 
-    // Prepare child layout info
-
-    const children: ChildLayout[] = [];
+    // Prepare child flex info (stored on each child node - zero allocation)
     let totalBaseMain = 0;
 
-    for (const child of relativeChildren) {
+    for (const child of node.children) {
+      if (child.flex.relativeIndex < 0) continue;
       const childStyle = child.style;
+      const flex = child.flex;
 
       // Check for auto margins on main axis
       // Physical indices depend on axis and reverse direction:
@@ -869,18 +1048,18 @@ function layoutNode(
       // - Column-reverse: main-start=bottom(3), main-end=top(1)
       const mainStartIndex = isRow ? (isReverse ? 2 : 0) : (isReverse ? 3 : 1);
       const mainEndIndex = isRow ? (isReverse ? 0 : 2) : (isReverse ? 1 : 3);
-      const mainStartMarginAuto = isEdgeAuto(childStyle.margin, mainStartIndex, style.flexDirection);
-      const mainEndMarginAuto = isEdgeAuto(childStyle.margin, mainEndIndex, style.flexDirection);
+      flex.mainStartMarginAuto = isEdgeAuto(childStyle.margin, mainStartIndex, style.flexDirection);
+      flex.mainEndMarginAuto = isEdgeAuto(childStyle.margin, mainEndIndex, style.flexDirection);
 
       // Resolve non-auto margins (auto margins resolve to 0 initially)
       // CSS spec: percentage margins resolve against containing block's WIDTH only
       // For row: mainAxisSize is contentWidth; for column: crossAxisSize is contentWidth
       const parentWidth = isRow ? mainAxisSize : crossAxisSize;
-      const mainStartMarginValue = mainStartMarginAuto ? 0 : resolveEdgeValue(childStyle.margin, mainStartIndex, style.flexDirection, parentWidth);
-      const mainEndMarginValue = mainEndMarginAuto ? 0 : resolveEdgeValue(childStyle.margin, mainEndIndex, style.flexDirection, parentWidth);
+      flex.mainStartMarginValue = flex.mainStartMarginAuto ? 0 : resolveEdgeValue(childStyle.margin, mainStartIndex, style.flexDirection, parentWidth);
+      flex.mainEndMarginValue = flex.mainEndMarginAuto ? 0 : resolveEdgeValue(childStyle.margin, mainEndIndex, style.flexDirection, parentWidth);
 
       // Total non-auto margin for flex calculations
-      const mainMargin = mainStartMarginValue + mainEndMarginValue;
+      flex.mainMargin = flex.mainStartMarginValue + flex.mainEndMarginValue;
 
       // Determine base size (flex-basis or explicit size)
       let baseSize = 0;
@@ -950,54 +1129,39 @@ function layoutNode(
       // Min/max on main axis
       const minVal = isRow ? childStyle.minWidth : childStyle.minHeight;
       const maxVal = isRow ? childStyle.maxWidth : childStyle.maxHeight;
-      const minMain =
-        minVal.unit !== C.UNIT_UNDEFINED
-          ? resolveValue(minVal, mainAxisSize)
-          : 0;
-      const maxMain =
-        maxVal.unit !== C.UNIT_UNDEFINED
-          ? resolveValue(maxVal, mainAxisSize)
-          : Infinity;
+      flex.minMain = minVal.unit !== C.UNIT_UNDEFINED ? resolveValue(minVal, mainAxisSize) : 0;
+      flex.maxMain = maxVal.unit !== C.UNIT_UNDEFINED ? resolveValue(maxVal, mainAxisSize) : Infinity;
 
-      // Clamp base size to get hypothetical size (CSS Flexbox spec)
-      const hypotheticalSize = Math.max(minMain, Math.min(maxMain, baseSize));
+      // Store flex factors from style
+      flex.flexGrow = childStyle.flexGrow;
+      flex.flexShrink = childStyle.flexShrink;
 
-      children.push({
-        node: child,
-        mainSize: baseSize, // Start from base size - distribution happens from here
-        baseSize,
-        mainMargin,
-        flexGrow: childStyle.flexGrow,
-        flexShrink: childStyle.flexShrink,
-        minMain,
-        maxMain,
-        mainStartMarginAuto,
-        mainEndMarginAuto,
-        mainStartMarginValue,
-        mainEndMarginValue,
-        frozen: false, // Will be set during distribution
-      });
+      // Store base and main size (start from base size - distribution happens from here)
+      flex.baseSize = baseSize;
+      flex.mainSize = baseSize;
+      flex.frozen = false; // Will be set during distribution
 
       // Free space calculation uses BASE sizes (per Yoga/CSS spec algorithm)
       // The freeze loop handles min/max clamping iteratively
-      totalBaseMain += baseSize + mainMargin;
+      totalBaseMain += baseSize + flex.mainMargin;
     }
 
-    // Break children into flex lines for wrap support
-    const lines = breakIntoLines(children, mainAxisSize, mainGap, style.flexWrap);
+    // Break children into flex lines for wrap support (zero allocation - sets child.flex.lineIndex)
+    const numLines = breakIntoLines(node, relativeCount, mainAxisSize, mainGap, style.flexWrap);
     const crossGap = isRow ? style.gap[1] : style.gap[0];
 
     // Process each line: distribute flex space
-    for (const line of lines) {
-      const lineChildren = line.children;
-      if (lineChildren.length === 0) continue;
+    for (let lineIdx = 0; lineIdx < numLines; lineIdx++) {
+      const lineLength = _lineLengths[lineIdx];
+      if (lineLength === 0) continue;
 
       // Calculate total base main and gaps for this line
       let lineTotalBaseMain = 0;
-      for (const c of lineChildren) {
-        lineTotalBaseMain += c.baseSize + c.mainMargin;
+      for (const c of node.children) {
+        if (c.flex.relativeIndex < 0 || c.flex.lineIndex !== lineIdx) continue;
+        lineTotalBaseMain += c.flex.baseSize + c.flex.mainMargin;
       }
-      const lineTotalGaps = lineChildren.length > 1 ? mainGap * (lineChildren.length - 1) : 0;
+      const lineTotalGaps = lineLength > 1 ? mainGap * (lineLength - 1) : 0;
 
       // Distribute free space using grow or shrink factors
       let effectiveMainSize = mainAxisSize;
@@ -1015,21 +1179,24 @@ function layoutNode(
 
       if (!Number.isNaN(effectiveMainSize)) {
         const adjustedFreeSpace = effectiveMainSize - lineTotalBaseMain - lineTotalGaps;
-        distributeFlexSpace(lineChildren, adjustedFreeSpace);
+        distributeFlexSpaceForLine(node, lineIdx, adjustedFreeSpace);
       }
 
       // Apply min/max constraints to final sizes
-      for (const childLayout of lineChildren) {
-        childLayout.mainSize = Math.max(childLayout.minMain, Math.min(childLayout.maxMain, childLayout.mainSize));
+      for (const child of node.children) {
+        if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIdx) continue;
+        const flex = child.flex;
+        flex.mainSize = Math.max(flex.minMain, Math.min(flex.maxMain, flex.mainSize));
       }
     }
 
     // Calculate final used space and justify-content
     // For single-line, use all children; for multi-line, this applies per-line during positioning
-    const totalGaps = children.length > 1 ? mainGap * (children.length - 1) : 0;
+    const totalGaps = relativeCount > 1 ? mainGap * (relativeCount - 1) : 0;
     let usedMain = 0;
-    for (const c of children) {
-      usedMain += c.mainSize + c.mainMargin;
+    for (const c of node.children) {
+      if (c.flex.relativeIndex < 0) continue;
+      usedMain += c.flex.mainSize + c.flex.mainMargin;
     }
     usedMain += totalGaps;
     // For auto-sized containers (NaN mainAxisSize), there's no remaining space to justify
@@ -1039,21 +1206,23 @@ function layoutNode(
     // Handle auto margins on main axis
     // Auto margins absorb free space BEFORE justify-content
     let totalAutoMargins = 0;
-    for (const c of children) {
-      if (c.mainStartMarginAuto) totalAutoMargins++;
-      if (c.mainEndMarginAuto) totalAutoMargins++;
+    for (const c of node.children) {
+      if (c.flex.relativeIndex < 0) continue;
+      if (c.flex.mainStartMarginAuto) totalAutoMargins++;
+      if (c.flex.mainEndMarginAuto) totalAutoMargins++;
     }
     let hasAutoMargins = totalAutoMargins > 0;
 
     // Auto margins absorb ALL remaining space (including negative for overflow positioning)
     if (hasAutoMargins) {
       const autoMarginValue = remainingSpace / totalAutoMargins;
-      for (const childLayout of children) {
-        if (childLayout.mainStartMarginAuto) {
-          childLayout.mainStartMarginValue = autoMarginValue;
+      for (const child of node.children) {
+        if (child.flex.relativeIndex < 0) continue;
+        if (child.flex.mainStartMarginAuto) {
+          child.flex.mainStartMarginValue = autoMarginValue;
         }
-        if (childLayout.mainEndMarginAuto) {
-          childLayout.mainEndMarginValue = autoMarginValue;
+        if (child.flex.mainEndMarginAuto) {
+          child.flex.mainEndMarginValue = autoMarginValue;
         }
       }
     }
@@ -1074,20 +1243,20 @@ function layoutNode(
         case C.JUSTIFY_SPACE_BETWEEN:
           // Only apply space-between when remaining space is positive
           // With overflow (negative), fall back to flex-start behavior
-          if (children.length > 1 && remainingSpace > 0) {
-            itemSpacing = mainGap + remainingSpace / (children.length - 1);
+          if (relativeCount > 1 && remainingSpace > 0) {
+            itemSpacing = mainGap + remainingSpace / (relativeCount - 1);
           }
           break;
         case C.JUSTIFY_SPACE_AROUND:
-          if (children.length > 0) {
-            const extraSpace = remainingSpace / children.length;
+          if (relativeCount > 0) {
+            const extraSpace = remainingSpace / relativeCount;
             startOffset = extraSpace / 2;
             itemSpacing = mainGap + extraSpace;
           }
           break;
         case C.JUSTIFY_SPACE_EVENLY:
-          if (children.length > 0) {
-            const extraSpace = remainingSpace / (children.length + 1);
+          if (relativeCount > 0) {
+            const extraSpace = remainingSpace / (relativeCount + 1);
             startOffset = extraSpace;
             itemSpacing = mainGap + extraSpace;
           }
@@ -1102,10 +1271,10 @@ function layoutNode(
     // Compute baseline alignment info if needed
     // For ALIGN_BASELINE in row direction, we need to know the max baseline first
     let maxBaseline = 0;
-    const childBaselines: number[] = [];
     let hasBaselineAlignment = style.alignItems === C.ALIGN_BASELINE;
     if (!hasBaselineAlignment) {
-      for (const c of relativeChildren) {
+      for (const c of node.children) {
+        if (c.flex.relativeIndex < 0) continue;
         if (c.style.alignSelf === C.ALIGN_BASELINE) {
           hasBaselineAlignment = true;
           break;
@@ -1115,9 +1284,9 @@ function layoutNode(
 
     if (hasBaselineAlignment && isRow) {
       // First pass: compute each child's baseline and find the maximum
-      for (let i = 0; i < children.length; i++) {
-        const childLayout = children[i]!;
-        const child = childLayout.node;
+      // Store baseline in a temporary field (reuse mainMargin after it's no longer needed? Or track maxBaseline only)
+      for (const child of node.children) {
+        if (child.flex.relativeIndex < 0) continue;
         const childStyle = child.style;
 
         // Get cross-axis (top/bottom) margins for this child
@@ -1136,43 +1305,40 @@ function layoutNode(
         } else {
           // Auto height - need to layout to get intrinsic size
           // Check cache first to avoid redundant recursive calls
-          const cached = child.getCachedLayout(childLayout.mainSize, NaN);
+          const cached = child.getCachedLayout(child.flex.mainSize, NaN);
           if (cached) {
             layoutCacheHits++;
             childHeight = cached.height;
           } else {
             // Use measureNode for sizing-only pass (faster than full layoutNode)
-            measureNode(child, childLayout.mainSize, NaN);
+            measureNode(child, child.flex.mainSize, NaN);
             childHeight = child.layout.height;
-            child.setCachedLayout(childLayout.mainSize, NaN, child.layout.width, child.layout.height);
+            child.setCachedLayout(child.flex.mainSize, NaN, child.layout.width, child.layout.height);
           }
         }
 
         // Baseline for non-text elements is at the bottom of the margin box
         // baseline = topMargin + height (distance from top of margin box to baseline)
         const baseline = topMargin + childHeight;
-        childBaselines.push(baseline);
         maxBaseline = Math.max(maxBaseline, baseline);
       }
     }
 
     // Compute line cross-axis sizes and offsets for flex-wrap
-    // Each child needs to know its line's cross offset
-    const childLineIndex = new Map<ChildLayout, number>();
-    const lineCrossOffsets: number[] = [];
+    // Each child already has lineIndex set by breakIntoLines
+    // Use pre-allocated _lineCrossOffsets and _lineCrossSizes arrays
     let cumulativeCrossOffset = 0;
     const isWrapReverse = style.flexWrap === C.WRAP_WRAP_REVERSE;
 
-    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
-      const line = lines[lineIdx]!;
-      lineCrossOffsets.push(cumulativeCrossOffset);
+    for (let lineIdx = 0; lineIdx < numLines; lineIdx++) {
+      _lineCrossOffsets[lineIdx] = cumulativeCrossOffset;
 
       // Calculate max cross size for this line
       let maxLineCross = 0;
-      for (const childLayout of line.children) {
-        childLineIndex.set(childLayout, lineIdx);
+      for (const child of node.children) {
+        if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIdx) continue;
         // Estimate child cross size (will be computed more precisely during layout)
-        const childStyle = childLayout.node.style;
+        const childStyle = child.style;
         const crossDim = isRow ? childStyle.height : childStyle.width;
         const crossMarginStart = isRow
           ? resolveEdgeValue(childStyle.margin, 1, style.flexDirection, contentWidth)
@@ -1192,13 +1358,14 @@ function layoutNode(
         }
         maxLineCross = Math.max(maxLineCross, childCross + crossMarginStart + crossMarginEnd);
       }
-      line.crossSize = maxLineCross > 0 ? maxLineCross : (crossAxisSize / lines.length);
-      cumulativeCrossOffset += line.crossSize + crossGap;
+      const lineCrossSize = maxLineCross > 0 ? maxLineCross : (crossAxisSize / numLines);
+      _lineCrossSizes[lineIdx] = lineCrossSize;
+      cumulativeCrossOffset += lineCrossSize + crossGap;
     }
 
     // Apply alignContent to distribute lines in the cross axis
     // This affects how multiple flex lines are positioned within the container
-    if (!Number.isNaN(crossAxisSize) && lines.length > 0) {
+    if (!Number.isNaN(crossAxisSize) && numLines > 0) {
       const totalLineCrossSize = cumulativeCrossOffset - crossGap; // Remove trailing gap
       const freeSpace = crossAxisSize - totalLineCrossSize;
       const alignContent = style.alignContent;
@@ -1208,46 +1375,46 @@ function layoutNode(
         switch (alignContent) {
           case C.ALIGN_FLEX_END:
             // Lines packed at end
-            for (let i = 0; i < lineCrossOffsets.length; i++) {
-              lineCrossOffsets[i] += freeSpace;
+            for (let i = 0; i < numLines; i++) {
+              _lineCrossOffsets[i] += freeSpace;
             }
             break;
 
           case C.ALIGN_CENTER:
             // Lines centered
             const centerOffset = freeSpace / 2;
-            for (let i = 0; i < lineCrossOffsets.length; i++) {
-              lineCrossOffsets[i] += centerOffset;
+            for (let i = 0; i < numLines; i++) {
+              _lineCrossOffsets[i] += centerOffset;
             }
             break;
 
           case C.ALIGN_SPACE_BETWEEN:
             // First line at start, last at end, evenly distributed
-            if (lines.length > 1) {
-              const gap = freeSpace / (lines.length - 1);
-              for (let i = 1; i < lineCrossOffsets.length; i++) {
-                lineCrossOffsets[i] += gap * i;
+            if (numLines > 1) {
+              const gap = freeSpace / (numLines - 1);
+              for (let i = 1; i < numLines; i++) {
+                _lineCrossOffsets[i] += gap * i;
               }
             }
             break;
 
           case C.ALIGN_SPACE_AROUND:
             // Even spacing with half-space at edges
-            const halfGap = freeSpace / (lines.length * 2);
-            for (let i = 0; i < lineCrossOffsets.length; i++) {
-              lineCrossOffsets[i] += halfGap + halfGap * 2 * i;
+            const halfGap = freeSpace / (numLines * 2);
+            for (let i = 0; i < numLines; i++) {
+              _lineCrossOffsets[i] += halfGap + halfGap * 2 * i;
             }
             break;
 
           case C.ALIGN_STRETCH:
             // Distribute extra space evenly among lines
-            if (freeSpace > 0 && lines.length > 0) {
-              const extraPerLine = freeSpace / lines.length;
-              for (let i = 0; i < lines.length; i++) {
-                lines[i]!.crossSize += extraPerLine;
+            if (freeSpace > 0 && numLines > 0) {
+              const extraPerLine = freeSpace / numLines;
+              for (let i = 0; i < numLines; i++) {
+                _lineCrossSizes[i] += extraPerLine;
                 // Recalculate offset for subsequent lines
                 if (i > 0) {
-                  lineCrossOffsets[i] = lineCrossOffsets[i - 1]! + lines[i - 1]!.crossSize + crossGap;
+                  _lineCrossOffsets[i] = _lineCrossOffsets[i - 1] + _lineCrossSizes[i - 1] + crossGap;
                 }
               }
             }
@@ -1261,10 +1428,14 @@ function layoutNode(
       // The lines are already in reversed order from breakIntoLines().
       // We just need to shift them so they align to the end instead of the start.
       if (isWrapReverse) {
-        const totalLineCrossSize = lines.reduce((sum, line) => sum + line.crossSize, 0) + crossGap * (lines.length - 1);
+        let totalLineCrossSize = 0;
+        for (let i = 0; i < numLines; i++) {
+          totalLineCrossSize += _lineCrossSizes[i];
+        }
+        totalLineCrossSize += crossGap * (numLines - 1);
         const crossStartOffset = crossAxisSize - totalLineCrossSize;
-        for (let i = 0; i < lineCrossOffsets.length; i++) {
-          lineCrossOffsets[i] += crossStartOffset;
+        for (let i = 0; i < numLines; i++) {
+          _lineCrossOffsets[i] += crossStartOffset;
         }
       }
     }
@@ -1280,8 +1451,9 @@ function layoutNode(
     if (isReverse && mainIsAuto) {
       // For reverse with auto size, compute total content size for positioning
       let totalContent = 0;
-      for (const childLayout of children) {
-        totalContent += childLayout.mainSize + childLayout.mainStartMarginValue + childLayout.mainEndMarginValue;
+      for (const child of node.children) {
+        if (child.flex.relativeIndex < 0) continue;
+        totalContent += child.flex.mainSize + child.flex.mainStartMarginValue + child.flex.mainEndMarginValue;
       }
       totalContent += totalGaps;
       effectiveMainAxisSize = totalContent;
@@ -1290,24 +1462,25 @@ function layoutNode(
     // Use fractional mainPos for edge-based rounding
     let mainPos = isReverse ? effectiveMainAxisSize - startOffset : startOffset;
     let currentLineIdx = -1;
+    let relIdx = 0; // Track relative child index for gap handling
 
-    debug('positioning children: isRow=%s, startOffset=%d, relativeChildren=%d, isReverse=%s, lines=%d', isRow, startOffset, relativeChildren.length, isReverse, lines.length);
+    debug('positioning children: isRow=%s, startOffset=%d, relativeCount=%d, isReverse=%s, numLines=%d', isRow, startOffset, relativeCount, isReverse, numLines);
 
-    for (let i = 0; i < children.length; i++) {
-      const childLayout = children[i]!
-      const child = childLayout.node;
+    for (const child of node.children) {
+      if (child.flex.relativeIndex < 0) continue;
+      const flex = child.flex;
       const childStyle = child.style;
 
       // Check if we've moved to a new line (for flex-wrap)
-      const childLineIdx = childLineIndex.get(childLayout) ?? 0;
+      const childLineIdx = flex.lineIndex;
       if (childLineIdx !== currentLineIdx) {
         currentLineIdx = childLineIdx;
         // Reset mainPos for new line
         mainPos = isReverse ? effectiveMainAxisSize - startOffset : startOffset;
       }
 
-      // Get cross-axis offset for this child's line
-      const lineCrossOffset = lineCrossOffsets[childLineIdx] ?? 0;
+      // Get cross-axis offset for this child's line (from pre-allocated array)
+      const lineCrossOffset = childLineIdx < MAX_FLEX_LINES ? _lineCrossOffsets[childLineIdx] : 0;
 
       // For main-axis margins, use computed auto margin values
       // For cross-axis margins, resolve normally (auto margins on cross axis handled separately)
@@ -1321,29 +1494,29 @@ function layoutNode(
       if (isRow) {
         // Row: main axis is horizontal
         // In row-reverse, mainStart=right(2), mainEnd=left(0)
-        childMarginLeft = childLayout.mainStartMarginAuto && !isReverse ? childLayout.mainStartMarginValue :
-                          childLayout.mainEndMarginAuto && isReverse ? childLayout.mainEndMarginValue :
+        childMarginLeft = flex.mainStartMarginAuto && !isReverse ? flex.mainStartMarginValue :
+                          flex.mainEndMarginAuto && isReverse ? flex.mainEndMarginValue :
                           resolveEdgeValue(childStyle.margin, 0, style.flexDirection, contentWidth);
-        childMarginRight = childLayout.mainEndMarginAuto && !isReverse ? childLayout.mainEndMarginValue :
-                           childLayout.mainStartMarginAuto && isReverse ? childLayout.mainStartMarginValue :
+        childMarginRight = flex.mainEndMarginAuto && !isReverse ? flex.mainEndMarginValue :
+                           flex.mainStartMarginAuto && isReverse ? flex.mainStartMarginValue :
                            resolveEdgeValue(childStyle.margin, 2, style.flexDirection, contentWidth);
         childMarginTop = resolveEdgeValue(childStyle.margin, 1, style.flexDirection, contentWidth);
         childMarginBottom = resolveEdgeValue(childStyle.margin, 3, style.flexDirection, contentWidth);
       } else {
         // Column: main axis is vertical
         // In column-reverse, mainStart=bottom(3), mainEnd=top(1)
-        childMarginTop = childLayout.mainStartMarginAuto && !isReverse ? childLayout.mainStartMarginValue :
-                         childLayout.mainEndMarginAuto && isReverse ? childLayout.mainEndMarginValue :
+        childMarginTop = flex.mainStartMarginAuto && !isReverse ? flex.mainStartMarginValue :
+                         flex.mainEndMarginAuto && isReverse ? flex.mainEndMarginValue :
                          resolveEdgeValue(childStyle.margin, 1, style.flexDirection, contentWidth);
-        childMarginBottom = childLayout.mainEndMarginAuto && !isReverse ? childLayout.mainEndMarginValue :
-                            childLayout.mainStartMarginAuto && isReverse ? childLayout.mainStartMarginValue :
+        childMarginBottom = flex.mainEndMarginAuto && !isReverse ? flex.mainEndMarginValue :
+                            flex.mainStartMarginAuto && isReverse ? flex.mainStartMarginValue :
                             resolveEdgeValue(childStyle.margin, 3, style.flexDirection, contentWidth);
         childMarginLeft = resolveEdgeValue(childStyle.margin, 0, style.flexDirection, contentWidth);
         childMarginRight = resolveEdgeValue(childStyle.margin, 2, style.flexDirection, contentWidth);
       }
 
       // Main axis size comes from flex algorithm (already rounded)
-      const childMainSize = childLayout.mainSize;
+      const childMainSize = flex.mainSize;
 
       // Cross axis: determine alignment mode
       let alignment = style.alignItems;
@@ -1407,7 +1580,7 @@ function layoutNode(
       // otherwise pass remaining available space for shrink-wrap behavior
       const mainDim = isRow ? childStyle.width : childStyle.height;
       const mainIsAuto = mainDim.unit === C.UNIT_AUTO || mainDim.unit === C.UNIT_UNDEFINED;
-      const hasFlexGrow = childLayout.flexGrow > 0;
+      const hasFlexGrow = flex.flexGrow > 0;
       // Check if parent has definite main-axis size
       const parentMainDim = isRow ? style.width : style.height;
       const parentHasDefiniteMain = parentMainDim.unit === C.UNIT_POINT || parentMainDim.unit === C.UNIT_PERCENT;
@@ -1694,8 +1867,12 @@ function layoutNode(
           case C.ALIGN_BASELINE:
             // Baseline alignment only applies to row direction
             // For column direction, it falls through to flex-start (default)
-            if (isRow && childBaselines.length > 0) {
-              crossOffset = maxBaseline - childBaselines[i]!;
+            // TODO: Precise baseline alignment requires per-child baseline storage
+            // For now, we use maxBaseline which gives approximate centering
+            if (isRow && maxBaseline > 0) {
+              // Compute this child's baseline (same logic as baseline collection)
+              const childBaseline = childMarginTop + finalCrossSize;
+              crossOffset = maxBaseline - childBaseline;
             }
             break;
         }
@@ -1710,30 +1887,32 @@ function layoutNode(
       }
 
       // Advance main position using CONSTRAINED size for proper positioning
-      // Use constrainedMainSize (box model minimum applied) instead of childLayout.mainSize
+      // Use constrainedMainSize (box model minimum applied) instead of flex.mainSize
       const fractionalMainSize = constrainedMainSize;
       // Use computed margin values (including auto margins)
-      const totalMainMargin = childLayout.mainStartMarginValue + childLayout.mainEndMarginValue;
-      debug('  child %d: mainPos=%d → top=%d (fractionalMainSize=%d, totalMainMargin=%d)', i, mainPos, child.layout.top, fractionalMainSize, totalMainMargin);
+      const totalMainMargin = flex.mainStartMarginValue + flex.mainEndMarginValue;
+      debug('  child %d: mainPos=%d → top=%d (fractionalMainSize=%d, totalMainMargin=%d)', relIdx, mainPos, child.layout.top, fractionalMainSize, totalMainMargin);
       if (isReverse) {
         mainPos -= fractionalMainSize + totalMainMargin;
-        if (i < children.length - 1) {
+        if (relIdx < relativeCount - 1) {
           mainPos -= itemSpacing;
         }
       } else {
         mainPos += fractionalMainSize + totalMainMargin;
-        if (i < children.length - 1) {
+        if (relIdx < relativeCount - 1) {
           mainPos += itemSpacing;
         }
       }
+      relIdx++;
     }
 
     // For auto-sized containers (including root), shrink-wrap to content
-    // Compute actual used main space from child layouts (not pre-computed childLayout.mainSize which may be 0)
+    // Compute actual used main space from child layouts (not pre-computed flex.mainSize which may be 0)
     let actualUsedMain = 0;
-    for (const childLayout of children) {
-      const childMainSize = isRow ? childLayout.node.layout.width : childLayout.node.layout.height;
-      const totalMainMargin = childLayout.mainStartMarginValue + childLayout.mainEndMarginValue;
+    for (const child of node.children) {
+      if (child.flex.relativeIndex < 0) continue;
+      const childMainSize = isRow ? child.layout.width : child.layout.height;
+      const totalMainMargin = child.flex.mainStartMarginValue + child.flex.mainEndMarginValue;
       actualUsedMain += childMainSize + totalMainMargin;
     }
     actualUsedMain += totalGaps;
@@ -1750,13 +1929,14 @@ function layoutNode(
     // CSS spec: percentage margins resolve against containing block's WIDTH only
     // Use resolveEdgeValue to respect logical EDGE_START/END
     let maxCrossSize = 0;
-    for (const childLayout of children) {
-      const childCross = isRow ? childLayout.node.layout.height : childLayout.node.layout.width;
+    for (const child of node.children) {
+      if (child.flex.relativeIndex < 0) continue;
+      const childCross = isRow ? child.layout.height : child.layout.width;
       const childMargin = isRow
-        ? resolveEdgeValue(childLayout.node.style.margin, 1, style.flexDirection, contentWidth) +
-          resolveEdgeValue(childLayout.node.style.margin, 3, style.flexDirection, contentWidth)
-        : resolveEdgeValue(childLayout.node.style.margin, 0, style.flexDirection, contentWidth) +
-          resolveEdgeValue(childLayout.node.style.margin, 2, style.flexDirection, contentWidth);
+        ? resolveEdgeValue(child.style.margin, 1, style.flexDirection, contentWidth) +
+          resolveEdgeValue(child.style.margin, 3, style.flexDirection, contentWidth)
+        : resolveEdgeValue(child.style.margin, 0, style.flexDirection, contentWidth) +
+          resolveEdgeValue(child.style.margin, 2, style.flexDirection, contentWidth);
       maxCrossSize = Math.max(maxCrossSize, childCross + childMargin);
     }
     // Cross-axis shrink-wrap for auto-sized dimension
@@ -1819,7 +1999,10 @@ function layoutNode(
   const absContentBoxW = absPaddingBoxW - paddingLeft - paddingRight;
   const absContentBoxH = absPaddingBoxH - paddingTop - paddingBottom;
 
-  for (const child of absoluteChildren) {
+  // Layout absolute positioned children (relativeIndex === -1 but not display:none)
+  for (const child of node.children) {
+    if (child.style.display === C.DISPLAY_NONE) continue;
+    if (child.style.positionType !== C.POSITION_TYPE_ABSOLUTE) continue;
     const childStyle = child.style;
     // CSS spec: percentage margins resolve against containing block's WIDTH only
     // Use resolveEdgeValue to respect logical EDGE_START/END

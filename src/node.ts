@@ -12,6 +12,7 @@ import {
   markSubtreeLayoutSeen,
 } from "./layout.js";
 import {
+  type FlexInfo,
   type Layout,
   type LayoutCacheEntry,
   type MeasureEntry,
@@ -71,6 +72,24 @@ export class Node {
 
   // Computed layout
   private _layout: Layout = { left: 0, top: 0, width: 0, height: 0 };
+
+  // Per-node flex calculation state (reused across layout passes to avoid allocation)
+  private _flex: FlexInfo = {
+    mainSize: 0,
+    baseSize: 0,
+    mainMargin: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    minMain: 0,
+    maxMain: Infinity,
+    mainStartMarginAuto: false,
+    mainEndMarginAuto: false,
+    mainStartMarginValue: 0,
+    mainEndMarginValue: 0,
+    frozen: false,
+    lineIndex: 0,
+    relativeIndex: -1,
+  };
 
   // Dirty flags
   private _isDirty = true;
@@ -498,6 +517,10 @@ export class Node {
 
   get measureFunc(): MeasureFunc | null {
     return this._measureFunc;
+  }
+
+  get flex(): FlexInfo {
+    return this._flex;
   }
 
   // ============================================================================
