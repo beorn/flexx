@@ -882,19 +882,10 @@ function layoutNode(
         if (child.baselineFunc !== null) {
           // Custom baseline function provided (e.g., for text nodes)
           baseline = topMargin + child.baselineFunc(childWidth, childHeight);
-        } else if (child.children.length > 0 && !child.hasMeasureFunc()) {
-          // For container nodes, propagate first child's baseline
-          // This follows CSS spec: baseline of a flex container is the baseline of its first flex item
-          const firstChild = child.children[0]!;
-          layoutNode(firstChild, NaN, NaN, 0, 0, 0, 0, direction);
-          if (firstChild.baselineFunc !== null) {
-            baseline = topMargin + firstChild.layout.top + firstChild.baselineFunc(firstChild.layout.width, firstChild.layout.height);
-          } else {
-            // Fallback: bottom of first child
-            baseline = topMargin + firstChild.layout.top + firstChild.layout.height;
-          }
         } else {
           // Fallback: bottom of content box (default for non-text elements)
+          // Note: We don't recursively propagate first-child baselines to avoid O(n^depth) cost
+          // This is a simplification from CSS spec but acceptable for TUI use cases
           baseline = topMargin + childHeight;
         }
         childBaselines.push(baseline);
