@@ -87,7 +87,7 @@ The ItemPositioner handles:
 ## Key Differences from CSS Spec
 
 1. **Shrink calculation**: Uses simple proportional shrink, not scaled by flex-basis
-2. **No baseline alignment**: Not implemented
+2. **Baseline alignment**: Implemented via `baselineFunc` callback (classic algorithm only)
 3. **No wrap-reverse**: Not implemented
 4. **No order property**: Items laid out in DOM order
 

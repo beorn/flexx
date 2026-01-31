@@ -168,6 +168,19 @@ import { Node } from '@beorn/flexx/zero';
 
 Both exports have identical APIs - only the internal algorithm differs.
 
+## Feature Gap
+
+The zero-allocation algorithm is missing some features from the classic algorithm:
+
+| Feature | Classic | Zero-alloc |
+|---------|---------|------------|
+| RTL (direction: rtl) | ✅ | ❌ (69 direction refs to port) |
+| Baseline alignment | ✅ (baselineFunc) | ❌ |
+| All Yoga tests | 33/41 | 33/41 |
+
+These gaps should be addressed before deprecating the classic algorithm.
+See `km-flexx-parity` bead for tracking.
+
 ## Files
 
 | File | Description |
