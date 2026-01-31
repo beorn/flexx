@@ -155,17 +155,17 @@ Different flexbox features have different performance characteristics:
 
 | Feature                | Winner    | Speed Difference |
 | ---------------------- | --------- | ---------------- |
-| **AbsolutePositioning** | **Flexx** | 3.38x faster     |
-| **FlexShrink**          | **Flexx** | 2.20x faster     |
-| **Gap**                 | **Flexx** | 2.02x faster     |
-| **FlexGrow**            | **Flexx** | 1.85x faster     |
-| **FlexWrap**            | **Flexx** | 1.78x faster     |
-| **AlignContent**        | **Flexx** | 1.38x faster     |
-| **MeasureFunc**         | **Flexx** | 1.14x faster     |
-| **NestedLayouts**       | Yoga      | 1.32x faster     |
-| **PercentValues**       | Yoga      | 1.14x faster     |
+| **AbsolutePositioning** | **Flexx** | 3.24x faster     |
+| **Gap**                 | **Flexx** | 2.34x faster     |
+| **AlignContent**        | **Flexx** | 2.17x faster     |
+| **FlexShrink**          | **Flexx** | 1.99x faster     |
+| **FlexGrow**            | **Flexx** | 1.84x faster     |
+| **FlexWrap**            | **Flexx** | 1.23x faster     |
+| **MeasureFunc**         | **Flexx** | 1.23x faster     |
+| **NestedLayouts**       | Yoga      | 1.08x faster     |
+| **PercentValues**       | Yoga      | 1.10x faster     |
 
-**Flexx wins 7 of 9 features.** Yoga has an edge in deeply nested layouts and percent calculations.
+**Flexx wins 7 of 9 features.** Yoga has a slight edge in deeply nested layouts and percent calculations.
 
 ### Tree Shape Performance
 

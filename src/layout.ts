@@ -187,6 +187,13 @@ let _lineCrossOffsets = new Float64Array(MAX_FLEX_LINES);
 let _lineLengths = new Uint16Array(MAX_FLEX_LINES);
 
 /**
+ * Pre-allocated 2D array for children per line.
+ * Avoids O(n*m) iteration when processing multi-line flex layouts.
+ * Each slot holds array of Node references for that line.
+ */
+let _lineChildren: Node[][] = Array.from({ length: MAX_FLEX_LINES }, () => []);
+
+/**
  * Grow pre-allocated line arrays if needed.
  * Called when a layout has more lines than current capacity.
  * This is rare (>32 lines) and acceptable as a one-time allocation.
@@ -197,6 +204,10 @@ function growLineArrays(needed: number): void {
   _lineCrossSizes = new Float64Array(newSize);
   _lineCrossOffsets = new Float64Array(newSize);
   _lineLengths = new Uint16Array(newSize);
+  // Grow _lineChildren array
+  while (_lineChildren.length < newSize) {
+    _lineChildren.push([]);
+  }
 }
 
 // ChildLayout interface removed - using Node.flex instead for zero-allocation layout
@@ -222,10 +233,12 @@ function breakIntoLines(
 ): number {
   // No wrapping or unconstrained - all children on one line
   if (wrap === C.WRAP_NO_WRAP || Number.isNaN(mainAxisSize) || relativeCount === 0) {
-    // All relative children on line 0
+    // All relative children on line 0, populate _lineChildren for O(n) access
+    _lineChildren[0].length = 0;
     for (const child of parent.children) {
       if (child.flex.relativeIndex >= 0) {
         child.flex.lineIndex = 0;
+        _lineChildren[0].push(child);
       }
     }
     _lineLengths[0] = relativeCount;
@@ -237,6 +250,7 @@ function breakIntoLines(
   let lineIndex = 0;
   let lineMainSize = 0;
   let lineChildCount = 0;
+  _lineChildren[0].length = 0; // Clear first line
 
   for (const child of parent.children) {
     if (child.flex.relativeIndex < 0) continue;
@@ -254,6 +268,7 @@ function breakIntoLines(
         // Grow arrays dynamically (rare - only for >32 line layouts)
         growLineArrays(lineIndex + 16);
       }
+      _lineChildren[lineIndex].length = 0; // Clear new line
       lineMainSize = childMainSize;
       lineChildCount = 1;
     } else {
@@ -261,6 +276,7 @@ function breakIntoLines(
       lineChildCount++;
     }
     flex.lineIndex = lineIndex;
+    _lineChildren[lineIndex].push(child);
   }
 
   // Finalize the last line
@@ -277,11 +293,20 @@ function breakIntoLines(
     _lineCrossOffsets[i] = 0;
   }
 
-  // Handle wrap-reverse by flipping line indices
+  // Handle wrap-reverse by flipping line indices and swapping _lineChildren
   if (wrap === C.WRAP_WRAP_REVERSE && numLines > 1) {
-    for (const child of parent.children) {
-      if (child.flex.relativeIndex >= 0) {
-        child.flex.lineIndex = numLines - 1 - child.flex.lineIndex;
+    // Swap _lineChildren arrays in place
+    for (let i = 0; i < numLines / 2; i++) {
+      const j = numLines - 1 - i;
+      const tmp = _lineChildren[i];
+      _lineChildren[i] = _lineChildren[j];
+      _lineChildren[j] = tmp;
+    }
+    // Update lineIndex on each child
+    for (let i = 0; i < numLines; i++) {
+      const lc = _lineChildren[i];
+      for (let c = 0; c < lc.length; c++) {
+        lc[c].flex.lineIndex = i;
       }
     }
   }
@@ -429,33 +454,36 @@ function distributeFlexSpace(
 }
 
 /**
- * Distribute free space among flex children on a specific line.
- * Zero-allocation version that filters by lineIndex instead of taking array.
+ * Distribute flex space for a single line of children.
+ * Implements CSS Flexbox §9.7: Resolving Flexible Lengths.
+ *
+ * Takes pre-collected children array to avoid O(n*m) iteration pattern.
+ * Previously iterated through ALL parent.children 8 times per line.
+ *
+ * @param lineChildren - Pre-collected children for this line (from _lineChildren)
+ * @param initialFreeSpace - Free space to distribute (positive=grow, negative=shrink)
  */
 function distributeFlexSpaceForLine(
-  parent: Node,
-  lineIndex: number,
+  lineChildren: Node[],
   initialFreeSpace: number,
 ): void {
   const isGrowing = initialFreeSpace > 0;
   if (initialFreeSpace === 0) return;
 
-  // Calculate container inner size and count children on this line
-  let totalBase = 0;
-  let childCount = 0;
-  for (const child of parent.children) {
-    if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
-    totalBase += child.flex.baseSize;
-    childCount++;
-  }
+  const childCount = lineChildren.length;
   if (childCount === 0) return;
+
+  // Calculate container inner size
+  let totalBase = 0;
+  for (let i = 0; i < childCount; i++) {
+    totalBase += lineChildren[i].flex.baseSize;
+  }
 
   const containerInner = initialFreeSpace + totalBase;
 
   // Initialize: all items start unfrozen
-  for (const child of parent.children) {
-    if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
-    child.flex.frozen = false;
+  for (let i = 0; i < childCount; i++) {
+    lineChildren[i].flex.frozen = false;
   }
 
   let freeSpace = initialFreeSpace;
@@ -464,9 +492,8 @@ function distributeFlexSpaceForLine(
 
   while (iterations++ < maxIterations) {
     let totalFlex = 0;
-    for (const child of parent.children) {
-      if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
-      const flex = child.flex;
+    for (let i = 0; i < childCount; i++) {
+      const flex = lineChildren[i].flex;
       if (flex.frozen) continue;
       if (isGrowing) {
         totalFlex += flex.flexGrow;
@@ -483,9 +510,8 @@ function distributeFlexSpaceForLine(
     }
 
     let totalViolation = 0;
-    for (const child of parent.children) {
-      if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
-      const flex = child.flex;
+    for (let i = 0; i < childCount; i++) {
+      const flex = lineChildren[i].flex;
       if (flex.frozen) continue;
 
       const flexFactor = isGrowing ? flex.flexGrow : flex.flexShrink * flex.baseSize;
@@ -498,15 +524,13 @@ function distributeFlexSpaceForLine(
 
     let anyFrozen = false;
     if (Math.abs(totalViolation) < EPSILON_FLOAT) {
-      for (const child of parent.children) {
-        if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
-        child.flex.frozen = true;
+      for (let i = 0; i < childCount; i++) {
+        lineChildren[i].flex.frozen = true;
       }
       break;
     } else if (totalViolation > 0) {
-      for (const child of parent.children) {
-        if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
-        const flex = child.flex;
+      for (let i = 0; i < childCount; i++) {
+        const flex = lineChildren[i].flex;
         if (flex.frozen) continue;
         const target = flex.baseSize + (isGrowing ? flex.flexGrow : flex.flexShrink * flex.baseSize) / totalFlex * effectiveFreeSpace;
         if (flex.mainSize > target + EPSILON_FLOAT) {
@@ -515,9 +539,8 @@ function distributeFlexSpaceForLine(
         }
       }
     } else {
-      for (const child of parent.children) {
-        if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
-        const flex = child.flex;
+      for (let i = 0; i < childCount; i++) {
+        const flex = lineChildren[i].flex;
         if (flex.frozen) continue;
         const flexFactor = isGrowing ? flex.flexGrow : flex.flexShrink * flex.baseSize;
         const target = flex.baseSize + flexFactor / totalFlex * effectiveFreeSpace;
@@ -532,9 +555,8 @@ function distributeFlexSpaceForLine(
 
     let frozenSpace = 0;
     let unfrozenBase = 0;
-    for (const child of parent.children) {
-      if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIndex) continue;
-      const flex = child.flex;
+    for (let i = 0; i < childCount; i++) {
+      const flex = lineChildren[i].flex;
       if (flex.frozen) {
         frozenSpace += flex.mainSize;
       } else {
@@ -1151,14 +1173,16 @@ function layoutNode(
     const crossGap = isRow ? style.gap[1] : style.gap[0];
 
     // Process each line: distribute flex space
+    // Uses pre-collected _lineChildren to avoid O(n*m) iteration
     for (let lineIdx = 0; lineIdx < numLines; lineIdx++) {
-      const lineLength = _lineLengths[lineIdx];
+      const lineChildren = _lineChildren[lineIdx];
+      const lineLength = lineChildren.length;
       if (lineLength === 0) continue;
 
       // Calculate total base main and gaps for this line
       let lineTotalBaseMain = 0;
-      for (const c of node.children) {
-        if (c.flex.relativeIndex < 0 || c.flex.lineIndex !== lineIdx) continue;
+      for (let i = 0; i < lineLength; i++) {
+        const c = lineChildren[i];
         lineTotalBaseMain += c.flex.baseSize + c.flex.mainMargin;
       }
       const lineTotalGaps = lineLength > 1 ? mainGap * (lineLength - 1) : 0;
@@ -1179,13 +1203,12 @@ function layoutNode(
 
       if (!Number.isNaN(effectiveMainSize)) {
         const adjustedFreeSpace = effectiveMainSize - lineTotalBaseMain - lineTotalGaps;
-        distributeFlexSpaceForLine(node, lineIdx, adjustedFreeSpace);
+        distributeFlexSpaceForLine(lineChildren, adjustedFreeSpace);
       }
 
       // Apply min/max constraints to final sizes
-      for (const child of node.children) {
-        if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIdx) continue;
-        const flex = child.flex;
+      for (let i = 0; i < lineLength; i++) {
+        const flex = lineChildren[i].flex;
         flex.mainSize = Math.max(flex.minMain, Math.min(flex.maxMain, flex.mainSize));
       }
     }
@@ -1333,10 +1356,12 @@ function layoutNode(
     for (let lineIdx = 0; lineIdx < numLines; lineIdx++) {
       _lineCrossOffsets[lineIdx] = cumulativeCrossOffset;
 
-      // Calculate max cross size for this line
+      // Calculate max cross size for this line using pre-collected _lineChildren
+      const lineChildren = _lineChildren[lineIdx];
+      const lineLength = lineChildren.length;
       let maxLineCross = 0;
-      for (const child of node.children) {
-        if (child.flex.relativeIndex < 0 || child.flex.lineIndex !== lineIdx) continue;
+      for (let i = 0; i < lineLength; i++) {
+        const child = lineChildren[i];
         // Estimate child cross size (will be computed more precisely during layout)
         const childStyle = child.style;
         const crossDim = isRow ? childStyle.height : childStyle.width;
