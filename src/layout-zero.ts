@@ -2313,7 +2313,8 @@ function layoutNode(
         child.layout.width = Math.round(childAvailWidth);
       } else if (hasAutoMarginLeft || hasAutoMarginRight) {
         // Auto margins absorb remaining space for centering
-        const freeSpace = contentW - leftOffset - rightOffset - childWidth;
+        // CSS spec: auto margins don't absorb negative free space (clamp to 0)
+        const freeSpace = Math.max(0, contentW - leftOffset - rightOffset - childWidth);
         if (hasAutoMarginLeft && hasAutoMarginRight) {
           // Both auto: center
           childX = leftOffset + freeSpace / 2;
@@ -2350,7 +2351,8 @@ function layoutNode(
         child.layout.height = Math.round(childAvailHeight);
       } else if (hasAutoMarginTop || hasAutoMarginBottom) {
         // Auto margins absorb remaining space for centering
-        const freeSpace = contentH - topOffset - bottomOffset - childHeight;
+        // CSS spec: auto margins don't absorb negative free space (clamp to 0)
+        const freeSpace = Math.max(0, contentH - topOffset - bottomOffset - childHeight);
         if (hasAutoMarginTop && hasAutoMarginBottom) {
           // Both auto: center
           childY = topOffset + freeSpace / 2;

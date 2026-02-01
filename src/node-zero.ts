@@ -193,7 +193,9 @@ export class Node {
       child._parent.removeChild(child);
     }
     child._parent = this;
-    this._children.splice(index, 0, child);
+    // Clamp index to valid range to ensure deterministic behavior
+    const clampedIndex = Math.max(0, Math.min(index, this._children.length));
+    this._children.splice(clampedIndex, 0, child);
     this.markDirty();
   }
 
