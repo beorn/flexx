@@ -480,6 +480,19 @@ function distributeFlexSpaceForLine(
   const childCount = lineChildren.length;
   if (childCount === 0) return;
 
+  // Single-child fast path: skip iteration, direct assignment
+  if (childCount === 1) {
+    const flex = lineChildren[0].flex;
+    const canFlex = isGrowing ? flex.flexGrow > 0 : flex.flexShrink > 0;
+    if (canFlex) {
+      // Target = base + all free space, clamped by min/max
+      const target = flex.baseSize + initialFreeSpace;
+      flex.mainSize = Math.max(flex.minMain, Math.min(flex.maxMain, target));
+    }
+    // If can't flex, mainSize stays at baseSize (already set)
+    return;
+  }
+
   // Calculate container inner size
   let totalBase = 0;
   for (let i = 0; i < childCount; i++) {

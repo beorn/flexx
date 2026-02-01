@@ -256,6 +256,17 @@ function distributeFlexSpace(
   const isGrowing = initialFreeSpace > 0;
   if (initialFreeSpace === 0) return;
 
+  // Single-child fast path: skip iteration, direct assignment
+  if (children.length === 1) {
+    const child = children[0];
+    const canFlex = isGrowing ? child.flexGrow > 0 : child.flexShrink > 0;
+    if (canFlex) {
+      const target = child.baseSize + initialFreeSpace;
+      child.mainSize = Math.max(child.minMain, Math.min(child.maxMain, target));
+    }
+    return;
+  }
+
   // Calculate container inner size from initial state (before any mutations)
   // freeSpace was computed from BASE sizes, so: container = freeSpace + sum(base)
   let totalBase = 0;

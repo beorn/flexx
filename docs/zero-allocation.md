@@ -125,34 +125,46 @@ Both exports have identical APIs - only the internal algorithm differs.
 | `src/index.ts` | Default export (zero-alloc) |
 | `src/index-classic.ts` | Classic export |
 
-## Future Improvements
+## Implemented Optimizations
 
-### P1: Dirty-flag Incremental Layout
+### Dirty-flag Incremental Layout ✅
 
-Mark nodes dirty on style/content change, propagate up tree, skip clean subtrees:
+Nodes track dirty state and propagate up to root. `calculateLayout()` returns early if clean:
 
 ```typescript
-class Node {
-  private _isDirty = true;
+// Already implemented in node-zero.ts
+markDirty() {
+  this._isDirty = true;
+  this._flex.layoutValid = false;
+  // Clear measure cache
+  this._m0 = this._m1 = this._m2 = this._m3 = undefined;
+  this._parent?.markDirty();
+}
 
-  markDirty() {
-    if (this._isDirty) return;
-    this._isDirty = true;
-    this._parent?.markDirty();
-  }
-
-  calculateLayout() {
-    if (!this._isDirty) return; // Skip clean subtrees
-    // ... layout logic
-    this._isDirty = false;
-  }
+calculateLayout() {
+  if (!this._isDirty) return; // Skip if clean
+  // ... layout
+  this._isDirty = false;
 }
 ```
 
-### P2: Measure Result Caching
+### Measure Result Caching ✅
 
-Cache `(availW, availH) → (computedW, computedH)` per node to avoid redundant measure calls.
+4-entry LRU cache per node stores `(w, wm, h, hm) → (width, height)`. Cache cleared on `markDirty()`.
 
-### P3: Special-case Single-child Containers
+### Single-child Fast Path ✅
 
-Skip flex distribution logic for containers with only one child - direct assignment instead.
+Skip flex distribution iteration for single-child containers - direct size assignment:
+
+```typescript
+// In distributeFlexSpaceForLine()
+if (childCount === 1) {
+  const flex = lineChildren[0].flex;
+  const canFlex = isGrowing ? flex.flexGrow > 0 : flex.flexShrink > 0;
+  if (canFlex) {
+    const target = flex.baseSize + initialFreeSpace;
+    flex.mainSize = Math.max(flex.minMain, Math.min(flex.maxMain, target));
+  }
+  return;
+}
+```
