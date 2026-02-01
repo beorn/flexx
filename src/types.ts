@@ -114,6 +114,8 @@ export interface FlexInfo {
    * 0+ = index among relative children (participates in flex layout)
    */
   relativeIndex: number;
+  /** Computed baseline offset for ALIGN_BASELINE (zero-alloc: avoids per-pass array) */
+  baseline: number;
 
   // Constraint fingerprinting for layout caching
   /** Last availableWidth passed to layoutNode */

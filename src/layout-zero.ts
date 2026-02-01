@@ -201,6 +201,18 @@ let _lineLengths = new Uint16Array(MAX_FLEX_LINES);
 let _lineChildren: Node[][] = Array.from({ length: MAX_FLEX_LINES }, () => []);
 
 /**
+ * Pre-allocated array for per-line justify-content start offsets.
+ * Stores the main-axis starting position for each flex line.
+ */
+let _lineJustifyStarts = new Float64Array(MAX_FLEX_LINES);
+
+/**
+ * Pre-allocated array for per-line item spacing (justify-content gaps).
+ * Stores the spacing between items for each flex line.
+ */
+let _lineItemSpacings = new Float64Array(MAX_FLEX_LINES);
+
+/**
  * Grow pre-allocated line arrays if needed.
  * Called when a layout has more lines than current capacity.
  * This is rare (>32 lines) and acceptable as a one-time allocation.
@@ -211,6 +223,8 @@ function growLineArrays(needed: number): void {
   _lineCrossSizes = new Float64Array(newSize);
   _lineCrossOffsets = new Float64Array(newSize);
   _lineLengths = new Uint16Array(newSize);
+  _lineJustifyStarts = new Float64Array(newSize);
+  _lineItemSpacings = new Float64Array(newSize);
   // Grow _lineChildren array
   while (_lineChildren.length < newSize) {
     _lineChildren.push([]);
@@ -757,16 +771,18 @@ export function measureNode(
   }
 
   // For container nodes, we need to measure children to compute intrinsic size
-  // Filter relative children only (absolute children don't affect intrinsic size)
-  const relativeChildren: Node[] = [];
+  // Zero-alloc: iterate children directly without collecting into temporary array
+
+  // First pass: count relative children (skip absolute/hidden)
+  let relativeChildCount = 0;
   for (const c of node.children) {
     if (c.style.display === C.DISPLAY_NONE) continue;
     if (c.style.positionType !== C.POSITION_TYPE_ABSOLUTE) {
-      relativeChildren.push(c);
+      relativeChildCount++;
     }
   }
 
-  if (relativeChildren.length === 0) {
+  if (relativeChildCount === 0) {
     // No relative children - size is just padding+border
     if (Number.isNaN(nodeWidth)) nodeWidth = minInnerWidth;
     if (Number.isNaN(nodeHeight)) nodeHeight = minInnerHeight;
@@ -779,14 +795,17 @@ export function measureNode(
   const mainAxisSize = isRow ? contentWidth : contentHeight;
   const crossAxisSize = isRow ? contentHeight : contentWidth;
   const mainGap = isRow ? style.gap[0] : style.gap[1];
-  const crossGap = isRow ? style.gap[1] : style.gap[0];
 
-  // Measure each child and sum for intrinsic size
+  // Second pass: measure each child and sum for intrinsic size
   let totalMainSize = 0;
   let maxCrossSize = 0;
   let itemCount = 0;
 
-  for (const child of relativeChildren) {
+  for (const child of node.children) {
+    // Skip absolute/hidden children (same filter as count pass)
+    if (child.style.display === C.DISPLAY_NONE) continue;
+    if (child.style.positionType === C.POSITION_TYPE_ABSOLUTE) continue;
+
     const childStyle = child.style;
 
     // Get child margins
@@ -1405,9 +1424,8 @@ function layoutNode(
 
     // Compute baseline alignment info if needed (hasBaselineAlignment computed in flex info pass)
     // For ALIGN_BASELINE in row direction, we need to know the max baseline first
+    // Zero-alloc: store baseline in child.flex.baseline, not a temporary array
     let maxBaseline = 0;
-    // Per-child baselines for O(1) lookup during alignment phase
-    const childBaselines: number[] = [];
 
     if (hasBaselineAlignment && isRow) {
       // First pass: compute each child's baseline and find the maximum
@@ -1458,26 +1476,26 @@ function layoutNode(
         }
 
         // Compute baseline: use baselineFunc if available, otherwise use bottom of content box
-        let baseline: number;
+        // Store directly in child.flex.baseline (zero-alloc)
         if (child.baselineFunc !== null) {
           // Custom baseline function provided (e.g., for text nodes)
-          baseline = topMargin + child.baselineFunc(childWidth, childHeight);
+          child.flex.baseline = topMargin + child.baselineFunc(childWidth, childHeight);
         } else {
           // Fallback: bottom of content box (default for non-text elements)
           // Note: We don't recursively propagate first-child baselines to avoid O(n^depth) cost
           // This is a simplification from CSS spec but acceptable for TUI use cases
-          baseline = topMargin + childHeight;
+          child.flex.baseline = topMargin + childHeight;
         }
-        childBaselines.push(baseline);
-        maxBaseline = Math.max(maxBaseline, baseline);
+        maxBaseline = Math.max(maxBaseline, child.flex.baseline);
       }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // PHASE 7a: Compute Flex Line Cross-Axis Sizes
+    // PHASE 7a: Estimate Flex Line Cross-Axis Sizes (Tentative)
     // ─────────────────────────────────────────────────────────────────────────
-    // Calculate the cross-axis size of each flex line (max child height in row).
-    // Track cumulative offsets for positioning children by line.
+    // Estimate cross-axis size of each flex line from definite child dimensions.
+    // Auto-sized children use 0 here; actual sizes computed during Phase 8.
+    // These are tentative values used for alignContent distribution.
 
     // Compute line cross-axis sizes and offsets for flex-wrap
     // Each child already has lineIndex set by breakIntoLines
@@ -2034,9 +2052,9 @@ function layoutNode(
           case C.ALIGN_BASELINE:
             // Baseline alignment only applies to row direction
             // For column direction, it falls through to flex-start (default)
-            if (isRow && childBaselines.length > 0) {
-              // Use pre-computed baseline from first pass (includes baselineFunc support)
-              crossOffset = maxBaseline - childBaselines[relIdx]!;
+            if (isRow && hasBaselineAlignment) {
+              // Use pre-computed baseline from Phase 6c (stored in child.flex.baseline)
+              crossOffset = maxBaseline - child.flex.baseline;
             }
             break;
         }

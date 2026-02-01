@@ -97,6 +97,7 @@ export class Node {
     frozen: false,
     lineIndex: 0,
     relativeIndex: -1,
+    baseline: 0,
     // Constraint fingerprinting
     lastAvailW: NaN,
     lastAvailH: NaN,
