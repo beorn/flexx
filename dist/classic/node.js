@@ -4,10 +4,10 @@
  * Yoga-compatible Node class for flexbox layout.
  */
 import createDebug from "debug";
-import * as C from "./constants.js";
-import { computeLayout, countNodes, markSubtreeLayoutSeen, } from "./layout-zero.js";
-import { createDefaultStyle, } from "./types.js";
-import { setEdgeValue, setEdgeBorder, getEdgeValue, getEdgeBorderValue, traversalStack, } from "./utils.js";
+import * as C from "../constants.js";
+import { computeLayout, countNodes, markSubtreeLayoutSeen, } from "./layout.js";
+import { createDefaultStyle, } from "../types.js";
+import { setEdgeValue, setEdgeBorder, getEdgeValue, getEdgeBorderValue, } from "../utils.js";
 const debug = createDebug("flexx:layout");
 /**
  * A layout node in the flexbox tree.
@@ -22,70 +22,11 @@ export class Node {
     _measureFunc = null;
     // Baseline function for baseline alignment
     _baselineFunc = null;
-    // Measure cache - 4-entry numeric cache (faster than Map<string,...>)
-    // Each entry stores: w, wm, h, hm, rw, rh
-    // Cleared when markDirty() is called since content may have changed
-    _m0;
-    _m1;
-    _m2;
-    _m3;
-    // Layout cache - 2-entry cache for sizing pass (availW, availH -> computedW, computedH)
-    // Cleared at start of each calculateLayout pass via resetLayoutCache()
-    // This avoids redundant recursive layout calls during intrinsic sizing
-    _lc0;
-    _lc1;
-    // Stable result objects for zero-allocation cache returns
-    // These are mutated in place instead of creating new objects on each cache hit
-    _measureResult = { width: 0, height: 0 };
-    _layoutResult = { width: 0, height: 0 };
-    // Static counters for cache statistics (reset per layout pass)
-    static measureCalls = 0;
-    static measureCacheHits = 0;
-    /**
-     * Reset measure statistics (call before calculateLayout).
-     */
-    static resetMeasureStats() {
-        Node.measureCalls = 0;
-        Node.measureCacheHits = 0;
-    }
     // Computed layout
     _layout = { left: 0, top: 0, width: 0, height: 0 };
-    // Per-node flex calculation state (reused across layout passes to avoid allocation)
-    _flex = {
-        mainSize: 0,
-        baseSize: 0,
-        mainMargin: 0,
-        flexGrow: 0,
-        flexShrink: 0,
-        minMain: 0,
-        maxMain: Infinity,
-        mainStartMarginAuto: false,
-        mainEndMarginAuto: false,
-        mainStartMarginValue: 0,
-        mainEndMarginValue: 0,
-        marginL: 0,
-        marginT: 0,
-        marginR: 0,
-        marginB: 0,
-        frozen: false,
-        lineIndex: 0,
-        relativeIndex: -1,
-        baseline: 0,
-        // Constraint fingerprinting
-        lastAvailW: NaN,
-        lastAvailH: NaN,
-        lastOffsetX: NaN,
-        lastOffsetY: NaN,
-        layoutValid: false,
-        lastDir: 0,
-    };
     // Dirty flags
     _isDirty = true;
     _hasNewLayout = false;
-    // Last calculateLayout() inputs (for constraint-aware skip)
-    _lastCalcW = NaN;
-    _lastCalcH = NaN;
-    _lastCalcDir = 0;
     // ============================================================================
     // Static Factory
     // ============================================================================
@@ -152,9 +93,7 @@ export class Node {
             child._parent.removeChild(child);
         }
         child._parent = this;
-        // Clamp index to valid range to ensure deterministic behavior
-        const clampedIndex = Math.max(0, Math.min(index, this._children.length));
-        this._children.splice(clampedIndex, 0, child);
+        this._children.splice(index, 0, child);
         this.markDirty();
     }
     /**
@@ -271,165 +210,6 @@ export class Node {
     hasBaselineFunc() {
         return this._baselineFunc !== null;
     }
-    /**
-     * Call the measure function with caching.
-     * Uses a 4-entry numeric cache for fast lookup without allocations.
-     * Cache is cleared when markDirty() is called.
-     *
-     * @returns Measured dimensions or null if no measure function
-     */
-    cachedMeasure(w, wm, h, hm) {
-        if (!this._measureFunc)
-            return null;
-        Node.measureCalls++;
-        // Check 4-entry cache (most recent first)
-        // Returns stable _measureResult object to avoid allocation on cache hit
-        const m0 = this._m0;
-        if (m0 && m0.w === w && m0.wm === wm && m0.h === h && m0.hm === hm) {
-            Node.measureCacheHits++;
-            this._measureResult.width = m0.rw;
-            this._measureResult.height = m0.rh;
-            return this._measureResult;
-        }
-        const m1 = this._m1;
-        if (m1 && m1.w === w && m1.wm === wm && m1.h === h && m1.hm === hm) {
-            Node.measureCacheHits++;
-            this._measureResult.width = m1.rw;
-            this._measureResult.height = m1.rh;
-            return this._measureResult;
-        }
-        const m2 = this._m2;
-        if (m2 && m2.w === w && m2.wm === wm && m2.h === h && m2.hm === hm) {
-            Node.measureCacheHits++;
-            this._measureResult.width = m2.rw;
-            this._measureResult.height = m2.rh;
-            return this._measureResult;
-        }
-        const m3 = this._m3;
-        if (m3 && m3.w === w && m3.wm === wm && m3.h === h && m3.hm === hm) {
-            Node.measureCacheHits++;
-            this._measureResult.width = m3.rw;
-            this._measureResult.height = m3.rh;
-            return this._measureResult;
-        }
-        // Call actual measure function
-        const result = this._measureFunc(w, wm, h, hm);
-        // Zero-allocation: rotate entries by copying values, lazily allocate on first use
-        // Rotate: m3 <- m2 <- m1 <- m0 <- new values
-        if (this._m2) {
-            if (!this._m3)
-                this._m3 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 };
-            this._m3.w = this._m2.w;
-            this._m3.wm = this._m2.wm;
-            this._m3.h = this._m2.h;
-            this._m3.hm = this._m2.hm;
-            this._m3.rw = this._m2.rw;
-            this._m3.rh = this._m2.rh;
-        }
-        if (this._m1) {
-            if (!this._m2)
-                this._m2 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 };
-            this._m2.w = this._m1.w;
-            this._m2.wm = this._m1.wm;
-            this._m2.h = this._m1.h;
-            this._m2.hm = this._m1.hm;
-            this._m2.rw = this._m1.rw;
-            this._m2.rh = this._m1.rh;
-        }
-        if (this._m0) {
-            if (!this._m1)
-                this._m1 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 };
-            this._m1.w = this._m0.w;
-            this._m1.wm = this._m0.wm;
-            this._m1.h = this._m0.h;
-            this._m1.hm = this._m0.hm;
-            this._m1.rw = this._m0.rw;
-            this._m1.rh = this._m0.rh;
-        }
-        if (!this._m0)
-            this._m0 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 };
-        this._m0.w = w;
-        this._m0.wm = wm;
-        this._m0.h = h;
-        this._m0.hm = hm;
-        this._m0.rw = result.width;
-        this._m0.rh = result.height;
-        // Return stable result object (same as cache hits)
-        this._measureResult.width = result.width;
-        this._measureResult.height = result.height;
-        return this._measureResult;
-    }
-    // ============================================================================
-    // Layout Caching (for intrinsic sizing pass)
-    // ============================================================================
-    /**
-     * Check layout cache for a previously computed size with same available dimensions.
-     * Returns cached (width, height) or null if not found.
-     *
-     * NaN dimensions are handled specially via Object.is (NaN === NaN is false, but Object.is(NaN, NaN) is true).
-     */
-    getCachedLayout(availW, availH) {
-        // Returns stable _layoutResult object to avoid allocation on cache hit
-        const lc0 = this._lc0;
-        if (lc0 && Object.is(lc0.availW, availW) && Object.is(lc0.availH, availH)) {
-            this._layoutResult.width = lc0.computedW;
-            this._layoutResult.height = lc0.computedH;
-            return this._layoutResult;
-        }
-        const lc1 = this._lc1;
-        if (lc1 && Object.is(lc1.availW, availW) && Object.is(lc1.availH, availH)) {
-            this._layoutResult.width = lc1.computedW;
-            this._layoutResult.height = lc1.computedH;
-            return this._layoutResult;
-        }
-        return null;
-    }
-    /**
-     * Cache a computed layout result for the given available dimensions.
-     * Zero-allocation: lazily allocates cache entries once, then reuses.
-     */
-    setCachedLayout(availW, availH, computedW, computedH) {
-        // Rotate entries: copy _lc0 values to _lc1, then update _lc0
-        if (this._lc0) {
-            // Lazily allocate _lc1 on first rotation
-            if (!this._lc1) {
-                this._lc1 = { availW: NaN, availH: NaN, computedW: 0, computedH: 0 };
-            }
-            this._lc1.availW = this._lc0.availW;
-            this._lc1.availH = this._lc0.availH;
-            this._lc1.computedW = this._lc0.computedW;
-            this._lc1.computedH = this._lc0.computedH;
-        }
-        // Lazily allocate _lc0 on first use
-        if (!this._lc0) {
-            this._lc0 = { availW: 0, availH: 0, computedW: 0, computedH: 0 };
-        }
-        this._lc0.availW = availW;
-        this._lc0.availH = availH;
-        this._lc0.computedW = computedW;
-        this._lc0.computedH = computedH;
-    }
-    /**
-     * Clear layout cache for this node and all descendants.
-     * Called at the start of each calculateLayout pass.
-     * Zero-allocation: invalidates entries (availW = NaN) rather than deallocating.
-     * Uses iterative traversal to avoid stack overflow on deep trees.
-     */
-    resetLayoutCache() {
-        traversalStack.length = 0;
-        traversalStack.push(this);
-        while (traversalStack.length > 0) {
-            const node = traversalStack.pop();
-            // Invalidate by setting availW to NaN
-            if (node._lc0)
-                node._lc0.availW = NaN;
-            if (node._lc1)
-                node._lc1.availW = NaN;
-            for (const child of node._children) {
-                traversalStack.push(child);
-            }
-        }
-    }
     // ============================================================================
     // Dirty Tracking
     // ============================================================================
@@ -445,20 +225,11 @@ export class Node {
      * Mark this node and all ancestors as dirty.
      * A dirty node needs layout recalculation.
      * This is automatically called by all style setters and tree operations.
-     * Uses iterative approach to avoid stack overflow on deep trees.
      */
     markDirty() {
-        let current = this;
-        while (current !== null) {
-            // Skip if already dirty (all ancestors will be dirty too)
-            if (current._isDirty)
-                break;
-            current._isDirty = true;
-            // Invalidate layout fingerprint
-            current._flex.layoutValid = false;
-            // Clear 4-entry measure cache since content may have changed
-            current._m0 = current._m1 = current._m2 = current._m3 = undefined;
-            current = current._parent;
+        this._isDirty = true;
+        if (this._parent !== null) {
+            this._parent.markDirty();
         }
     }
     /**
@@ -504,35 +275,23 @@ export class Node {
      * console.log(child.getComputedWidth());
      * ```
      */
-    calculateLayout(width, height, direction = C.DIRECTION_LTR) {
+    calculateLayout(width, height, _direction = C.DIRECTION_LTR) {
+        if (!this._isDirty) {
+            debug("layout skip (not dirty)");
+            return;
+        }
+        const start = Date.now();
+        const nodeCount = countNodes(this);
         // Treat undefined as unconstrained (NaN signals content-based sizing)
         const availableWidth = width ?? NaN;
         const availableHeight = height ?? NaN;
-        // Skip if not dirty AND constraints unchanged (use Object.is for NaN equality)
-        if (!this._isDirty &&
-            Object.is(this._lastCalcW, availableWidth) &&
-            Object.is(this._lastCalcH, availableHeight) &&
-            this._lastCalcDir === direction) {
-            if (debug.enabled)
-                debug("layout skip (not dirty, constraints unchanged)");
-            return;
-        }
-        // Track constraints for future skip check
-        this._lastCalcW = availableWidth;
-        this._lastCalcH = availableHeight;
-        this._lastCalcDir = direction;
-        const start = Date.now();
-        const nodeCount = countNodes(this);
-        // Reset measure statistics for this layout pass
-        Node.resetMeasureStats();
         // Run the layout algorithm
-        computeLayout(this, availableWidth, availableHeight, direction);
+        computeLayout(this, availableWidth, availableHeight, _direction);
         // Mark layout computed
         this._isDirty = false;
         this._hasNewLayout = true;
         markSubtreeLayoutSeen(this);
-        if (debug.enabled)
-            debug("layout: %dx%d, %d nodes in %dms (measure: calls=%d hits=%d)", width, height, nodeCount, Date.now() - start, Node.measureCalls, Node.measureCacheHits);
+        debug("layout: %dx%d, %d nodes in %dms", width, height, nodeCount, Date.now() - start);
     }
     // ============================================================================
     // Layout Results
@@ -586,9 +345,6 @@ export class Node {
     }
     get baselineFunc() {
         return this._baselineFunc;
-    }
-    get flex() {
-        return this._flex;
     }
     // ============================================================================
     // Width Setters
@@ -1244,4 +1000,4 @@ export class Node {
         return this._style.gap[0]; // Default to column gap
     }
 }
-//# sourceMappingURL=node-zero.js.map
+//# sourceMappingURL=node.js.map

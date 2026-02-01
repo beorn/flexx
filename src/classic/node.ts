@@ -5,7 +5,7 @@
  */
 
 import createDebug from "debug";
-import * as C from "./constants.js";
+import * as C from "../constants.js";
 import {
   computeLayout,
   countNodes,
@@ -18,13 +18,13 @@ import {
   type Style,
   type Value,
   createDefaultStyle,
-} from "./types.js";
+} from "../types.js";
 import {
   setEdgeValue,
   setEdgeBorder,
   getEdgeValue,
   getEdgeBorderValue,
-} from "./utils.js";
+} from "../utils.js";
 
 const debug = createDebug("flexx:layout");
 

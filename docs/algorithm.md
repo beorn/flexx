@@ -142,9 +142,9 @@ To port this to Flexx's Yoga-compatible API:
 
 | File | Description |
 |------|-------------|
-| `src/layout-zero.ts` | Zero-allocation layout algorithm (default, ~2200 lines) |
-| `src/layout.ts` | Classic layout algorithm (~1600 lines) |
-| `src/node-zero.ts` | Zero-allocation Node class (with FlexInfo) |
-| `src/node.ts` | Classic Node class |
-| `src/index.ts` | Default export (zero-alloc) |
+| `src/layout-zero.ts` | Layout algorithm (default, ~2200 lines) |
+| `src/node-zero.ts` | Node class with FlexInfo |
+| `src/index.ts` | Default export |
+| `src/classic/layout.ts` | Classic layout algorithm (~1600 lines) |
+| `src/classic/node.ts` | Classic Node class |
 | `src/index-classic.ts` | Classic export |

@@ -6,10 +6,10 @@
  */
 
 import createDebug from "debug";
-import * as C from "./constants.js";
+import * as C from "../constants.js";
 import type { Node } from "./node.js";
-import type { Value } from "./types.js";
-import { resolveValue, applyMinMax } from "./utils.js";
+import type { Value } from "../types.js";
+import { resolveValue, applyMinMax } from "../utils.js";
 
 const debug = createDebug("flexx:layout");
 

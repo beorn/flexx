@@ -106,6 +106,8 @@ export interface FlexInfo {
      * 0+ = index among relative children (participates in flex layout)
      */
     relativeIndex: number;
+    /** Computed baseline offset for ALIGN_BASELINE (zero-alloc: avoids per-pass array) */
+    baseline: number;
     /** Last availableWidth passed to layoutNode */
     lastAvailW: number;
     /** Last availableHeight passed to layoutNode */
@@ -116,6 +118,8 @@ export interface FlexInfo {
     lastOffsetY: number;
     /** Whether cached layout is valid (fingerprint matched, not dirty) */
     layoutValid: boolean;
+    /** Last direction passed to layoutNode */
+    lastDir: number;
 }
 /**
  * Computed layout result for a node.

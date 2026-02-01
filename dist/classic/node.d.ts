@@ -3,7 +3,7 @@
  *
  * Yoga-compatible Node class for flexbox layout.
  */
-import { type BaselineFunc, type FlexInfo, type Layout, type MeasureFunc, type Style, type Value } from "./types.js";
+import { type BaselineFunc, type Layout, type MeasureFunc, type Style, type Value } from "../types.js";
 /**
  * A layout node in the flexbox tree.
  */
@@ -13,27 +13,9 @@ export declare class Node {
     private _style;
     private _measureFunc;
     private _baselineFunc;
-    private _m0?;
-    private _m1?;
-    private _m2?;
-    private _m3?;
-    private _lc0?;
-    private _lc1?;
-    private _measureResult;
-    private _layoutResult;
-    static measureCalls: number;
-    static measureCacheHits: number;
-    /**
-     * Reset measure statistics (call before calculateLayout).
-     */
-    static resetMeasureStats(): void;
     private _layout;
-    private _flex;
     private _isDirty;
     private _hasNewLayout;
-    private _lastCalcW;
-    private _lastCalcH;
-    private _lastCalcDir;
     /**
      * Create a new layout node.
      *
@@ -154,39 +136,6 @@ export declare class Node {
      */
     hasBaselineFunc(): boolean;
     /**
-     * Call the measure function with caching.
-     * Uses a 4-entry numeric cache for fast lookup without allocations.
-     * Cache is cleared when markDirty() is called.
-     *
-     * @returns Measured dimensions or null if no measure function
-     */
-    cachedMeasure(w: number, wm: number, h: number, hm: number): {
-        width: number;
-        height: number;
-    } | null;
-    /**
-     * Check layout cache for a previously computed size with same available dimensions.
-     * Returns cached (width, height) or null if not found.
-     *
-     * NaN dimensions are handled specially via Object.is (NaN === NaN is false, but Object.is(NaN, NaN) is true).
-     */
-    getCachedLayout(availW: number, availH: number): {
-        width: number;
-        height: number;
-    } | null;
-    /**
-     * Cache a computed layout result for the given available dimensions.
-     * Zero-allocation: lazily allocates cache entries once, then reuses.
-     */
-    setCachedLayout(availW: number, availH: number, computedW: number, computedH: number): void;
-    /**
-     * Clear layout cache for this node and all descendants.
-     * Called at the start of each calculateLayout pass.
-     * Zero-allocation: invalidates entries (availW = NaN) rather than deallocating.
-     * Uses iterative traversal to avoid stack overflow on deep trees.
-     */
-    resetLayoutCache(): void;
-    /**
      * Check if this node needs layout recalculation.
      *
      * @returns True if the node is dirty and needs layout
@@ -196,7 +145,6 @@ export declare class Node {
      * Mark this node and all ancestors as dirty.
      * A dirty node needs layout recalculation.
      * This is automatically called by all style setters and tree operations.
-     * Uses iterative approach to avoid stack overflow on deep trees.
      */
     markDirty(): void;
     /**
@@ -235,7 +183,7 @@ export declare class Node {
      * console.log(child.getComputedWidth());
      * ```
      */
-    calculateLayout(width?: number, height?: number, direction?: number): void;
+    calculateLayout(width?: number, height?: number, _direction?: number): void;
     /**
      * Get the computed left position after layout.
      *
@@ -265,7 +213,6 @@ export declare class Node {
     get layout(): Layout;
     get measureFunc(): MeasureFunc | null;
     get baselineFunc(): BaselineFunc | null;
-    get flex(): FlexInfo;
     /**
      * Set the width to a fixed value in points.
      *
@@ -698,4 +645,4 @@ export declare class Node {
      */
     getGap(gutter: number): number;
 }
-//# sourceMappingURL=node-zero.d.ts.map
+//# sourceMappingURL=node.d.ts.map

@@ -1,14 +1,10 @@
 /**
  * Flexx Classic - Allocating Layout Engine
  *
- * The classic (allocating) variant of Flexx. Use this for debugging or when
- * you need features not yet available in the main (zero-alloc) implementation.
+ * The classic (allocating) variant of Flexx. Use for debugging, comparison,
+ * or when you need reentrancy (concurrent layouts).
  *
- * Features exclusive to classic:
- * - BaselineFunc for baseline alignment
- * - Reentrant (safe for concurrent layouts)
- *
- * @deprecated Use the main import '@beorn/flexx' unless you need classic-specific features.
+ * The main export '@beorn/flexx' uses the faster zero-allocation algorithm.
  *
  * @example
  * ```typescript
@@ -16,7 +12,6 @@
  *
  * const root = Node.create();
  * root.setWidth(80);
- * root.setHeight(24);
  * root.setFlexDirection(FLEX_DIRECTION_ROW);
  *
  * const child = Node.create();
@@ -24,12 +19,11 @@
  * root.insertChild(child, 0);
  *
  * root.calculateLayout(80, 24, DIRECTION_LTR);
- *
  * console.log(child.getComputedWidth()); // 80
  * ```
  */
-// Node class
-export { Node } from "./node.js";
+// Node class (classic allocating variant)
+export { Node } from "./classic/node.js";
 // All constants (Yoga-compatible)
 export { 
 // Flex Direction
@@ -59,5 +53,5 @@ UNIT_UNDEFINED, UNIT_POINT, UNIT_PERCENT, UNIT_AUTO, } from "./constants.js";
 // Utility functions
 export { createDefaultStyle, createValue } from "./types.js";
 // Layout stats (for debugging/benchmarking)
-export { layoutNodeCalls, resolveEdgeCalls, layoutSizingCalls, layoutPositioningCalls, layoutCacheHits, resetLayoutStats } from "./layout.js";
+export { layoutNodeCalls, resolveEdgeCalls, layoutSizingCalls, layoutPositioningCalls, layoutCacheHits, resetLayoutStats } from "./classic/layout.js";
 //# sourceMappingURL=index-classic.js.map

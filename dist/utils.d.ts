@@ -5,6 +5,12 @@
  */
 import type { Value } from "./types.js";
 /**
+ * Shared traversal stack for iterative tree operations.
+ * Avoids recursion (prevents stack overflow on deep trees) and avoids
+ * allocation during layout passes.
+ */
+export declare const traversalStack: unknown[];
+/**
  * Set a value on an edge array (supports all edge types including logical START/END).
  */
 export declare function setEdgeValue(arr: [Value, Value, Value, Value, Value, Value], edge: number, value: number, unit: number): void;

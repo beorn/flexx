@@ -4,7 +4,7 @@
  * This is the zero-allocation variant of Flexx, optimized for high-frequency
  * layout recalculation with reduced GC pressure.
  *
- * @see docs/ZERO_ALLOCATION.md for design details and trade-offs
+ * @see docs/zero-allocation.md for design details and trade-offs
  *
  * @example
  * ```typescript
