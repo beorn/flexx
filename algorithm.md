@@ -67,8 +67,8 @@ Input: amount (space to remove)
         - If remaining ~= 0: done
 ```
 
-**Key insight**: Shrink is proportional to flex-shrink value only (NOT scaled by flex-basis like CSS spec).
-This is a simplification from the full CSS spec but works for most cases.
+**Key insight**: Shrink is proportional to `flex-shrink × flex-basis` (CSS spec compliant).
+Items with larger basis values shrink more, matching browser behavior.
 
 ## Line Layout Flow (from LineLayout.ts)
 
@@ -122,9 +122,8 @@ The baseline is used when `ALIGN_BASELINE` is set on the container's `alignItems
 
 ## Key Differences from CSS Spec
 
-1. **Shrink calculation**: Uses simple proportional shrink, not scaled by flex-basis
-2. **No order property**: Items laid out in insertion order
-3. **No writing modes**: Horizontal-tb only
+1. **No order property**: Items laid out in insertion order
+2. **No writing modes**: Horizontal-tb only
 
 ## Implementation Notes for Flexx
 

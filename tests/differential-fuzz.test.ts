@@ -9,7 +9,6 @@
  * Run: bun test tests/differential-fuzz.test.ts
  *
  * Known Differences (documented, not bugs):
- * - Flex-shrink uses proportional distribution instead of basis-weighted
  * - Some edge cases with deeply nested flex-wrap
  */
 

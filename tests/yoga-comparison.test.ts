@@ -1899,12 +1899,9 @@ describe("Yoga Comparison: PercentValues", () => {
 // ============================================================================
 
 describe("Yoga Comparison: IntentionalDifferences", () => {
-  it("shrink-weighted-by-basis: CSS spec weighted shrink (Flexx differs)", () => {
-    // This test documents an INTENTIONAL difference:
-    // CSS spec: shrink proportional to (flexShrink * flexBasis)
-    // Flexx: shrink proportional to (flexShrink) only
-    //
-    // With different basis values, results will differ.
+  it("shrink-weighted-by-basis: CSS spec weighted shrink", () => {
+    // Both Flexx and Yoga use CSS spec: shrink proportional to (flexShrink * flexBasis)
+    // This test verifies Flexx matches Yoga's behavior.
 
     // Flexx
     const fRoot = Flexx.Node.create();

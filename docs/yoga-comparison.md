@@ -108,7 +108,7 @@ console.log(child.getComputedWidth()); // Same output
 | **EDGE_START/END**                        | ✅   | ✅    | Full logical edge support  |
 | **aspect-ratio**                          | ✅   | ✅    |                            |
 
-\*Flexx uses proportional shrink (simpler), not CSS spec's basis-weighted shrink. This matches real-world behavior for most layouts.
+Flexx implements CSS spec's basis-weighted shrink (`flexShrink × flexBasis`).
 
 ---
 
@@ -116,10 +116,7 @@ console.log(child.getComputedWidth()); // Same output
 
 ### Shrink Calculation
 
-**Yoga (CSS spec)**: Shrinks items proportionally to `flex-shrink × flex-basis`
-**Flexx (simplified)**: Shrinks items proportionally to `flex-shrink` only
-
-In practice, this rarely matters for terminal UIs where flex-basis is typically 0 or auto.
+Both use CSS spec's basis-weighted shrink: items shrink proportionally to `flex-shrink × flex-basis`.
 
 ### Grow/Shrink Iteration
 
@@ -241,9 +238,8 @@ Both exports have identical APIs.
 
 ### Intentional Simplifications
 
-1. **Shrink algorithm** - Proportional only (see above)
-2. **No `order` property** - Items laid out in insertion order
-3. **No writing modes** - Horizontal-tb only
+1. **No `order` property** - Items laid out in insertion order
+2. **No writing modes** - Horizontal-tb only
 
 ---
 
