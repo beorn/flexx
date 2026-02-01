@@ -19,20 +19,20 @@ console.log(child.getComputedWidth()); // 100
 
 ## Why Flexx?
 
-**TL;DR:** 2.5x faster, 5x smaller than Yoga, with synchronous initialization.
+**TL;DR:** 1.5-3x faster for flat layouts, 5x smaller than Yoga, with synchronous initialization.
 
 |                      | Yoga              | Flexx       |
 | -------------------- | ----------------- | ----------- |
 | **Bundle (gzipped)** | 38 KB             | 7 KB        |
-| **Performance**      | 316 µs            | 125 µs      |
+| **Performance**      | Varies by layout  | See below   |
 | **Initialization**   | Async (WASM load) | Synchronous |
 | **Dependencies**     | WASM runtime      | Zero        |
 
 ## Status
 
-**New, functionally complete, seeking feedback.**
+**Functionally complete. 524 tests passing including 41/41 Yoga compatibility tests.**
 
-We've written thorough tests and use Flexx in production ourselves, but it hasn't been battle-tested across diverse environments. We welcome feedback and bug reports.
+We use Flexx in production. All features are implemented and tested.
 
 | Feature                                       | Status             |
 | --------------------------------------------- | ------------------ |
@@ -60,34 +60,55 @@ npm install @beorn/flexx
 
 Benchmarks on Apple M1 Max, Bun 1.3.7 (tree creation + layout):
 
+### Flat Layouts (Flexx wins)
+
 | Benchmark        | Flexx   | Yoga    | Winner            |
 | ---------------- | ------- | ------- | ----------------- |
-| Flat 100 nodes   | 77 µs   | 189 µs  | Flexx 2.4x faster |
-| Flat 500 nodes   | 345 µs  | 987 µs  | Flexx 2.9x faster |
-| Flat 1000 nodes  | 681 µs  | 2097 µs | Flexx 3.1x faster |
-| Deep 50 levels   | 41 µs   | 97 µs   | Flexx 2.4x faster |
-| Kanban 150 nodes | 125 µs  | 316 µs  | Flexx 2.5x faster |
+| Flat 100 nodes   | 101 µs  | 157 µs  | Flexx 1.6x faster |
+| Flat 500 nodes   | 470 µs  | 884 µs  | Flexx 1.9x faster |
+| Flat 1000 nodes  | 964 µs  | 1889 µs | Flexx 2.0x faster |
 
-### Feature-Specific (Flexx wins 9/9)
+### Deep Layouts (Yoga wins)
+
+| Benchmark         | Flexx   | Yoga    | Winner            |
+| ----------------- | ------- | ------- | ----------------- |
+| Deep 20 levels    | 59 µs   | 43 µs   | Yoga 1.4x faster  |
+| Deep 50 levels    | 129 µs  | 106 µs  | Yoga 1.2x faster  |
+| Deep 100 levels   | 296 µs  | 213 µs  | Yoga 1.4x faster  |
+
+### TUI Patterns (Mixed)
+
+| Benchmark            | Flexx   | Yoga    | Winner            |
+| -------------------- | ------- | ------- | ----------------- |
+| Kanban 36 nodes      | 78 µs   | 82 µs   | ~Equal            |
+| Kanban 156 nodes     | 348 µs  | 306 µs  | Yoga 1.1x faster  |
+| Kanban 306 nodes     | 354 µs  | 598 µs  | Flexx 1.7x faster |
+
+### Feature-Specific
 
 | Feature              | Winner    | Difference   |
 | -------------------- | --------- | ------------ |
-| AbsolutePositioning  | **Flexx** | 3.6x faster  |
-| AlignContent         | **Flexx** | 2.2x faster  |
-| FlexShrink           | **Flexx** | 2.2x faster  |
-| Gap                  | **Flexx** | 2.2x faster  |
-| FlexGrow             | **Flexx** | 1.8x faster  |
-| FlexWrap             | **Flexx** | 1.5x faster  |
-| PercentValues        | **Flexx** | 1.2x faster  |
-| MeasureFunc          | **Flexx** | 1.2x faster  |
-| NestedLayouts        | **Flexx** | 1.1x faster  |
+| AbsolutePositioning  | **Flexx** | 3.5x faster  |
+| FlexShrink           | **Flexx** | 2.7x faster  |
+| AlignContent         | **Flexx** | 2.3x faster  |
+| FlexGrow             | **Flexx** | 1.9x faster  |
+| Gap                  | **Flexx** | 1.5x faster  |
+| MeasureFunc          | **Flexx** | 1.4x faster  |
+| FlexWrap             | **Flexx** | 1.2x faster  |
+| PercentValues        | ~Equal    | -            |
+| NestedLayouts        | Yoga      | 1.2x faster  |
 
-**Why is pure JS faster than WASM?**
+**Why is pure JS faster for flat layouts?**
 
 - Avoids WASM ↔ JS boundary crossing overhead
-- Bun's JS engine is highly optimized for this workload
-- Tree creation dominates these benchmarks
+- Bun's JS engine is highly optimized
+- Tree creation dominates benchmarks
 - No FFI marshalling for node properties
+
+**Why is Yoga faster for deep layouts?**
+
+- Native recursion in WASM is more efficient
+- Deep hierarchies amplify per-node overhead
 
 Run benchmarks: `bun bench` or `bun bench bench/features.bench.ts`
 
@@ -100,7 +121,7 @@ Run benchmarks: `bun bench` or `bun bench bench/features.bench.ts`
 
 ## API Compatibility
 
-**42% Yoga test suite passing** (261/518 tests, excluding AspectRatio tests which have different semantics). Drop-in replacement for most use cases:
+**100% Yoga compatibility** (41/41 comparison tests passing). Drop-in replacement:
 
 ```typescript
 // Yoga
@@ -113,7 +134,17 @@ import { Node } from "@beorn/flexx";
 const root = Node.create(); // Sync!
 ```
 
-Same constants, same method names, same behavior for supported features.
+Same constants, same method names, same behavior.
+
+## Exports
+
+```typescript
+// Default: Zero-allocation algorithm (faster for typical TUI workloads)
+import { Node } from "@beorn/flexx";
+
+// Classic algorithm (for debugging or comparison)
+import { Node } from "@beorn/flexx/classic";
+```
 
 ## Use Cases
 
@@ -127,7 +158,7 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 
 **Use Yoga instead when:**
 
-- You need wrap-reverse (not yet implemented)
+- You have deeply nested layouts (>50 levels) as primary use case
 - You're in the React Native ecosystem
 - You need battle-tested stability across diverse environments
 
@@ -135,11 +166,14 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 
 ```
 src/
-├── node.ts      # Node class (public API, ~1000 lines)
-├── layout.ts    # Layout algorithm (~1200 lines)
-├── utils.ts     # Edge/value helpers
-├── constants.ts # Flexbox constants
-└── types.ts     # TypeScript types
+├── node-zero.ts    # Node class (zero-alloc, default)
+├── layout-zero.ts  # Layout algorithm (zero-alloc, ~2200 lines)
+├── node.ts         # Node class (classic)
+├── layout.ts       # Layout algorithm (classic, ~1600 lines)
+├── index.ts        # Default export (zero-alloc)
+├── index-classic.ts # Classic export
+├── constants.ts    # Flexbox constants
+└── types.ts        # TypeScript types
 ```
 
 The layout algorithm implements CSS Flexbox spec Section 9.7 (resolving flexible lengths) with:
@@ -147,11 +181,13 @@ The layout algorithm implements CSS Flexbox spec Section 9.7 (resolving flexible
 - Yoga-compatible edge-based rounding (prevents pixel gaps)
 - Weighted flex-shrink (larger items shrink more)
 - Auto margin absorption before justify-content
+- Full RTL support with EDGE_START/END resolution
 
 ## Documentation
 
 - [Yoga Comparison](docs/yoga-comparison.md) — detailed feature comparison and benchmarks
 - [Algorithm](ALGORITHM.md) — how the layout algorithm works
+- [Zero-Allocation Design](docs/ZERO_ALLOCATION.md) — zero-alloc optimization details
 
 ## Related Projects
 

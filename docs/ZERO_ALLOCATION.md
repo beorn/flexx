@@ -68,13 +68,13 @@ for (const child of children) {
 
 ## Benchmark Results
 
-| Scenario | Flexx Classic | Flexx Zero | Yoga WASM |
-|----------|--------------|------------|-----------|
-| Flat 500 nodes | 1x | 1.75-2x faster | ~0.9x |
-| Deep 50 levels | 1x | ~0.7x (slower) | 29-45x faster |
-| Kanban TUI | 1x | ~1.1x faster | ~1.7x faster |
+| Scenario | Flexx Classic | Flexx Zero-alloc | Yoga WASM |
+|----------|---------------|------------------|-----------|
+| Flat 500 nodes | 1x | 1.75-2x faster | ~0.5x |
+| Deep 50 levels | 1x | ~1x (similar) | 1.2x faster |
+| Kanban TUI | 1x | ~1.1x faster | ~0.9x |
 
-**Key insight**: Zero-alloc excels at flat, wide layouts but struggles with deep hierarchies.
+**Key insight**: Zero-alloc excels at flat, wide layouts (the typical TUI structure).
 
 ## Trade-offs
 
@@ -87,42 +87,47 @@ for (const child of children) {
 
 ### Disadvantages
 
-- Slower for deep hierarchies due to O(N×L) child scanning
 - Not reentrant (single layout calculation at a time)
 - Higher memory per node (FlexInfo struct)
-- No incremental layout yet
+- More complex code than classic algorithm
 
-## Root Cause: Deep Hierarchy Slowness
+## Feature Parity
 
-Analysis identified several factors:
+Both algorithms now have complete feature parity:
 
-1. **Repeated child scanning**: `distributeFlexSpaceForLine()` scans ALL children for EACH line instead of using line boundary indices (O(N×L) vs O(N))
+| Feature | Classic | Zero-alloc |
+|---------|---------|------------|
+| RTL direction | ✅ | ✅ |
+| EDGE_START/END | ✅ | ✅ |
+| Baseline alignment | ✅ | ✅ |
+| All Yoga tests | 41/41 | 41/41 |
 
-2. **No caching**: Every layout recalculates everything - no memoization of measure results or subtree layouts
+## Usage
 
-3. **Recursion overhead**: Deep JS recursion has higher function call costs than C++ native code
+```typescript
+// Default: Zero-allocation algorithm (recommended)
+import { Node } from '@beorn/flexx';
 
-4. **No incremental layout**: Full tree recalculation even for single-node changes
+// Classic algorithm (for debugging or comparison)
+import { Node } from '@beorn/flexx/classic';
+```
+
+Both exports have identical APIs - only the internal algorithm differs.
+
+## Files
+
+| File | Description |
+|------|-------------|
+| `src/layout-zero.ts` | Zero-allocation layout algorithm (default) |
+| `src/layout.ts` | Classic layout algorithm |
+| `src/node-zero.ts` | Zero-allocation Node class (with FlexInfo) |
+| `src/node.ts` | Classic Node class |
+| `src/index.ts` | Default export (zero-alloc) |
+| `src/index-classic.ts` | Classic export |
 
 ## Future Improvements
 
-### P0: Line Boundary Indices (Low effort, High impact)
-
-Store line start/end indices during `breakIntoLines()` to avoid re-scanning:
-
-```typescript
-// Instead of scanning all children per line:
-for (let lineIdx = 0; lineIdx < lineCount; lineIdx++) {
-  const start = _lineStarts[lineIdx];
-  const end = start + _lineLengths[lineIdx];
-  for (let i = start; i < end; i++) {
-    const child = _lineChildren[lineIdx][i - start];
-    // Process without re-scanning
-  }
-}
-```
-
-### P1: Dirty-flag Incremental Layout (Medium effort, Very High impact)
+### P1: Dirty-flag Incremental Layout
 
 Mark nodes dirty on style/content change, propagate up tree, skip clean subtrees:
 
@@ -144,50 +149,10 @@ class Node {
 }
 ```
 
-### P2: Measure Result Caching (Low effort, Medium impact)
+### P2: Measure Result Caching
 
 Cache `(availW, availH) → (computedW, computedH)` per node to avoid redundant measure calls.
 
-### P3: Special-case Single-child Containers (Low effort, Medium impact)
+### P3: Special-case Single-child Containers
 
 Skip flex distribution logic for containers with only one child - direct assignment instead.
-
-### P4: Iterative Traversal (High effort, Medium impact)
-
-Replace recursion with explicit stack for better JIT optimization and reduced call overhead.
-
-## Usage
-
-```typescript
-// Classic algorithm (default)
-import { Node } from '@beorn/flexx';
-
-// Zero-allocation algorithm
-import { Node } from '@beorn/flexx/zero';
-```
-
-Both exports have identical APIs - only the internal algorithm differs.
-
-## Feature Gap
-
-The zero-allocation algorithm is missing some features from the classic algorithm:
-
-| Feature | Classic | Zero-alloc |
-|---------|---------|------------|
-| RTL (direction: rtl) | ✅ | ❌ (69 direction refs to port) |
-| Baseline alignment | ✅ (baselineFunc) | ❌ |
-| All Yoga tests | 33/41 | 33/41 |
-
-These gaps should be addressed before deprecating the classic algorithm.
-See `km-flexx-parity` bead for tracking.
-
-## Files
-
-| File | Description |
-|------|-------------|
-| `src/layout.ts` | Classic layout algorithm |
-| `src/layout-zero.ts` | Zero-allocation layout algorithm |
-| `src/node.ts` | Classic Node class |
-| `src/node-zero.ts` | Zero-allocation Node class (with FlexInfo) |
-| `src/index.ts` | Classic entry point |
-| `src/index-zero.ts` | Zero-allocation entry point |

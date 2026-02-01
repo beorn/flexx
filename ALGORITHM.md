@@ -10,6 +10,17 @@ The algorithm works in multiple passes:
 2. **Layout Main Axis**: Distribute items, apply grow/shrink
 3. **Layout Cross Axis**: Apply alignment
 
+## Two Algorithm Variants
+
+Flexx provides two layout algorithm implementations:
+
+| Algorithm | File | Default | Strengths |
+|-----------|------|---------|-----------|
+| **Zero-alloc** | `layout-zero.ts` | ✅ Yes | Faster for flat layouts, no GC pressure |
+| **Classic** | `layout.ts` | No | Simpler code, good for debugging |
+
+Both implement identical Yoga-compatible behavior. The zero-alloc version uses pre-allocated arrays and node-attached FlexInfo structs to eliminate temporary allocations during layout.
+
 ## Grow Algorithm (from SizeGrower.ts)
 
 ```
@@ -84,12 +95,36 @@ The ItemPositioner handles:
 - space-around: equal space around each item
 - space-evenly: equal space between and around items
 
+## RTL and Logical Edges
+
+Both algorithms fully support RTL (right-to-left) layouts:
+
+- `DIRECTION_RTL` reverses the main axis for row layouts
+- `EDGE_START`/`EDGE_END` resolve to physical edges based on direction
+- All margin, padding, and position edges respect direction
+
+The `resolveEdgeValue()` function maps logical edges to physical edges:
+- In LTR: START → LEFT, END → RIGHT
+- In RTL: START → RIGHT, END → LEFT
+
+## Baseline Alignment
+
+Baseline alignment is supported via `setBaselineFunc()`:
+
+```typescript
+node.setBaselineFunc((node, width, height) => {
+  // Return the baseline offset from the top
+  return height * 0.8; // Example: 80% down
+});
+```
+
+The baseline is used when `ALIGN_BASELINE` is set on the container's `alignItems`.
+
 ## Key Differences from CSS Spec
 
 1. **Shrink calculation**: Uses simple proportional shrink, not scaled by flex-basis
-2. **Baseline alignment**: Implemented via `baselineFunc` callback (classic algorithm only)
-3. **No wrap-reverse**: Not implemented
-4. **No order property**: Items laid out in DOM order
+2. **No order property**: Items laid out in insertion order
+3. **No writing modes**: Horizontal-tb only
 
 ## Implementation Notes for Flexx
 
@@ -103,3 +138,14 @@ To port this to Flexx's Yoga-compatible API:
 2. Grow/shrink iterate until space is distributed (handles max/min constraints)
 
 3. Keep it simple - terminal UIs don't need full CSS spec compliance
+
+## Files
+
+| File | Description |
+|------|-------------|
+| `src/layout-zero.ts` | Zero-allocation layout algorithm (default, ~2200 lines) |
+| `src/layout.ts` | Classic layout algorithm (~1600 lines) |
+| `src/node-zero.ts` | Zero-allocation Node class (with FlexInfo) |
+| `src/node.ts` | Classic Node class |
+| `src/index.ts` | Default export (zero-alloc) |
+| `src/index-classic.ts` | Classic export |
