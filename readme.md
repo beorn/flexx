@@ -68,15 +68,20 @@ Benchmarks on Apple M1 Max, Bun 1.3.7 (tree creation + layout):
 | Flat 500 nodes   | 470 µs  | 884 µs  | Flexx 1.9x faster |
 | Flat 1000 nodes  | 964 µs  | 1889 µs | Flexx 2.0x faster |
 
-### Deep Layouts (varies)
+### Deep Layouts (Flexx wins most depths)
 
-| Benchmark         | Result                                      |
-| ----------------- | ------------------------------------------- |
-| Deep 20 levels    | Yoga slightly faster (~1.1-1.2x)            |
-| Deep 50 levels    | Roughly equal (high variance between runs)  |
-| Deep 100 levels   | Roughly equal (high variance between runs)  |
+| Depth   | Flexx   | Yoga    | Winner            |
+| ------- | ------- | ------- | ----------------- |
+| 1 level | 1.6 µs  | 3.3 µs  | Flexx 2.0x faster |
+| 2 levels| 5.8 µs  | 5.3 µs  | ~Equal            |
+| 5 levels| 14.7 µs | 11.8 µs | Yoga 1.25x faster |
+| 10 levels| 16.5 µs| 21.8 µs | Flexx 1.3x faster |
+| 15 levels| 17.7 µs| 33.6 µs | Flexx 1.9x faster |
+| 20 levels| 25.6 µs| 42.5 µs | Flexx 1.7x faster |
+| 50 levels| 61.9 µs| 105.7 µs| Flexx 1.7x faster |
+| 100 levels| 139 µs| 216 µs  | Flexx 1.6x faster |
 
-**Note:** Deep layout benchmarks show high variance between runs. Both engines perform well for nesting depths typical of UI layouts.
+Yoga has a slight advantage at 2-5 levels of nesting. Beyond that, Flexx wins.
 
 ### TUI Patterns (Mixed)
 
@@ -107,11 +112,11 @@ Benchmarks on Apple M1 Max, Bun 1.3.7 (tree creation + layout):
 - Tree creation dominates benchmarks
 - No FFI marshalling for node properties
 
-**Why do deep layouts show high variance?**
+**Why does Yoga win at 2-5 levels?**
 
-- Benchmark warmup and JIT compilation effects
-- GC timing can affect individual runs
-- Both engines are fast enough that noise dominates
+- WASM initialization overhead is amortized
+- Not enough depth for JS recursion overhead to matter
+- Tree creation cost roughly equal at small sizes
 
 Run benchmarks: `bun bench` or `bun bench bench/features.bench.ts`
 

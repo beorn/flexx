@@ -183,7 +183,7 @@ describe("Flexx vs Yoga - Flat Hierarchy", () => {
 })
 
 describe("Flexx vs Yoga - Deep Hierarchy", () => {
-  for (const depth of [20, 50, 100]) {
+  for (const depth of [1, 2, 5, 10, 15, 20, 50, 100]) {
     bench(`Flexx: ${depth} levels deep - create + layout`, () => {
       const tree = flexxDeepTree(depth)
       tree.calculateLayout(1000, 1000, Flexx.DIRECTION_LTR)
