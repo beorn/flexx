@@ -20,6 +20,8 @@ export class Node {
     _style = createDefaultStyle();
     // Measure function for intrinsic sizing
     _measureFunc = null;
+    // Baseline function for baseline alignment
+    _baselineFunc = null;
     // Computed layout
     _layout = { left: 0, top: 0, width: 0, height: 0 };
     // Dirty flags
@@ -125,6 +127,7 @@ export class Node {
         }
         this._children = [];
         this._measureFunc = null;
+        this._baselineFunc = null;
     }
     /**
      * Dispose the node (calls free)
@@ -170,6 +173,42 @@ export class Node {
      */
     hasMeasureFunc() {
         return this._measureFunc !== null;
+    }
+    // ============================================================================
+    // Baseline Function
+    // ============================================================================
+    /**
+     * Set a baseline function to determine where this node's text baseline is.
+     * Used for ALIGN_BASELINE to align text across siblings with different heights.
+     *
+     * @param baselineFunc - Function that returns baseline offset from top given width and height
+     * @example
+     * ```typescript
+     * textNode.setBaselineFunc((width, height) => {
+     *   // For a text node, baseline might be at 80% of height
+     *   return height * 0.8;
+     * });
+     * ```
+     */
+    setBaselineFunc(baselineFunc) {
+        this._baselineFunc = baselineFunc;
+        this.markDirty();
+    }
+    /**
+     * Remove the baseline function from this node.
+     * Marks the node as dirty to trigger layout recalculation.
+     */
+    unsetBaselineFunc() {
+        this._baselineFunc = null;
+        this.markDirty();
+    }
+    /**
+     * Check if this node has a baseline function.
+     *
+     * @returns True if a baseline function is set
+     */
+    hasBaselineFunc() {
+        return this._baselineFunc !== null;
     }
     // ============================================================================
     // Dirty Tracking
@@ -247,7 +286,7 @@ export class Node {
         const availableWidth = width ?? NaN;
         const availableHeight = height ?? NaN;
         // Run the layout algorithm
-        computeLayout(this, availableWidth, availableHeight);
+        computeLayout(this, availableWidth, availableHeight, _direction);
         // Mark layout computed
         this._isDirty = false;
         this._hasNewLayout = true;
@@ -303,6 +342,9 @@ export class Node {
     }
     get measureFunc() {
         return this._measureFunc;
+    }
+    get baselineFunc() {
+        return this._baselineFunc;
     }
     // ============================================================================
     // Width Setters

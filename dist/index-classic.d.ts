@@ -1,12 +1,18 @@
 /**
- * Flexx - Pure JavaScript Flexbox Layout Engine
+ * Flexx Classic - Allocating Layout Engine
  *
- * A Yoga-compatible layout engine for terminal UIs and other environments
- * where WebAssembly is not available or desirable.
+ * The classic (allocating) variant of Flexx. Use this for debugging or when
+ * you need features not yet available in the main (zero-alloc) implementation.
+ *
+ * Features exclusive to classic:
+ * - BaselineFunc for baseline alignment
+ * - Reentrant (safe for concurrent layouts)
+ *
+ * @deprecated Use the main import '@beorn/flexx' unless you need classic-specific features.
  *
  * @example
  * ```typescript
- * import { Node, FLEX_DIRECTION_ROW, DIRECTION_LTR } from '@beorn/flexx';
+ * import { Node, FLEX_DIRECTION_ROW, DIRECTION_LTR } from '@beorn/flexx/classic';
  *
  * const root = Node.create();
  * root.setWidth(80);
@@ -22,9 +28,9 @@
  * console.log(child.getComputedWidth()); // 80
  * ```
  */
-export { Node } from "./node-zero.js";
+export { Node } from "./node.js";
 export { FLEX_DIRECTION_COLUMN, FLEX_DIRECTION_COLUMN_REVERSE, FLEX_DIRECTION_ROW, FLEX_DIRECTION_ROW_REVERSE, WRAP_NO_WRAP, WRAP_WRAP, WRAP_WRAP_REVERSE, ALIGN_AUTO, ALIGN_FLEX_START, ALIGN_CENTER, ALIGN_FLEX_END, ALIGN_STRETCH, ALIGN_BASELINE, ALIGN_SPACE_BETWEEN, ALIGN_SPACE_AROUND, JUSTIFY_FLEX_START, JUSTIFY_CENTER, JUSTIFY_FLEX_END, JUSTIFY_SPACE_BETWEEN, JUSTIFY_SPACE_AROUND, JUSTIFY_SPACE_EVENLY, EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_START, EDGE_END, EDGE_HORIZONTAL, EDGE_VERTICAL, EDGE_ALL, GUTTER_COLUMN, GUTTER_ROW, GUTTER_ALL, DISPLAY_FLEX, DISPLAY_NONE, POSITION_TYPE_STATIC, POSITION_TYPE_RELATIVE, POSITION_TYPE_ABSOLUTE, OVERFLOW_VISIBLE, OVERFLOW_HIDDEN, OVERFLOW_SCROLL, DIRECTION_INHERIT, DIRECTION_LTR, DIRECTION_RTL, MEASURE_MODE_UNDEFINED, MEASURE_MODE_EXACTLY, MEASURE_MODE_AT_MOST, UNIT_UNDEFINED, UNIT_POINT, UNIT_PERCENT, UNIT_AUTO, } from "./constants.js";
 export type { BaselineFunc, Layout, MeasureFunc, Style, Value } from "./types.js";
 export { createDefaultStyle, createValue } from "./types.js";
-export { layoutNodeCalls, resolveEdgeCalls, layoutSizingCalls, layoutPositioningCalls, layoutCacheHits, resetLayoutStats } from "./layout-zero.js";
-//# sourceMappingURL=index.d.ts.map
+export { layoutNodeCalls, resolveEdgeCalls, layoutSizingCalls, layoutPositioningCalls, layoutCacheHits, resetLayoutStats } from "./layout.js";
+//# sourceMappingURL=index-classic.d.ts.map

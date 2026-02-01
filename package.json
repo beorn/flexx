@@ -10,9 +10,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./zero": {
-      "types": "./dist/index-zero.d.ts",
-      "import": "./dist/index-zero.js"
+    "./classic": {
+      "types": "./dist/index-classic.d.ts",
+      "import": "./dist/index-classic.js"
     }
   },
   "files": [

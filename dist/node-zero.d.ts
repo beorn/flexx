@@ -3,7 +3,7 @@
  *
  * Yoga-compatible Node class for flexbox layout.
  */
-import { type FlexInfo, type Layout, type MeasureFunc, type Style, type Value } from "./types.js";
+import { type BaselineFunc, type FlexInfo, type Layout, type MeasureFunc, type Style, type Value } from "./types.js";
 /**
  * A layout node in the flexbox tree.
  */
@@ -12,6 +12,7 @@ export declare class Node {
     private _children;
     private _style;
     private _measureFunc;
+    private _baselineFunc;
     private _m0?;
     private _m1?;
     private _m2?;
@@ -123,6 +124,31 @@ export declare class Node {
      */
     hasMeasureFunc(): boolean;
     /**
+     * Set a baseline function to determine where this node's text baseline is.
+     * Used for ALIGN_BASELINE to align text across siblings with different heights.
+     *
+     * @param baselineFunc - Function that returns baseline offset from top given width and height
+     * @example
+     * ```typescript
+     * textNode.setBaselineFunc((width, height) => {
+     *   // For a text node, baseline might be at 80% of height
+     *   return height * 0.8;
+     * });
+     * ```
+     */
+    setBaselineFunc(baselineFunc: BaselineFunc): void;
+    /**
+     * Remove the baseline function from this node.
+     * Marks the node as dirty to trigger layout recalculation.
+     */
+    unsetBaselineFunc(): void;
+    /**
+     * Check if this node has a baseline function.
+     *
+     * @returns True if a baseline function is set
+     */
+    hasBaselineFunc(): boolean;
+    /**
      * Call the measure function with caching.
      * Uses a 4-entry numeric cache for fast lookup without allocations.
      * Cache is cleared when markDirty() is called.
@@ -200,7 +226,7 @@ export declare class Node {
      * console.log(child.getComputedWidth());
      * ```
      */
-    calculateLayout(width?: number, height?: number, _direction?: number): void;
+    calculateLayout(width?: number, height?: number, direction?: number): void;
     /**
      * Get the computed left position after layout.
      *
@@ -229,6 +255,7 @@ export declare class Node {
     get style(): Style;
     get layout(): Layout;
     get measureFunc(): MeasureFunc | null;
+    get baselineFunc(): BaselineFunc | null;
     get flex(): FlexInfo;
     /**
      * Set the width to a fixed value in points.

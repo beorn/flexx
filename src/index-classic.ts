@@ -1,12 +1,18 @@
 /**
- * Flexx - Pure JavaScript Flexbox Layout Engine
+ * Flexx Classic - Allocating Layout Engine
  *
- * A Yoga-compatible layout engine for terminal UIs and other environments
- * where WebAssembly is not available or desirable.
+ * The classic (allocating) variant of Flexx. Use this for debugging or when
+ * you need features not yet available in the main (zero-alloc) implementation.
+ *
+ * Features exclusive to classic:
+ * - BaselineFunc for baseline alignment
+ * - Reentrant (safe for concurrent layouts)
+ *
+ * @deprecated Use the main import '@beorn/flexx' unless you need classic-specific features.
  *
  * @example
  * ```typescript
- * import { Node, FLEX_DIRECTION_ROW, DIRECTION_LTR } from '@beorn/flexx';
+ * import { Node, FLEX_DIRECTION_ROW, DIRECTION_LTR } from '@beorn/flexx/classic';
  *
  * const root = Node.create();
  * root.setWidth(80);
@@ -23,8 +29,8 @@
  * ```
  */
 
-// Node class (zero-alloc version)
-export { Node } from "./node-zero.js";
+// Node class
+export { Node } from "./node.js";
 
 // All constants (Yoga-compatible)
 export {
@@ -100,4 +106,4 @@ export type { BaselineFunc, Layout, MeasureFunc, Style, Value } from "./types.js
 export { createDefaultStyle, createValue } from "./types.js";
 
 // Layout stats (for debugging/benchmarking)
-export { layoutNodeCalls, resolveEdgeCalls, layoutSizingCalls, layoutPositioningCalls, layoutCacheHits, resetLayoutStats } from "./layout-zero.js";
+export { layoutNodeCalls, resolveEdgeCalls, layoutSizingCalls, layoutPositioningCalls, layoutCacheHits, resetLayoutStats } from "./layout.js";

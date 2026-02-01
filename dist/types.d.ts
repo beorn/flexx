@@ -19,6 +19,16 @@ export type MeasureFunc = (width: number, widthMode: number, height: number, hei
     height: number;
 };
 /**
+ * Baseline function signature for baseline alignment.
+ * Called by the layout algorithm to determine a node's baseline offset from its top edge.
+ * Used with ALIGN_BASELINE to align text baselines across siblings.
+ *
+ * @param width - The computed width of the node
+ * @param height - The computed height of the node
+ * @returns The baseline offset from the top of the node (in points)
+ */
+export type BaselineFunc = (width: number, height: number) => number;
+/**
  * Cache entry for measure results.
  * Stores input constraints (w, wm, h, hm) and output (rw, rh).
  */
@@ -81,6 +91,11 @@ export interface FlexInfo {
     mainStartMarginValue: number;
     /** Resolved main-end margin value (0 if auto, computed later) */
     mainEndMarginValue: number;
+    /** Cached resolved margin values [left, top, right, bottom] */
+    marginL: number;
+    marginT: number;
+    marginR: number;
+    marginB: number;
     /** Frozen in flex distribution (clamped to min/max constraint) */
     frozen: boolean;
     /** Line index for flex-wrap (0-based, which line this child belongs to) */
@@ -91,6 +106,16 @@ export interface FlexInfo {
      * 0+ = index among relative children (participates in flex layout)
      */
     relativeIndex: number;
+    /** Last availableWidth passed to layoutNode */
+    lastAvailW: number;
+    /** Last availableHeight passed to layoutNode */
+    lastAvailH: number;
+    /** Last offsetX passed to layoutNode */
+    lastOffsetX: number;
+    /** Last offsetY passed to layoutNode */
+    lastOffsetY: number;
+    /** Whether cached layout is valid (fingerprint matched, not dirty) */
+    layoutValid: boolean;
 }
 /**
  * Computed layout result for a node.

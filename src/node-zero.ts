@@ -12,6 +12,7 @@ import {
   markSubtreeLayoutSeen,
 } from "./layout-zero.js";
 import {
+  type BaselineFunc,
   type FlexInfo,
   type Layout,
   type LayoutCacheEntry,
@@ -43,6 +44,9 @@ export class Node {
 
   // Measure function for intrinsic sizing
   private _measureFunc: MeasureFunc | null = null;
+
+  // Baseline function for baseline alignment
+  private _baselineFunc: BaselineFunc | null = null;
 
   // Measure cache - 4-entry numeric cache (faster than Map<string,...>)
   // Each entry stores: w, wm, h, hm, rw, rh
@@ -213,6 +217,7 @@ export class Node {
     }
     this._children = [];
     this._measureFunc = null;
+    this._baselineFunc = null;
   }
 
   /**
@@ -263,6 +268,46 @@ export class Node {
    */
   hasMeasureFunc(): boolean {
     return this._measureFunc !== null;
+  }
+
+  // ============================================================================
+  // Baseline Function
+  // ============================================================================
+
+  /**
+   * Set a baseline function to determine where this node's text baseline is.
+   * Used for ALIGN_BASELINE to align text across siblings with different heights.
+   *
+   * @param baselineFunc - Function that returns baseline offset from top given width and height
+   * @example
+   * ```typescript
+   * textNode.setBaselineFunc((width, height) => {
+   *   // For a text node, baseline might be at 80% of height
+   *   return height * 0.8;
+   * });
+   * ```
+   */
+  setBaselineFunc(baselineFunc: BaselineFunc): void {
+    this._baselineFunc = baselineFunc;
+    this.markDirty();
+  }
+
+  /**
+   * Remove the baseline function from this node.
+   * Marks the node as dirty to trigger layout recalculation.
+   */
+  unsetBaselineFunc(): void {
+    this._baselineFunc = null;
+    this.markDirty();
+  }
+
+  /**
+   * Check if this node has a baseline function.
+   *
+   * @returns True if a baseline function is set
+   */
+  hasBaselineFunc(): boolean {
+    return this._baselineFunc !== null;
   }
 
   /**
@@ -529,6 +574,10 @@ export class Node {
 
   get measureFunc(): MeasureFunc | null {
     return this._measureFunc;
+  }
+
+  get baselineFunc(): BaselineFunc | null {
+    return this._baselineFunc;
   }
 
   get flex(): FlexInfo {

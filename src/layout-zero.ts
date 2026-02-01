@@ -1188,8 +1188,8 @@ function layoutNode(
           // For row: mainAxisSize is contentWidth; for column: crossAxisSize is contentWidth
           const parentWidth = isRow ? mainAxisSize : crossAxisSize;
           const childPadding = isRow
-            ? resolveEdgeValue(childStyle.padding, 0, childStyle.flexDirection, parentWidth) + resolveEdgeValue(childStyle.padding, 2, childStyle.flexDirection, parentWidth)
-            : resolveEdgeValue(childStyle.padding, 1, childStyle.flexDirection, parentWidth) + resolveEdgeValue(childStyle.padding, 3, childStyle.flexDirection, parentWidth);
+            ? resolveEdgeValue(childStyle.padding, 0, childStyle.flexDirection, parentWidth, direction) + resolveEdgeValue(childStyle.padding, 2, childStyle.flexDirection, parentWidth, direction)
+            : resolveEdgeValue(childStyle.padding, 1, childStyle.flexDirection, parentWidth, direction) + resolveEdgeValue(childStyle.padding, 3, childStyle.flexDirection, parentWidth, direction);
           const childBorder = isRow
             ? childStyle.border[0] + childStyle.border[2]
             : childStyle.border[1] + childStyle.border[3];
@@ -1348,10 +1348,11 @@ function layoutNode(
     // Compute baseline alignment info if needed (hasBaselineAlignment computed in flex info pass)
     // For ALIGN_BASELINE in row direction, we need to know the max baseline first
     let maxBaseline = 0;
+    // Per-child baselines for O(1) lookup during alignment phase
+    const childBaselines: number[] = [];
 
     if (hasBaselineAlignment && isRow) {
       // First pass: compute each child's baseline and find the maximum
-      // Store baseline in a temporary field (reuse mainMargin after it's no longer needed? Or track maxBaseline only)
       for (const child of node.children) {
         if (child.flex.relativeIndex < 0) continue;
         const childStyle = child.style;
@@ -1359,11 +1360,24 @@ function layoutNode(
         // Get cross-axis (top) margin for this child - use cached value
         const topMargin = child.flex.marginT;
 
-        // Compute child's height - need to do a mini-layout or use the cached size
-        // For children with explicit height, use that
-        // For auto-height children, we need to layout them first
+        // Compute child's dimensions - need to do a mini-layout or use the cached size
+        // For children with explicit dimensions, use those
+        // For auto-sized children, we need to layout them first
+        let childWidth: number;
         let childHeight: number;
+        const widthDim = childStyle.width;
         const heightDim = childStyle.height;
+
+        // Get width for baseline function
+        if (widthDim.unit === C.UNIT_POINT) {
+          childWidth = widthDim.value;
+        } else if (widthDim.unit === C.UNIT_PERCENT && !Number.isNaN(mainAxisSize)) {
+          childWidth = mainAxisSize * (widthDim.value / 100);
+        } else {
+          childWidth = child.flex.mainSize;
+        }
+
+        // Get height for baseline
         if (heightDim.unit === C.UNIT_POINT) {
           childHeight = heightDim.value;
         } else if (heightDim.unit === C.UNIT_PERCENT && !Number.isNaN(crossAxisSize)) {
@@ -1374,18 +1388,29 @@ function layoutNode(
           const cached = child.getCachedLayout(child.flex.mainSize, NaN);
           if (cached) {
             layoutCacheHits++;
+            childWidth = cached.width;
             childHeight = cached.height;
           } else {
             // Use measureNode for sizing-only pass (faster than full layoutNode)
             measureNode(child, child.flex.mainSize, NaN);
+            childWidth = child.layout.width;
             childHeight = child.layout.height;
             child.setCachedLayout(child.flex.mainSize, NaN, child.layout.width, child.layout.height);
           }
         }
 
-        // Baseline for non-text elements is at the bottom of the margin box
-        // baseline = topMargin + height (distance from top of margin box to baseline)
-        const baseline = topMargin + childHeight;
+        // Compute baseline: use baselineFunc if available, otherwise use bottom of content box
+        let baseline: number;
+        if (child.baselineFunc !== null) {
+          // Custom baseline function provided (e.g., for text nodes)
+          baseline = topMargin + child.baselineFunc(childWidth, childHeight);
+        } else {
+          // Fallback: bottom of content box (default for non-text elements)
+          // Note: We don't recursively propagate first-child baselines to avoid O(n^depth) cost
+          // This is a simplification from CSS spec but acceptable for TUI use cases
+          baseline = topMargin + childHeight;
+        }
+        childBaselines.push(baseline);
         maxBaseline = Math.max(maxBaseline, baseline);
       }
     }
@@ -1506,14 +1531,15 @@ function layoutNode(
     }
 
     // Position and layout children
-    // For reverse directions, start from the END of the container
+    // For reverse directions (including RTL for row), start from the END of the container
+    // RTL + reverse cancels out (XOR behavior)
     // For shrink-wrap containers, compute effective main size first
     let effectiveMainAxisSize = mainAxisSize;
     const mainIsAuto = isRow
       ? (style.width.unit !== C.UNIT_POINT && style.width.unit !== C.UNIT_PERCENT)
       : (style.height.unit !== C.UNIT_POINT && style.height.unit !== C.UNIT_PERCENT);
 
-    if (isReverse && mainIsAuto) {
+    if (effectiveReverse && mainIsAuto) {
       // For reverse with auto size, compute total content size for positioning
       let totalContent = 0;
       for (const child of node.children) {
@@ -1525,11 +1551,11 @@ function layoutNode(
     }
 
     // Use fractional mainPos for edge-based rounding
-    let mainPos = isReverse ? effectiveMainAxisSize - startOffset : startOffset;
+    let mainPos = effectiveReverse ? effectiveMainAxisSize - startOffset : startOffset;
     let currentLineIdx = -1;
     let relIdx = 0; // Track relative child index for gap handling
 
-    debug('positioning children: isRow=%s, startOffset=%d, relativeCount=%d, isReverse=%s, numLines=%d', isRow, startOffset, relativeCount, isReverse, numLines);
+    debug('positioning children: isRow=%s, startOffset=%d, relativeCount=%d, effectiveReverse=%s, numLines=%d', isRow, startOffset, relativeCount, effectiveReverse, numLines);
 
     for (const child of node.children) {
       if (child.flex.relativeIndex < 0) continue;
@@ -1541,7 +1567,7 @@ function layoutNode(
       if (childLineIdx !== currentLineIdx) {
         currentLineIdx = childLineIdx;
         // Reset mainPos for new line
-        mainPos = isReverse ? effectiveMainAxisSize - startOffset : startOffset;
+        mainPos = effectiveReverse ? effectiveMainAxisSize - startOffset : startOffset;
       }
 
       // Get cross-axis offset for this child's line (from pre-allocated array)
@@ -1714,22 +1740,22 @@ function layoutNode(
       }
 
       // Child position within content area (fractional for edge-based rounding)
-      // For reverse directions, position from mainPos - childSize, otherwise from mainPos
+      // For reverse directions (including RTL for row), position from mainPos - childSize
       // IMPORTANT: In reverse, swap which margin is applied to which side
-      // EDGE_START (margin[0]/[1]) becomes the trailing margin in reverse layout
-      // EDGE_END (margin[2]/[3]) becomes the leading margin in reverse layout
+      // For RTL row: items flow right-to-left, so right margin becomes trailing
       // For flex-wrap, add lineCrossOffset to cross-axis position
       let childX: number;
       let childY: number;
-      if (isReverse) {
+      if (effectiveReverse) {
         if (isRow) {
-          // Row-reverse: items positioned from right, margin_start applied on right
-          childX = mainPos - childMainSize - childMarginLeft;  // Use left margin (EDGE_START) as trailing
+          // Row-reverse or RTL: items positioned from right
+          // In RTL/reverse, use right margin as trailing margin
+          childX = mainPos - childMainSize - childMarginRight;
           childY = lineCrossOffset + childMarginTop;
         } else {
-          // Column-reverse: items positioned from bottom, margin_start applied on bottom
+          // Column-reverse: items positioned from bottom
           childX = lineCrossOffset + childMarginLeft;
-          childY = mainPos - childMainSize - childMarginTop;  // Use top margin (EDGE_START) as trailing
+          childY = mainPos - childMainSize - childMarginTop;
         }
       } else {
         childX = isRow ? mainPos + childMarginLeft : lineCrossOffset + childMarginLeft;
@@ -1782,10 +1808,10 @@ function layoutNode(
 
       // Compute child's box model minimum early (needed for edge-based rounding)
       // Use resolveEdgeValue to respect logical EDGE_START/END for padding
-      const childPaddingL = resolveEdgeValue(childStyle.padding, 0, childStyle.flexDirection, contentWidth);
-      const childPaddingT = resolveEdgeValue(childStyle.padding, 1, childStyle.flexDirection, contentWidth);
-      const childPaddingR = resolveEdgeValue(childStyle.padding, 2, childStyle.flexDirection, contentWidth);
-      const childPaddingB = resolveEdgeValue(childStyle.padding, 3, childStyle.flexDirection, contentWidth);
+      const childPaddingL = resolveEdgeValue(childStyle.padding, 0, childStyle.flexDirection, contentWidth, direction);
+      const childPaddingT = resolveEdgeValue(childStyle.padding, 1, childStyle.flexDirection, contentWidth, direction);
+      const childPaddingR = resolveEdgeValue(childStyle.padding, 2, childStyle.flexDirection, contentWidth, direction);
+      const childPaddingB = resolveEdgeValue(childStyle.padding, 3, childStyle.flexDirection, contentWidth, direction);
       const childBorderL = childStyle.border[0];
       const childBorderT = childStyle.border[1];
       const childBorderR = childStyle.border[2];
@@ -1906,8 +1932,8 @@ function layoutNode(
       // Use isEdgeAuto to correctly respect logical EDGE_START/END margins
       const crossStartIndex = isRow ? 1 : 0; // top for row, left for column
       const crossEndIndex = isRow ? 3 : 2;   // bottom for row, right for column
-      const hasAutoStartMargin = isEdgeAuto(childStyle.margin, crossStartIndex, style.flexDirection);
-      const hasAutoEndMargin = isEdgeAuto(childStyle.margin, crossEndIndex, style.flexDirection);
+      const hasAutoStartMargin = isEdgeAuto(childStyle.margin, crossStartIndex, style.flexDirection, direction);
+      const hasAutoEndMargin = isEdgeAuto(childStyle.margin, crossEndIndex, style.flexDirection, direction);
       const availableCrossSpace = crossAxisSize - finalCrossSize - crossMargin;
 
       if (hasAutoStartMargin && hasAutoEndMargin) {
@@ -1931,12 +1957,9 @@ function layoutNode(
           case C.ALIGN_BASELINE:
             // Baseline alignment only applies to row direction
             // For column direction, it falls through to flex-start (default)
-            // TODO: Precise baseline alignment requires per-child baseline storage
-            // For now, we use maxBaseline which gives approximate centering
-            if (isRow && maxBaseline > 0) {
-              // Compute this child's baseline (same logic as baseline collection)
-              const childBaseline = childMarginTop + finalCrossSize;
-              crossOffset = maxBaseline - childBaseline;
+            if (isRow && childBaselines.length > 0) {
+              // Use pre-computed baseline from first pass (includes baselineFunc support)
+              crossOffset = maxBaseline - childBaselines[relIdx]!;
             }
             break;
         }
@@ -1956,7 +1979,7 @@ function layoutNode(
       // Use computed margin values (including auto margins)
       const totalMainMargin = flex.mainStartMarginValue + flex.mainEndMarginValue;
       debug('  child %d: mainPos=%d → top=%d (fractionalMainSize=%d, totalMainMargin=%d)', relIdx, mainPos, child.layout.top, fractionalMainSize, totalMainMargin);
-      if (isReverse) {
+      if (effectiveReverse) {
         mainPos -= fractionalMainSize + totalMainMargin;
         if (relIdx < relativeCount - 1) {
           mainPos -= itemSpacing;
@@ -1997,10 +2020,10 @@ function layoutNode(
       if (child.flex.relativeIndex < 0) continue;
       const childCross = isRow ? child.layout.height : child.layout.width;
       const childMargin = isRow
-        ? resolveEdgeValue(child.style.margin, 1, style.flexDirection, contentWidth) +
-          resolveEdgeValue(child.style.margin, 3, style.flexDirection, contentWidth)
-        : resolveEdgeValue(child.style.margin, 0, style.flexDirection, contentWidth) +
-          resolveEdgeValue(child.style.margin, 2, style.flexDirection, contentWidth);
+        ? resolveEdgeValue(child.style.margin, 1, style.flexDirection, contentWidth, direction) +
+          resolveEdgeValue(child.style.margin, 3, style.flexDirection, contentWidth, direction)
+        : resolveEdgeValue(child.style.margin, 0, style.flexDirection, contentWidth, direction) +
+          resolveEdgeValue(child.style.margin, 2, style.flexDirection, contentWidth, direction);
       maxCrossSize = Math.max(maxCrossSize, childCross + childMargin);
     }
     // Cross-axis shrink-wrap for auto-sized dimension
@@ -2071,16 +2094,16 @@ function layoutNode(
     // CSS spec: percentage margins resolve against containing block's WIDTH only
     // Use resolveEdgeValue to respect logical EDGE_START/END
     // Note: Auto margins will resolve to 0 here, we handle them separately below
-    const childMarginLeft = resolveEdgeValue(childStyle.margin, 0, style.flexDirection, nodeWidth);
-    const childMarginTop = resolveEdgeValue(childStyle.margin, 1, style.flexDirection, nodeWidth);
-    const childMarginRight = resolveEdgeValue(childStyle.margin, 2, style.flexDirection, nodeWidth);
-    const childMarginBottom = resolveEdgeValue(childStyle.margin, 3, style.flexDirection, nodeWidth);
+    const childMarginLeft = resolveEdgeValue(childStyle.margin, 0, style.flexDirection, nodeWidth, direction);
+    const childMarginTop = resolveEdgeValue(childStyle.margin, 1, style.flexDirection, nodeWidth, direction);
+    const childMarginRight = resolveEdgeValue(childStyle.margin, 2, style.flexDirection, nodeWidth, direction);
+    const childMarginBottom = resolveEdgeValue(childStyle.margin, 3, style.flexDirection, nodeWidth, direction);
 
     // Check for auto margins (used for centering absolute children)
-    const hasAutoMarginLeft = isEdgeAuto(childStyle.margin, 0, style.flexDirection);
-    const hasAutoMarginRight = isEdgeAuto(childStyle.margin, 2, style.flexDirection);
-    const hasAutoMarginTop = isEdgeAuto(childStyle.margin, 1, style.flexDirection);
-    const hasAutoMarginBottom = isEdgeAuto(childStyle.margin, 3, style.flexDirection);
+    const hasAutoMarginLeft = isEdgeAuto(childStyle.margin, 0, style.flexDirection, direction);
+    const hasAutoMarginRight = isEdgeAuto(childStyle.margin, 2, style.flexDirection, direction);
+    const hasAutoMarginTop = isEdgeAuto(childStyle.margin, 1, style.flexDirection, direction);
+    const hasAutoMarginBottom = isEdgeAuto(childStyle.margin, 3, style.flexDirection, direction);
 
     // Position offsets from setPosition(edge, value)
     const leftPos = childStyle.position[0];

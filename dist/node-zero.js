@@ -20,6 +20,8 @@ export class Node {
     _style = createDefaultStyle();
     // Measure function for intrinsic sizing
     _measureFunc = null;
+    // Baseline function for baseline alignment
+    _baselineFunc = null;
     // Measure cache - 4-entry numeric cache (faster than Map<string,...>)
     // Each entry stores: w, wm, h, hm, rw, rh
     // Cleared when markDirty() is called since content may have changed
@@ -57,9 +59,19 @@ export class Node {
         mainEndMarginAuto: false,
         mainStartMarginValue: 0,
         mainEndMarginValue: 0,
+        marginL: 0,
+        marginT: 0,
+        marginR: 0,
+        marginB: 0,
         frozen: false,
         lineIndex: 0,
         relativeIndex: -1,
+        // Constraint fingerprinting
+        lastAvailW: NaN,
+        lastAvailH: NaN,
+        lastOffsetX: NaN,
+        lastOffsetY: NaN,
+        layoutValid: false,
     };
     // Dirty flags
     _isDirty = true;
@@ -164,6 +176,7 @@ export class Node {
         }
         this._children = [];
         this._measureFunc = null;
+        this._baselineFunc = null;
     }
     /**
      * Dispose the node (calls free)
@@ -209,6 +222,42 @@ export class Node {
      */
     hasMeasureFunc() {
         return this._measureFunc !== null;
+    }
+    // ============================================================================
+    // Baseline Function
+    // ============================================================================
+    /**
+     * Set a baseline function to determine where this node's text baseline is.
+     * Used for ALIGN_BASELINE to align text across siblings with different heights.
+     *
+     * @param baselineFunc - Function that returns baseline offset from top given width and height
+     * @example
+     * ```typescript
+     * textNode.setBaselineFunc((width, height) => {
+     *   // For a text node, baseline might be at 80% of height
+     *   return height * 0.8;
+     * });
+     * ```
+     */
+    setBaselineFunc(baselineFunc) {
+        this._baselineFunc = baselineFunc;
+        this.markDirty();
+    }
+    /**
+     * Remove the baseline function from this node.
+     * Marks the node as dirty to trigger layout recalculation.
+     */
+    unsetBaselineFunc() {
+        this._baselineFunc = null;
+        this.markDirty();
+    }
+    /**
+     * Check if this node has a baseline function.
+     *
+     * @returns True if a baseline function is set
+     */
+    hasBaselineFunc() {
+        return this._baselineFunc !== null;
     }
     /**
      * Call the measure function with caching.
@@ -306,6 +355,8 @@ export class Node {
      */
     markDirty() {
         this._isDirty = true;
+        // Invalidate layout fingerprint
+        this._flex.layoutValid = false;
         // Clear 4-entry measure cache since content may have changed
         this._m0 = this._m1 = this._m2 = this._m3 = undefined;
         if (this._parent !== null) {
@@ -355,7 +406,7 @@ export class Node {
      * console.log(child.getComputedWidth());
      * ```
      */
-    calculateLayout(width, height, _direction = C.DIRECTION_LTR) {
+    calculateLayout(width, height, direction = C.DIRECTION_LTR) {
         if (!this._isDirty) {
             debug("layout skip (not dirty)");
             return;
@@ -368,7 +419,7 @@ export class Node {
         const availableWidth = width ?? NaN;
         const availableHeight = height ?? NaN;
         // Run the layout algorithm
-        computeLayout(this, availableWidth, availableHeight);
+        computeLayout(this, availableWidth, availableHeight, direction);
         // Mark layout computed
         this._isDirty = false;
         this._hasNewLayout = true;
@@ -424,6 +475,9 @@ export class Node {
     }
     get measureFunc() {
         return this._measureFunc;
+    }
+    get baselineFunc() {
+        return this._baselineFunc;
     }
     get flex() {
         return this._flex;
