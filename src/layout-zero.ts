@@ -892,6 +892,10 @@ function layoutNode(
   const style = node.style;
   const layout = node.layout;
 
+  // ============================================================================
+  // PHASE 1: Early Exit Checks
+  // ============================================================================
+
   // Handle display: none
   if (style.display === C.DISPLAY_NONE) {
     layout.left = 0;
@@ -921,9 +925,11 @@ function layoutNode(
     return;
   }
 
-  // Calculate spacing
+  // ============================================================================
+  // PHASE 2: Resolve Spacing (margins, padding, borders)
   // CSS spec: percentage margins AND padding resolve against containing block's WIDTH only
-  // Use resolveEdgeValue to respect logical EDGE_START/END based on direction
+  // ============================================================================
+
   const marginLeft = resolveEdgeValue(style.margin, 0, style.flexDirection, availableWidth, direction);
   const marginTop = resolveEdgeValue(style.margin, 1, style.flexDirection, availableWidth, direction);
   const marginRight = resolveEdgeValue(style.margin, 2, style.flexDirection, availableWidth, direction);
@@ -939,9 +945,12 @@ function layoutNode(
   const borderRight = style.border[2];
   const borderBottom = style.border[3];
 
-  // Calculate node dimensions
+  // ============================================================================
+  // PHASE 3: Calculate Node Dimensions
   // When available dimension is NaN (unconstrained), auto-sized nodes use NaN
   // and will be sized by shrink-wrap logic based on children
+  // ============================================================================
+
   let nodeWidth: number;
   if (style.width.unit === C.UNIT_POINT) {
     nodeWidth = style.width.value;
@@ -1043,6 +1052,13 @@ function layoutNode(
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHASE 4: Handle Leaf Nodes (nodes without children)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Two cases:
+  // - With measureFunc: Call measure to get intrinsic size (text nodes)
+  // - Without measureFunc: Use padding+border as intrinsic size (empty boxes)
+
   // Handle measure function (text nodes)
   if (node.hasMeasureFunc() && node.children.length === 0) {
     // For unconstrained dimensions (NaN), treat as auto-sizing
@@ -1093,8 +1109,16 @@ function layoutNode(
     return;
   }
 
-  // Flex layout for relative children
-  // Combined pass: mark relativeIndex + compute flex info + count auto margins + check baseline
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHASE 5: Flex Layout - Collect Children and Compute Base Sizes
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Single pass over children:
+  // - Skip absolute/hidden children (relativeIndex = -1)
+  // - Cache resolved margins for each relative child
+  // - Compute base main size from flex-basis, explicit size, or intrinsic size
+  // - Track flex grow/shrink factors and min/max constraints
+  // - Count auto margins for later distribution
+
   const isRow = isRowDirection(style.flexDirection);
   const isReverse = isReverseDirection(style.flexDirection);
   // For RTL, row direction is reversed (XOR with isReverse)
@@ -1243,6 +1267,13 @@ function layoutNode(
 
   debug('layoutNode: node.children=%d, relativeCount=%d', node.children.length, relativeCount);
   if (relativeCount > 0) {
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 6a: Flex Line Breaking and Space Distribution
+    // ─────────────────────────────────────────────────────────────────────────
+    // Break children into lines (for flex-wrap).
+    // Distribute free space using grow/shrink factors.
+    // Apply min/max constraints.
+
     // Break children into flex lines for wrap support (zero allocation - sets child.flex.lineIndex)
     const numLines = breakIntoLines(node, relativeCount, mainAxisSize, mainGap, style.flexWrap);
     const crossGap = isRow ? style.gap[1] : style.gap[0];
@@ -1287,6 +1318,12 @@ function layoutNode(
         flex.mainSize = Math.max(flex.minMain, Math.min(flex.maxMain, flex.mainSize));
       }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 6b: Justify-Content and Auto Margins
+    // ─────────────────────────────────────────────────────────────────────────
+    // Distribute remaining free space on main axis.
+    // Auto margins absorb space first, then justify-content applies.
 
     // Calculate final used space and justify-content
     // For single-line, use all children; for multi-line, this applies per-line during positioning
@@ -1360,6 +1397,12 @@ function layoutNode(
     // This ensures adjacent elements share exact boundaries without gaps.
     // The key insight: round(pos) gives the edge position, width = round(end) - round(start)
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 6c: Baseline Alignment (Pre-computation)
+    // ─────────────────────────────────────────────────────────────────────────
+    // For align-items: baseline, compute each child's baseline and find max.
+    // Uses baselineFunc if provided, otherwise falls back to content box bottom.
+
     // Compute baseline alignment info if needed (hasBaselineAlignment computed in flex info pass)
     // For ALIGN_BASELINE in row direction, we need to know the max baseline first
     let maxBaseline = 0;
@@ -1430,6 +1473,12 @@ function layoutNode(
       }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 7a: Compute Flex Line Cross-Axis Sizes
+    // ─────────────────────────────────────────────────────────────────────────
+    // Calculate the cross-axis size of each flex line (max child height in row).
+    // Track cumulative offsets for positioning children by line.
+
     // Compute line cross-axis sizes and offsets for flex-wrap
     // Each child already has lineIndex set by breakIntoLines
     // Use pre-allocated _lineCrossOffsets and _lineCrossSizes arrays
@@ -1467,6 +1516,12 @@ function layoutNode(
       _lineCrossSizes[lineIdx] = lineCrossSize;
       cumulativeCrossOffset += lineCrossSize + crossGap;
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 7b: Apply alignContent
+    // ─────────────────────────────────────────────────────────────────────────
+    // Distribute flex lines within the container's cross-axis.
+    // Only applies when flex-wrap creates multiple lines.
 
     // Apply alignContent to distribute lines in the cross axis
     // This affects how multiple flex lines are positioned within the container
@@ -1544,6 +1599,13 @@ function layoutNode(
         }
       }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 8: Position and Layout Children
+    // ─────────────────────────────────────────────────────────────────────────
+    // Calculate each child's position in the container.
+    // Apply cross-axis alignment (align-items, align-self).
+    // Recursively layout grandchildren.
 
     // Position and layout children
     // For reverse directions (including RTL for row), start from the END of the container
@@ -2008,6 +2070,11 @@ function layoutNode(
       relIdx++;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 9: Shrink-Wrap Auto-Sized Containers
+    // ─────────────────────────────────────────────────────────────────────────
+    // For containers without explicit size, compute intrinsic size from children.
+
     // For auto-sized containers (including root), shrink-wrap to content
     // Compute actual used main space from child layouts (not pre-computed flex.mainSize which may be 0)
     let actualUsedMain = 0;
@@ -2068,6 +2135,12 @@ function layoutNode(
     nodeHeight = minInnerHeight;
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHASE 10: Final Output - Set Node Layout
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Use edge-based rounding (Yoga-compatible): round absolute edges and derive sizes.
+  // This ensures adjacent elements share exact boundaries without pixel gaps.
+
   // Set this node's layout using edge-based rounding (Yoga-compatible)
   // Use parentPosOffsetX/Y computed earlier (includes position offsets)
   // Compute absolute positions for edge-based rounding
@@ -2089,6 +2162,12 @@ function layoutNode(
   const roundedAbsParentTop = Math.round(absY);
   layout.left = roundedAbsLeft - roundedAbsParentLeft;
   layout.top = roundedAbsTop - roundedAbsParentTop;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHASE 11: Layout Absolute Children
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Absolute children are positioned relative to the padding box, not content box.
+  // They don't participate in flex layout - they're laid out independently.
 
   // Layout absolute children - handle left/right/top/bottom offsets
   // Absolute positioning uses the PADDING BOX as the containing block
