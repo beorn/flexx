@@ -1236,78 +1236,98 @@ function layoutNode(
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // PHASE 6b: Justify-Content and Auto Margins
+    // PHASE 6b: Justify-Content and Auto Margins (Per-Line)
     // ─────────────────────────────────────────────────────────────────────────
-    // Distribute remaining free space on main axis.
+    // Distribute remaining free space on main axis PER LINE.
     // Auto margins absorb space first, then justify-content applies.
+    // This fixes multi-line wrap layouts to match CSS spec behavior.
 
-    // Calculate final used space and justify-content
-    // For single-line, use all children; for multi-line, this applies per-line during positioning
-    const totalGaps = relativeCount > 1 ? mainGap * (relativeCount - 1) : 0;
-    let usedMain = 0;
-    for (const c of node.children) {
-      if (c.flex.relativeIndex < 0) continue;
-      usedMain += c.flex.mainSize + c.flex.mainMargin;
-    }
-    usedMain += totalGaps;
-    // For auto-sized containers (NaN mainAxisSize), there's no remaining space to justify
-    // Use NaN check instead of style check - handles minWidth/minHeight constraints properly
-    const remainingSpace = Number.isNaN(mainAxisSize) ? 0 : mainAxisSize - usedMain;
+    // Compute per-line justify-content and auto margins
+    for (let lineIdx = 0; lineIdx < numLines; lineIdx++) {
+      const lineChildren = _lineChildren[lineIdx];
+      const lineLength = lineChildren.length;
+      if (lineLength === 0) {
+        _lineJustifyStarts[lineIdx] = 0;
+        _lineItemSpacings[lineIdx] = mainGap;
+        continue;
+      }
 
-    // Handle auto margins on main axis (totalAutoMargins computed in flex info pass)
-    // Auto margins absorb free space BEFORE justify-content
-    const hasAutoMargins = totalAutoMargins > 0;
+      // Calculate used main axis space for this line
+      let lineUsedMain = 0;
+      let lineAutoMargins = 0;
+      for (let i = 0; i < lineLength; i++) {
+        const c = lineChildren[i];
+        lineUsedMain += c.flex.mainSize + c.flex.mainMargin;
+        if (c.flex.mainStartMarginAuto) lineAutoMargins++;
+        if (c.flex.mainEndMarginAuto) lineAutoMargins++;
+      }
+      const lineGaps = lineLength > 1 ? mainGap * (lineLength - 1) : 0;
+      lineUsedMain += lineGaps;
 
-    // Auto margins absorb ALL remaining space (including negative for overflow positioning)
-    if (hasAutoMargins) {
-      const autoMarginValue = remainingSpace / totalAutoMargins;
-      for (const child of node.children) {
-        if (child.flex.relativeIndex < 0) continue;
-        if (child.flex.mainStartMarginAuto) {
-          child.flex.mainStartMarginValue = autoMarginValue;
-        }
-        if (child.flex.mainEndMarginAuto) {
-          child.flex.mainEndMarginValue = autoMarginValue;
+      // For auto-sized containers (NaN mainAxisSize), there's no remaining space to justify
+      const lineRemainingSpace = Number.isNaN(mainAxisSize) ? 0 : mainAxisSize - lineUsedMain;
+
+      // Handle auto margins on main axis (per-line)
+      // Auto margins absorb free space BEFORE justify-content
+      const lineHasAutoMargins = lineAutoMargins > 0;
+
+      if (lineHasAutoMargins) {
+        // Auto margins absorb ALL remaining space for this line
+        const autoMarginValue = lineRemainingSpace / lineAutoMargins;
+        for (let i = 0; i < lineLength; i++) {
+          const child = lineChildren[i];
+          if (child.flex.mainStartMarginAuto) {
+            child.flex.mainStartMarginValue = autoMarginValue;
+          }
+          if (child.flex.mainEndMarginAuto) {
+            child.flex.mainEndMarginValue = autoMarginValue;
+          }
         }
       }
-    }
-    // When space is negative or zero, auto margins stay at 0
 
-    let startOffset = 0;
-    let itemSpacing = mainGap;
+      // Calculate justify-content offset and spacing for this line
+      let lineStartOffset = 0;
+      let lineItemSpacing = mainGap;
 
-    // justify-content is ignored when any auto margins exist
-    if (!hasAutoMargins) {
-      switch (style.justifyContent) {
-        case C.JUSTIFY_FLEX_END:
-          startOffset = remainingSpace;
-          break;
-        case C.JUSTIFY_CENTER:
-          startOffset = remainingSpace / 2;
-          break;
-        case C.JUSTIFY_SPACE_BETWEEN:
-          // Only apply space-between when remaining space is positive
-          // With overflow (negative), fall back to flex-start behavior
-          if (relativeCount > 1 && remainingSpace > 0) {
-            itemSpacing = mainGap + remainingSpace / (relativeCount - 1);
-          }
-          break;
-        case C.JUSTIFY_SPACE_AROUND:
-          if (relativeCount > 0) {
-            const extraSpace = remainingSpace / relativeCount;
-            startOffset = extraSpace / 2;
-            itemSpacing = mainGap + extraSpace;
-          }
-          break;
-        case C.JUSTIFY_SPACE_EVENLY:
-          if (relativeCount > 0) {
-            const extraSpace = remainingSpace / (relativeCount + 1);
-            startOffset = extraSpace;
-            itemSpacing = mainGap + extraSpace;
-          }
-          break;
+      // justify-content is ignored when any auto margins exist on this line
+      if (!lineHasAutoMargins) {
+        switch (style.justifyContent) {
+          case C.JUSTIFY_FLEX_END:
+            lineStartOffset = lineRemainingSpace;
+            break;
+          case C.JUSTIFY_CENTER:
+            lineStartOffset = lineRemainingSpace / 2;
+            break;
+          case C.JUSTIFY_SPACE_BETWEEN:
+            // Only apply space-between when remaining space is positive
+            if (lineLength > 1 && lineRemainingSpace > 0) {
+              lineItemSpacing = mainGap + lineRemainingSpace / (lineLength - 1);
+            }
+            break;
+          case C.JUSTIFY_SPACE_AROUND:
+            if (lineLength > 0) {
+              const extraSpace = lineRemainingSpace / lineLength;
+              lineStartOffset = extraSpace / 2;
+              lineItemSpacing = mainGap + extraSpace;
+            }
+            break;
+          case C.JUSTIFY_SPACE_EVENLY:
+            if (lineLength > 0) {
+              const extraSpace = lineRemainingSpace / (lineLength + 1);
+              lineStartOffset = extraSpace;
+              lineItemSpacing = mainGap + extraSpace;
+            }
+            break;
+        }
       }
+
+      _lineJustifyStarts[lineIdx] = lineStartOffset;
+      _lineItemSpacings[lineIdx] = lineItemSpacing;
     }
+
+    // For backwards compatibility, set global values for single-line case
+    const startOffset = _lineJustifyStarts[0];
+    const itemSpacing = _lineItemSpacings[0];
 
     // NOTE: We do NOT round sizes here. Instead, we use edge-based rounding below.
     // This ensures adjacent elements share exact boundaries without gaps.
@@ -1531,6 +1551,9 @@ function layoutNode(
       ? (style.width.unit !== C.UNIT_POINT && style.width.unit !== C.UNIT_PERCENT)
       : (style.height.unit !== C.UNIT_POINT && style.height.unit !== C.UNIT_PERCENT);
 
+    // Calculate total gaps for all children (used for shrink-wrap sizing)
+    const totalGaps = relativeCount > 1 ? mainGap * (relativeCount - 1) : 0;
+
     if (effectiveReverse && mainIsAuto) {
       // For reverse with auto size, compute total content size for positioning
       let totalContent = 0;
@@ -1543,9 +1566,11 @@ function layoutNode(
     }
 
     // Use fractional mainPos for edge-based rounding
+    // Initialize with first line's startOffset (may be overridden when processing lines)
     let mainPos = effectiveReverse ? effectiveMainAxisSize - startOffset : startOffset;
     let currentLineIdx = -1;
     let relIdx = 0; // Track relative child index for gap handling
+    let currentItemSpacing = itemSpacing; // Track current line's item spacing
 
     debug('positioning children: isRow=%s, startOffset=%d, relativeCount=%d, effectiveReverse=%s, numLines=%d', isRow, startOffset, relativeCount, effectiveReverse, numLines);
 
@@ -1558,8 +1583,10 @@ function layoutNode(
       const childLineIdx = flex.lineIndex;
       if (childLineIdx !== currentLineIdx) {
         currentLineIdx = childLineIdx;
-        // Reset mainPos for new line
-        mainPos = effectiveReverse ? effectiveMainAxisSize - startOffset : startOffset;
+        // Reset mainPos for new line using line-specific justify offset
+        const lineOffset = _lineJustifyStarts[childLineIdx];
+        currentItemSpacing = _lineItemSpacings[childLineIdx];
+        mainPos = effectiveReverse ? effectiveMainAxisSize - lineOffset : lineOffset;
       }
 
       // Get cross-axis offset for this child's line (from pre-allocated array)
@@ -1974,12 +2001,12 @@ function layoutNode(
       if (effectiveReverse) {
         mainPos -= fractionalMainSize + totalMainMargin;
         if (relIdx < relativeCount - 1) {
-          mainPos -= itemSpacing;
+          mainPos -= currentItemSpacing;
         }
       } else {
         mainPos += fractionalMainSize + totalMainMargin;
         if (relIdx < relativeCount - 1) {
-          mainPos += itemSpacing;
+          mainPos += currentItemSpacing;
         }
       }
       relIdx++;
