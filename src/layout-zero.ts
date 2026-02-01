@@ -344,16 +344,33 @@ function breakIntoLines(
     _lineCrossOffsets[i] = 0;
   }
 
-  // Handle wrap-reverse by flipping line indices and swapping _lineChildren
+  // Handle wrap-reverse by reversing line CONTENTS (not references) to maintain pool stability
+  // Swapping array references would corrupt the global _lineChildren pool across layout calls
   if (wrap === C.WRAP_WRAP_REVERSE && numLines > 1) {
-    // Swap _lineChildren arrays in place
-    for (let i = 0; i < numLines / 2; i++) {
+    // Swap contents between symmetric line pairs (element-by-element, zero allocation)
+    for (let i = 0; i < Math.floor(numLines / 2); i++) {
       const j = numLines - 1 - i;
-      const tmp = _lineChildren[i];
-      _lineChildren[i] = _lineChildren[j];
-      _lineChildren[j] = tmp;
+      const lineI = _lineChildren[i];
+      const lineJ = _lineChildren[j];
+      const lenI = lineI.length;
+      const lenJ = lineJ.length;
+
+      // Swap elements up to max length (JS arrays auto-extend on assignment)
+      const maxLen = Math.max(lenI, lenJ);
+      for (let k = 0; k < maxLen; k++) {
+        const hasI = k < lenI;
+        const hasJ = k < lenJ;
+        const tmpI = hasI ? lineI[k] : null;
+        const tmpJ = hasJ ? lineJ[k] : null;
+        if (hasJ) lineI[k] = tmpJ!;
+        if (hasI) lineJ[k] = tmpI!;
+      }
+
+      // Set correct lengths (truncates or maintains as needed)
+      lineI.length = lenJ;
+      lineJ.length = lenI;
     }
-    // Update lineIndex on each child
+    // Update lineIndex on each child to match new positions
     for (let i = 0; i < numLines; i++) {
       const lc = _lineChildren[i];
       for (let c = 0; c < lc.length; c++) {
@@ -1293,11 +1310,16 @@ function layoutNode(
 
       // justify-content is ignored when any auto margins exist on this line
       if (!lineHasAutoMargins) {
+        // CSS spec behavior for overflow (negative remaining space):
+        // - flex-end/center: allow negative offset (items can overflow at start)
+        // - space-between/around/evenly: fall back to flex-start (no negative spacing)
         switch (style.justifyContent) {
           case C.JUSTIFY_FLEX_END:
+            // Allow negative offset for overflow (matches Yoga/CSS behavior)
             lineStartOffset = lineRemainingSpace;
             break;
           case C.JUSTIFY_CENTER:
+            // Allow negative offset for overflow (matches Yoga/CSS behavior)
             lineStartOffset = lineRemainingSpace / 2;
             break;
           case C.JUSTIFY_SPACE_BETWEEN:
@@ -1307,14 +1329,16 @@ function layoutNode(
             }
             break;
           case C.JUSTIFY_SPACE_AROUND:
-            if (lineLength > 0) {
+            // Only apply space-around when remaining space is positive
+            if (lineLength > 0 && lineRemainingSpace > 0) {
               const extraSpace = lineRemainingSpace / lineLength;
               lineStartOffset = extraSpace / 2;
               lineItemSpacing = mainGap + extraSpace;
             }
             break;
           case C.JUSTIFY_SPACE_EVENLY:
-            if (lineLength > 0) {
+            // Only apply space-evenly when remaining space is positive
+            if (lineLength > 0 && lineRemainingSpace > 0) {
               const extraSpace = lineRemainingSpace / (lineLength + 1);
               lineStartOffset = extraSpace;
               lineItemSpacing = mainGap + extraSpace;
@@ -1464,7 +1488,8 @@ function layoutNode(
     // Only applies when flex-wrap creates multiple lines.
 
     // Apply alignContent to distribute lines in the cross axis
-    // This affects how multiple flex lines are positioned within the container
+    // Note: While CSS spec says alignContent only applies to multi-line containers,
+    // Yoga applies ALIGN_STRETCH to single-line layouts as well. We match Yoga behavior.
     if (!Number.isNaN(crossAxisSize) && numLines > 0) {
       const totalLineCrossSize = cumulativeCrossOffset - crossGap; // Remove trailing gap
       const freeSpace = crossAxisSize - totalLineCrossSize;
