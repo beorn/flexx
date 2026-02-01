@@ -62,6 +62,11 @@ export class Node {
   private _lc0?: LayoutCacheEntry;
   private _lc1?: LayoutCacheEntry;
 
+  // Stable result objects for zero-allocation cache returns
+  // These are mutated in place instead of creating new objects on each cache hit
+  private _measureResult: { width: number; height: number } = { width: 0, height: 0 };
+  private _layoutResult: { width: number; height: number } = { width: 0, height: 0 };
+
   // Static counters for cache statistics (reset per layout pass)
   static measureCalls = 0;
   static measureCacheHits = 0;
@@ -329,37 +334,68 @@ export class Node {
     Node.measureCalls++;
 
     // Check 4-entry cache (most recent first)
+    // Returns stable _measureResult object to avoid allocation on cache hit
     const m0 = this._m0;
     if (m0 && m0.w === w && m0.wm === wm && m0.h === h && m0.hm === hm) {
       Node.measureCacheHits++;
-      return { width: m0.rw, height: m0.rh };
+      this._measureResult.width = m0.rw;
+      this._measureResult.height = m0.rh;
+      return this._measureResult;
     }
     const m1 = this._m1;
     if (m1 && m1.w === w && m1.wm === wm && m1.h === h && m1.hm === hm) {
       Node.measureCacheHits++;
-      return { width: m1.rw, height: m1.rh };
+      this._measureResult.width = m1.rw;
+      this._measureResult.height = m1.rh;
+      return this._measureResult;
     }
     const m2 = this._m2;
     if (m2 && m2.w === w && m2.wm === wm && m2.h === h && m2.hm === hm) {
       Node.measureCacheHits++;
-      return { width: m2.rw, height: m2.rh };
+      this._measureResult.width = m2.rw;
+      this._measureResult.height = m2.rh;
+      return this._measureResult;
     }
     const m3 = this._m3;
     if (m3 && m3.w === w && m3.wm === wm && m3.h === h && m3.hm === hm) {
       Node.measureCacheHits++;
-      return { width: m3.rw, height: m3.rh };
+      this._measureResult.width = m3.rw;
+      this._measureResult.height = m3.rh;
+      return this._measureResult;
     }
 
     // Call actual measure function
     const result = this._measureFunc(w, wm, h, hm);
 
-    // Shift entries and store new result at front
-    this._m3 = this._m2;
-    this._m2 = this._m1;
-    this._m1 = this._m0;
-    this._m0 = { w, wm, h, hm, rw: result.width, rh: result.height };
+    // Zero-allocation: rotate entries by copying values, lazily allocate on first use
+    // Rotate: m3 <- m2 <- m1 <- m0 <- new values
+    if (this._m2) {
+      if (!this._m3) this._m3 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 };
+      this._m3.w = this._m2.w; this._m3.wm = this._m2.wm;
+      this._m3.h = this._m2.h; this._m3.hm = this._m2.hm;
+      this._m3.rw = this._m2.rw; this._m3.rh = this._m2.rh;
+    }
+    if (this._m1) {
+      if (!this._m2) this._m2 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 };
+      this._m2.w = this._m1.w; this._m2.wm = this._m1.wm;
+      this._m2.h = this._m1.h; this._m2.hm = this._m1.hm;
+      this._m2.rw = this._m1.rw; this._m2.rh = this._m1.rh;
+    }
+    if (this._m0) {
+      if (!this._m1) this._m1 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 };
+      this._m1.w = this._m0.w; this._m1.wm = this._m0.wm;
+      this._m1.h = this._m0.h; this._m1.hm = this._m0.hm;
+      this._m1.rw = this._m0.rw; this._m1.rh = this._m0.rh;
+    }
+    if (!this._m0) this._m0 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 };
+    this._m0.w = w; this._m0.wm = wm;
+    this._m0.h = h; this._m0.hm = hm;
+    this._m0.rw = result.width; this._m0.rh = result.height;
 
-    return result;
+    // Return stable result object (same as cache hits)
+    this._measureResult.width = result.width;
+    this._measureResult.height = result.height;
+    return this._measureResult;
   }
 
   // ============================================================================
@@ -373,31 +409,57 @@ export class Node {
    * NaN dimensions are handled specially via Object.is (NaN === NaN is false, but Object.is(NaN, NaN) is true).
    */
   getCachedLayout(availW: number, availH: number): { width: number; height: number } | null {
+    // Returns stable _layoutResult object to avoid allocation on cache hit
     const lc0 = this._lc0;
     if (lc0 && Object.is(lc0.availW, availW) && Object.is(lc0.availH, availH)) {
-      return { width: lc0.computedW, height: lc0.computedH };
+      this._layoutResult.width = lc0.computedW;
+      this._layoutResult.height = lc0.computedH;
+      return this._layoutResult;
     }
     const lc1 = this._lc1;
     if (lc1 && Object.is(lc1.availW, availW) && Object.is(lc1.availH, availH)) {
-      return { width: lc1.computedW, height: lc1.computedH };
+      this._layoutResult.width = lc1.computedW;
+      this._layoutResult.height = lc1.computedH;
+      return this._layoutResult;
     }
     return null;
   }
 
   /**
    * Cache a computed layout result for the given available dimensions.
+   * Zero-allocation: lazily allocates cache entries once, then reuses.
    */
   setCachedLayout(availW: number, availH: number, computedW: number, computedH: number): void {
-    this._lc1 = this._lc0;
-    this._lc0 = { availW, availH, computedW, computedH };
+    // Rotate entries: copy _lc0 values to _lc1, then update _lc0
+    if (this._lc0) {
+      // Lazily allocate _lc1 on first rotation
+      if (!this._lc1) {
+        this._lc1 = { availW: NaN, availH: NaN, computedW: 0, computedH: 0 };
+      }
+      this._lc1.availW = this._lc0.availW;
+      this._lc1.availH = this._lc0.availH;
+      this._lc1.computedW = this._lc0.computedW;
+      this._lc1.computedH = this._lc0.computedH;
+    }
+    // Lazily allocate _lc0 on first use
+    if (!this._lc0) {
+      this._lc0 = { availW: 0, availH: 0, computedW: 0, computedH: 0 };
+    }
+    this._lc0.availW = availW;
+    this._lc0.availH = availH;
+    this._lc0.computedW = computedW;
+    this._lc0.computedH = computedH;
   }
 
   /**
    * Clear layout cache for this node and all descendants.
    * Called at the start of each calculateLayout pass.
+   * Zero-allocation: invalidates entries (availW = NaN) rather than deallocating.
    */
   resetLayoutCache(): void {
-    this._lc0 = this._lc1 = undefined;
+    // Invalidate by setting availW to NaN (getCachedLayout uses Object.is for NaN comparison)
+    if (this._lc0) this._lc0.availW = NaN;
+    if (this._lc1) this._lc1.availW = NaN;
     for (const child of this._children) {
       child.resetLayoutCache();
     }
