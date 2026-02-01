@@ -134,7 +134,7 @@ const benchOptions = {
 // ============================================================================
 
 describe("Flexx vs Yoga - Flat (warmed up)", () => {
-  for (const nodeCount of [100, 500, 1000]) {
+  for (const nodeCount of [100, 500, 1000, 2000, 5000]) {
     bench(`Flexx: ${nodeCount} nodes`, () => {
       const tree = flexxFlatTree(nodeCount)
       tree.calculateLayout(1000, 1000, Flexx.DIRECTION_LTR)

@@ -19,14 +19,14 @@ console.log(child.getComputedWidth()); // 100
 
 ## Why Flexx?
 
-**TL;DR:** 1.5-3x faster for flat layouts, 5x smaller than Yoga, with synchronous initialization.
+**TL;DR:** 2-3x faster than Yoga, 5x smaller, pure JavaScript (no WASM), synchronous initialization.
 
-|                      | Yoga              | Flexx       |
-| -------------------- | ----------------- | ----------- |
-| **Bundle (gzipped)** | 38 KB             | 7 KB        |
-| **Performance**      | Varies by layout  | See below   |
-| **Initialization**   | Async (WASM load) | Synchronous |
-| **Dependencies**     | WASM runtime      | Zero        |
+|                      | Yoga              | Flexx            |
+| -------------------- | ----------------- | ---------------- |
+| **Runtime**          | WebAssembly       | Pure JavaScript  |
+| **Bundle (gzipped)** | 38 KB             | ~8 KB            |
+| **Initialization**   | Async (WASM load) | Synchronous      |
+| **Dependencies**     | WASM runtime      | Zero             |
 
 ## Status
 
@@ -58,15 +58,16 @@ npm install @beorn/flexx
 
 ## Performance
 
-**Flexx is 1.5-2x faster than Yoga** for most layouts. This seems counterintuitive—shouldn't compiled WASM be faster? The answer: JS/WASM interop overhead.
+**Flexx is 2-3x faster than Yoga** for most layouts. The advantage grows with more nodes.
 
-Every Yoga call crosses the JS/WASM boundary (type conversion, memory marshalling). For a 100-node layout, that's 400+ boundary crossings. Flexx stays entirely in JS where property access is direct and JIT-optimized.
+Why? Every Yoga call crosses the JS/WASM boundary (type conversion, memory marshalling). For a 100-node layout, that's 400+ boundary crossings. Flexx stays in pure JS where property access is direct and JIT-optimized.
 
 | Layout Type | Flexx vs Yoga |
 |-------------|---------------|
-| Flat (100-1000 nodes) | Flexx 1.6-2.0x faster |
-| Nested (1-50 levels) | Flexx 1.5-2.1x faster |
-| Very deep (100 levels) | ~Equal |
+| Flat 100-1000 nodes | Flexx 2.4-2.5x faster |
+| Flat 2000-5000 nodes | Flexx 2.8-3.1x faster |
+| Nested 1-50 levels | Flexx 1.6-2.1x faster |
+| Very deep (100+ levels) | ~Equal |
 
 See [docs/performance.md](docs/performance.md) for detailed benchmarks, methodology, and explanation of the zero-allocation design.
 
@@ -118,7 +119,7 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 
 **Use Yoga instead when:**
 
-- You have deeply nested layouts (>50 levels) as primary use case
+- You have extremely deep nesting (100+ levels) as primary use case
 - You're in the React Native ecosystem
 - You need battle-tested stability across diverse environments
 
@@ -127,9 +128,9 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 ```
 src/
 ├── node-zero.ts    # Node class (zero-alloc, default)
-├── layout-zero.ts  # Layout algorithm (zero-alloc, ~2200 lines)
+├── layout-zero.ts  # Layout algorithm (zero-alloc, ~2300 lines)
 ├── node.ts         # Node class (classic)
-├── layout.ts       # Layout algorithm (classic, ~1600 lines)
+├── layout.ts       # Layout algorithm (classic, ~1800 lines)
 ├── index.ts        # Default export (zero-alloc)
 ├── index-classic.ts # Classic export
 ├── constants.ts    # Flexbox constants

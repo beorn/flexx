@@ -60,9 +60,13 @@ All benchmarks on Apple M1 Max, Bun 1.3.7, with 1000-iteration JIT warmup.
 
 | Nodes | Flexx | Yoga | Winner |
 |-------|-------|------|--------|
-| 100 | 86 µs | 168 µs | Flexx 2.0x |
-| 500 | 454 µs | 878 µs | Flexx 1.9x |
-| 1000 | 916 µs | 1860 µs | Flexx 2.0x |
+| 100 | 82 µs | 200 µs | Flexx 2.5x |
+| 500 | 427 µs | 1045 µs | Flexx 2.4x |
+| 1000 | 923 µs | 2191 µs | Flexx 2.4x |
+| 2000 | 1707 µs | 4761 µs | Flexx 2.8x |
+| 5000 | 4819 µs | 14720 µs | Flexx 3.1x |
+
+The advantage grows with node count because each node means more JS/WASM boundary crossings for Yoga.
 
 ### Nested Layouts
 
