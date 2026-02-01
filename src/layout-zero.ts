@@ -1272,8 +1272,10 @@ function layoutNode(
       const lineHasAutoMargins = lineAutoMargins > 0;
 
       if (lineHasAutoMargins) {
-        // Auto margins absorb ALL remaining space for this line
-        const autoMarginValue = lineRemainingSpace / lineAutoMargins;
+        // Auto margins absorb remaining space for this line
+        // CSS spec: auto margins don't absorb negative free space (overflow case)
+        const positiveRemaining = Math.max(0, lineRemainingSpace);
+        const autoMarginValue = positiveRemaining / lineAutoMargins;
         for (let i = 0; i < lineLength; i++) {
           const child = lineChildren[i];
           if (child.flex.mainStartMarginAuto) {
@@ -1447,7 +1449,10 @@ function layoutNode(
         }
         maxLineCross = Math.max(maxLineCross, childCross + crossMarginStart + crossMarginEnd);
       }
-      const lineCrossSize = maxLineCross > 0 ? maxLineCross : (crossAxisSize / numLines);
+      // Fallback cross size: use measured max, or divide available space among lines
+      // Guard against NaN/division-by-zero: if crossAxisSize is NaN or numLines is 0, use 0
+      const fallbackCross = (numLines > 0 && !Number.isNaN(crossAxisSize)) ? (crossAxisSize / numLines) : 0;
+      const lineCrossSize = maxLineCross > 0 ? maxLineCross : fallbackCross;
       _lineCrossSizes[lineIdx] = lineCrossSize;
       cumulativeCrossOffset += lineCrossSize + crossGap;
     }
@@ -1569,7 +1574,9 @@ function layoutNode(
     // Initialize with first line's startOffset (may be overridden when processing lines)
     let mainPos = effectiveReverse ? effectiveMainAxisSize - startOffset : startOffset;
     let currentLineIdx = -1;
-    let relIdx = 0; // Track relative child index for gap handling
+    let relIdx = 0; // Track relative child index globally
+    let lineChildIdx = 0; // Track position within current line (for gap handling)
+    let currentLineLength = 0; // Length of current line
     let currentItemSpacing = itemSpacing; // Track current line's item spacing
 
     debug('positioning children: isRow=%s, startOffset=%d, relativeCount=%d, effectiveReverse=%s, numLines=%d', isRow, startOffset, relativeCount, effectiveReverse, numLines);
@@ -1583,6 +1590,8 @@ function layoutNode(
       const childLineIdx = flex.lineIndex;
       if (childLineIdx !== currentLineIdx) {
         currentLineIdx = childLineIdx;
+        lineChildIdx = 0; // Reset position within line
+        currentLineLength = _lineChildren[childLineIdx].length;
         // Reset mainPos for new line using line-specific justify offset
         const lineOffset = _lineJustifyStarts[childLineIdx];
         currentItemSpacing = _lineItemSpacings[childLineIdx];
@@ -2000,16 +2009,19 @@ function layoutNode(
       debug('  child %d: mainPos=%d → top=%d (fractionalMainSize=%d, totalMainMargin=%d)', relIdx, mainPos, child.layout.top, fractionalMainSize, totalMainMargin);
       if (effectiveReverse) {
         mainPos -= fractionalMainSize + totalMainMargin;
-        if (relIdx < relativeCount - 1) {
+        // Add spacing only between items on the SAME LINE (not across line breaks)
+        if (lineChildIdx < currentLineLength - 1) {
           mainPos -= currentItemSpacing;
         }
       } else {
         mainPos += fractionalMainSize + totalMainMargin;
-        if (relIdx < relativeCount - 1) {
+        // Add spacing only between items on the SAME LINE (not across line breaks)
+        if (lineChildIdx < currentLineLength - 1) {
           mainPos += currentItemSpacing;
         }
       }
       relIdx++;
+      lineChildIdx++;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
