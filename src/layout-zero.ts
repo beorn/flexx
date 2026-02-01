@@ -135,15 +135,18 @@ export function isEdgeAuto(
 let _traversalStack: Node[] = [];
 
 /**
- * Mark subtree as having new layout (iterative to avoid stack overflow).
+ * Mark subtree as having new layout and clear dirty flags (iterative to avoid stack overflow).
+ * This is called after layout completes to reset dirty tracking for all nodes.
  */
 export function markSubtreeLayoutSeen(node: Node): void {
   _traversalStack.length = 0;
   _traversalStack.push(node);
   while (_traversalStack.length > 0) {
     const current = _traversalStack.pop()!;
+    // Clear dirty flag - layout is now complete
+    (current as Node)["_isDirty"] = false;
+    (current as Node)["_hasNewLayout"] = true;
     for (const child of current.children) {
-      (child as Node)["_hasNewLayout"] = true;
       _traversalStack.push(child);
     }
   }
@@ -839,11 +842,13 @@ function layoutNode(
   }
 
   // Constraint fingerprinting: skip layout if constraints unchanged and node not dirty
+  // Use Object.is() for NaN-safe comparison (NaN === NaN is false, Object.is(NaN, NaN) is true)
   const flex = node.flex;
   if (flex.layoutValid &&
       !node.isDirty() &&
-      flex.lastAvailW === availableWidth &&
-      flex.lastAvailH === availableHeight) {
+      Object.is(flex.lastAvailW, availableWidth) &&
+      Object.is(flex.lastAvailH, availableHeight) &&
+      flex.lastDir === direction) {
     // Constraints unchanged - just update position based on offset delta
     const deltaX = offsetX - flex.lastOffsetX;
     const deltaY = offsetY - flex.lastOffsetY;
@@ -1079,13 +1084,16 @@ function layoutNode(
       const flex = child.flex;
 
       // Check for auto margins on main axis
-      // Physical indices depend on axis and reverse direction:
-      // - Row: main-start=left(0), main-end=right(2)
-      // - Row-reverse: main-start=right(2), main-end=left(0)
-      // - Column: main-start=top(1), main-end=bottom(3)
+      // Physical indices depend on axis and effective reverse (including RTL):
+      // - Row LTR: main-start=left(0), main-end=right(2)
+      // - Row RTL: main-start=right(2), main-end=left(0)
+      // - Row-reverse LTR: main-start=right(2), main-end=left(0)
+      // - Row-reverse RTL: main-start=left(0), main-end=right(2)
+      // - Column: main-start=top(1), main-end=bottom(3) (RTL doesn't affect column)
       // - Column-reverse: main-start=bottom(3), main-end=top(1)
-      const mainStartIndex = isRow ? (isReverse ? 2 : 0) : (isReverse ? 3 : 1);
-      const mainEndIndex = isRow ? (isReverse ? 0 : 2) : (isReverse ? 1 : 3);
+      // For row layouts, use effectiveReverse (which XORs RTL with isReverse)
+      const mainStartIndex = isRow ? (effectiveReverse ? 2 : 0) : (isReverse ? 3 : 1);
+      const mainEndIndex = isRow ? (effectiveReverse ? 0 : 2) : (isReverse ? 1 : 3);
       flex.mainStartMarginAuto = isEdgeAuto(childStyle.margin, mainStartIndex, style.flexDirection, direction);
       flex.mainEndMarginAuto = isEdgeAuto(childStyle.margin, mainEndIndex, style.flexDirection, direction);
 
@@ -1097,11 +1105,12 @@ function layoutNode(
       flex.marginB = resolveEdgeValue(childStyle.margin, 3, style.flexDirection, contentWidth, direction);
 
       // Resolve non-auto margins (auto margins resolve to 0 initially)
+      // Use effectiveReverse for row layouts (accounts for RTL)
       flex.mainStartMarginValue = flex.mainStartMarginAuto ? 0 : (isRow
-        ? (isReverse ? flex.marginR : flex.marginL)
+        ? (effectiveReverse ? flex.marginR : flex.marginL)
         : (isReverse ? flex.marginB : flex.marginT));
       flex.mainEndMarginValue = flex.mainEndMarginAuto ? 0 : (isRow
-        ? (isReverse ? flex.marginL : flex.marginR)
+        ? (effectiveReverse ? flex.marginL : flex.marginR)
         : (isReverse ? flex.marginT : flex.marginB));
 
       // Total non-auto margin for flex calculations
@@ -1635,19 +1644,20 @@ function layoutNode(
       let childMarginBottom: number;
 
       // Use cached margins, with auto margin override for main axis
+      // For row layouts, use effectiveReverse (accounts for RTL)
       if (isRow) {
         // Row: main axis is horizontal
-        // In row-reverse, mainStart=right(2), mainEnd=left(0)
-        childMarginLeft = flex.mainStartMarginAuto && !isReverse ? flex.mainStartMarginValue :
-                          flex.mainEndMarginAuto && isReverse ? flex.mainEndMarginValue :
+        // effectiveReverse handles both row-reverse AND RTL
+        childMarginLeft = flex.mainStartMarginAuto && !effectiveReverse ? flex.mainStartMarginValue :
+                          flex.mainEndMarginAuto && effectiveReverse ? flex.mainEndMarginValue :
                           flex.marginL;
-        childMarginRight = flex.mainEndMarginAuto && !isReverse ? flex.mainEndMarginValue :
-                           flex.mainStartMarginAuto && isReverse ? flex.mainStartMarginValue :
+        childMarginRight = flex.mainEndMarginAuto && !effectiveReverse ? flex.mainEndMarginValue :
+                           flex.mainStartMarginAuto && effectiveReverse ? flex.mainStartMarginValue :
                            flex.marginR;
         childMarginTop = flex.marginT;
         childMarginBottom = flex.marginB;
       } else {
-        // Column: main axis is vertical
+        // Column: main axis is vertical (RTL doesn't affect column)
         // In column-reverse, mainStart=bottom(3), mainEnd=top(1)
         childMarginTop = flex.mainStartMarginAuto && !isReverse ? flex.mainStartMarginValue :
                          flex.mainEndMarginAuto && isReverse ? flex.mainEndMarginValue :
@@ -2362,5 +2372,6 @@ function layoutNode(
   flex.lastAvailH = availableHeight;
   flex.lastOffsetX = offsetX;
   flex.lastOffsetY = offsetY;
+  flex.lastDir = direction;
   flex.layoutValid = true;
 }

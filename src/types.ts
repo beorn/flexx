@@ -128,6 +128,8 @@ export interface FlexInfo {
   lastOffsetY: number;
   /** Whether cached layout is valid (fingerprint matched, not dirty) */
   layoutValid: boolean;
+  /** Last direction passed to layoutNode */
+  lastDir: number;
 }
 
 /**

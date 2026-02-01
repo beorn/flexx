@@ -109,6 +109,7 @@ export class Node {
     lastOffsetX: NaN,
     lastOffsetY: NaN,
     layoutValid: false,
+    lastDir: 0,
   };
 
   // Dirty flags
@@ -497,15 +498,19 @@ export class Node {
    * Mark this node and all ancestors as dirty.
    * A dirty node needs layout recalculation.
    * This is automatically called by all style setters and tree operations.
+   * Uses iterative approach to avoid stack overflow on deep trees.
    */
   markDirty(): void {
-    this._isDirty = true;
-    // Invalidate layout fingerprint
-    this._flex.layoutValid = false;
-    // Clear 4-entry measure cache since content may have changed
-    this._m0 = this._m1 = this._m2 = this._m3 = undefined;
-    if (this._parent !== null) {
-      this._parent.markDirty();
+    let current: Node | null = this;
+    while (current !== null) {
+      // Skip if already dirty (all ancestors will be dirty too)
+      if (current._isDirty) break;
+      current._isDirty = true;
+      // Invalidate layout fingerprint
+      current._flex.layoutValid = false;
+      // Clear 4-entry measure cache since content may have changed
+      current._m0 = current._m1 = current._m2 = current._m3 = undefined;
+      current = current._parent;
     }
   }
 
