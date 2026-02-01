@@ -115,6 +115,11 @@ export class Node {
   private _isDirty = true;
   private _hasNewLayout = false;
 
+  // Last calculateLayout() inputs (for constraint-aware skip)
+  private _lastCalcW: number = NaN;
+  private _lastCalcH: number = NaN;
+  private _lastCalcDir: number = 0;
+
   // ============================================================================
   // Static Factory
   // ============================================================================
@@ -555,20 +560,29 @@ export class Node {
     height?: number,
     direction: number = C.DIRECTION_LTR,
   ): void {
-    if (!this._isDirty) {
-      debug("layout skip (not dirty)");
+    // Treat undefined as unconstrained (NaN signals content-based sizing)
+    const availableWidth = width ?? NaN;
+    const availableHeight = height ?? NaN;
+
+    // Skip if not dirty AND constraints unchanged (use Object.is for NaN equality)
+    if (!this._isDirty &&
+        Object.is(this._lastCalcW, availableWidth) &&
+        Object.is(this._lastCalcH, availableHeight) &&
+        this._lastCalcDir === direction) {
+      debug("layout skip (not dirty, constraints unchanged)");
       return;
     }
+
+    // Track constraints for future skip check
+    this._lastCalcW = availableWidth;
+    this._lastCalcH = availableHeight;
+    this._lastCalcDir = direction;
 
     const start = Date.now();
     const nodeCount = countNodes(this);
 
     // Reset measure statistics for this layout pass
     Node.resetMeasureStats();
-
-    // Treat undefined as unconstrained (NaN signals content-based sizing)
-    const availableWidth = width ?? NaN;
-    const availableHeight = height ?? NaN;
 
     // Run the layout algorithm
     computeLayout(this, availableWidth, availableHeight, direction);

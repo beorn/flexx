@@ -1108,17 +1108,18 @@ function layoutNode(
       flex.mainMargin = flex.mainStartMarginValue + flex.mainEndMarginValue;
 
       // Determine base size (flex-basis or explicit size)
+      // Guard: percent against NaN (unconstrained) resolves to 0 (CSS/Yoga behavior)
       let baseSize = 0;
       if (childStyle.flexBasis.unit === C.UNIT_POINT) {
         baseSize = childStyle.flexBasis.value;
       } else if (childStyle.flexBasis.unit === C.UNIT_PERCENT) {
-        baseSize = mainAxisSize * (childStyle.flexBasis.value / 100);
+        baseSize = Number.isNaN(mainAxisSize) ? 0 : mainAxisSize * (childStyle.flexBasis.value / 100);
       } else {
         const sizeVal = isRow ? childStyle.width : childStyle.height;
         if (sizeVal.unit === C.UNIT_POINT) {
           baseSize = sizeVal.value;
         } else if (sizeVal.unit === C.UNIT_PERCENT) {
-          baseSize = mainAxisSize * (sizeVal.value / 100);
+          baseSize = Number.isNaN(mainAxisSize) ? 0 : mainAxisSize * (sizeVal.value / 100);
         } else if (child.hasMeasureFunc() && childStyle.flexGrow === 0) {
           // For auto-sized children with measureFunc but no flexGrow,
           // pre-measure to get intrinsic size for justify-content calculation
@@ -1991,10 +1992,12 @@ function layoutNode(
 
       if (hasAutoStartMargin && hasAutoEndMargin) {
         // Both auto: center the item
-        crossOffset = availableCrossSpace / 2;
+        // CSS spec: auto margins don't absorb negative free space (clamp to 0)
+        crossOffset = Math.max(0, availableCrossSpace) / 2;
       } else if (hasAutoStartMargin) {
         // Auto start margin: push to end
-        crossOffset = availableCrossSpace;
+        // CSS spec: auto margins don't absorb negative free space (clamp to 0)
+        crossOffset = Math.max(0, availableCrossSpace);
       } else if (hasAutoEndMargin) {
         // Auto end margin: stay at start (crossOffset = 0)
         crossOffset = 0;
