@@ -1,8 +1,6 @@
 # Flexx vs Yoga: Layout Engine Comparison
 
-Flexx is a pure JavaScript flexbox layout engine with a Yoga-compatible API.
-
-**TL;DR:** Flexx is **1.5-2x faster** for most layouts (with JIT warmup), **5x smaller** than Yoga, with a synchronous API and zero dependencies. They're roughly equal at 100+ nesting levels.
+**TL;DR:** Flexx is **2-3x faster** for most layouts, **5x smaller** than Yoga, with a synchronous API and zero dependencies. Equal at 100+ nesting levels.
 
 ## Status
 
@@ -10,9 +8,7 @@ Flexx is a pure JavaScript flexbox layout engine with a Yoga-compatible API.
 | -------------------- | ---------------------------------------------------- | -------------------------------------------- |
 | **Maturity**         | Production, battle-tested (React Native, Ink, Litho) | Production-ready, fully tested               |
 | **Test coverage**    | Extensive (auto-generated from Chrome)               | 524 tests, 41/41 Yoga compatibility          |
-| **Real-world usage** | Millions of apps                                     | Used in production by inkx                   |
-
----
+| **Real-world usage** | Millions of apps                                     | Used in production                           |
 
 ## Why Flexx Exists
 
@@ -20,159 +16,71 @@ Flexx is a pure JavaScript flexbox layout engine with a Yoga-compatible API.
 | ------------------ | --------------------- | ---------------------- |
 | **Runtime**        | WebAssembly           | Pure JavaScript        |
 | **Initialization** | Async (WASM load)     | Synchronous            |
-| **Dependencies**   | WASM runtime required | Zero dependencies      |
+| **Dependencies**   | WASM runtime required | Zero                   |
 | **Debugging**      | WASM stack traces     | Native JS stack traces |
-
-### Bundle Size
-
-|             | Yoga                            | Flexx | Savings        |
-| ----------- | ------------------------------- | ----- | -------------- |
-| **Raw**     | 272 KB (183 KB JS + 89 KB WASM) | 38 KB | **7x smaller** |
-| **Gzipped** | 38 KB (9 KB JS + 28 KB WASM)    | 7 KB  | **5x smaller** |
-
-Flexx is **5-7x smaller** than Yoga, which matters for:
-
-- CLI tools where startup time matters
-- Edge runtimes with size limits
-- Bundlers that struggle with WASM
+| **Bundle size**    | 38 KB gzipped         | ~7 KB gzipped          |
 
 **Use Flexx when:**
-
-- You want synchronous initialization (no async `await init()`)
-- You're in an environment where WASM is awkward (older bundlers, edge runtimes)
+- You want synchronous initialization
+- You're in an environment where WASM is awkward (edge runtimes, older bundlers)
 - You want smaller bundles and simpler debugging
-- You're building terminal UIs where layouts are typically flat/wide
+- You're building terminal UIs with flat/wide layouts
 
 **Use Yoga when:**
-
-- You have extremely deep nesting (100+ levels) as your primary use case
-- You're already using React Native or another Yoga-based system
-- You need the battle-tested stability of a mature project
-
----
+- You have extremely deep nesting (100+ levels)
+- You're in the React Native ecosystem
+- You need battle-tested stability across diverse environments
 
 ## API Compatibility
 
-Flexx is designed as a **drop-in replacement** for Yoga's JavaScript API:
+Flexx is a **drop-in replacement** for Yoga's JavaScript API:
 
 ```typescript
 // Same constants
-import {
-  FLEX_DIRECTION_ROW,
-  JUSTIFY_CENTER,
-  ALIGN_STRETCH,
-} from "@beorn/flexx";
+import { FLEX_DIRECTION_ROW, JUSTIFY_CENTER } from "@beorn/flexx";
 
 // Same Node API
 const root = Node.create();
 root.setWidth(100);
 root.setFlexDirection(FLEX_DIRECTION_ROW);
-root.setJustifyContent(JUSTIFY_CENTER);
-
-const child = Node.create();
-child.setFlexGrow(1);
-root.insertChild(child, 0);
-
 root.calculateLayout(100, 100, DIRECTION_LTR);
-
-console.log(child.getComputedWidth()); // Same output
 ```
 
-**API coverage**: 100% of Yoga's commonly-used API is implemented with identical method signatures. 41/41 Yoga comparison tests pass.
-
----
+**API coverage**: 100% of Yoga's commonly-used API. 41/41 Yoga comparison tests pass.
 
 ## Flexbox Spec Compliance
 
-| Feature                                   | Yoga | Flexx | Notes                      |
-| ----------------------------------------- | ---- | ----- | -------------------------- |
-| **flex-direction** (row, column, reverse) | ✅   | ✅    |                            |
-| **flex-grow**                             | ✅   | ✅    |                            |
-| **flex-shrink**                           | ✅   | ✅    | CSS-spec compliant         |
-| **flex-basis**                            | ✅   | ✅    |                            |
-| **justify-content** (6 values)            | ✅   | ✅    |                            |
-| **align-items** (5 values)                | ✅   | ✅    |                            |
-| **align-self**                            | ✅   | ✅    |                            |
-| **align-content** (6 values)              | ✅   | ✅    |                            |
-| **gap** (row/column)                      | ✅   | ✅    |                            |
-| **padding** (per-edge)                    | ✅   | ✅    |                            |
-| **margin** (per-edge)                     | ✅   | ✅    |                            |
-| **border** (per-edge)                     | ✅   | ✅    |                            |
-| **min/max width/height**                  | ✅   | ✅    |                            |
-| **percent values**                        | ✅   | ✅    |                            |
-| **absolute positioning**                  | ✅   | ✅    |                            |
-| **measure functions**                     | ✅   | ✅    | For text nodes             |
-| **flex-wrap**                             | ✅   | ✅    |                            |
-| **baseline alignment**                    | ✅   | ✅    |                            |
-| **RTL direction**                         | ✅   | ✅    |                            |
-| **EDGE_START/END**                        | ✅   | ✅    | Full logical edge support  |
-| **aspect-ratio**                          | ✅   | ✅    |                            |
+| Feature                                   | Yoga | Flexx |
+| ----------------------------------------- | ---- | ----- |
+| **flex-direction** (row, column, reverse) | ✅   | ✅    |
+| **flex-grow / flex-shrink / flex-basis**  | ✅   | ✅    |
+| **justify-content** (6 values)            | ✅   | ✅    |
+| **align-items / align-self / align-content** | ✅ | ✅   |
+| **gap** (row/column)                      | ✅   | ✅    |
+| **padding / margin / border** (per-edge)  | ✅   | ✅    |
+| **min/max width/height**                  | ✅   | ✅    |
+| **percent values**                        | ✅   | ✅    |
+| **absolute positioning**                  | ✅   | ✅    |
+| **measure functions**                     | ✅   | ✅    |
+| **flex-wrap**                             | ✅   | ✅    |
+| **baseline alignment**                    | ✅   | ✅    |
+| **RTL direction / EDGE_START/END**        | ✅   | ✅    |
+| **aspect-ratio**                          | ✅   | ✅    |
 
-Flexx implements CSS spec's basis-weighted shrink (`flexShrink × flexBasis`).
-
----
-
-## Algorithm Differences
-
-### Shrink Calculation
-
-Both use CSS spec's basis-weighted shrink: items shrink proportionally to `flex-shrink × flex-basis`.
-
-### Grow/Shrink Iteration
-
-Both engines iterate to handle min/max constraints:
-
-1. Calculate proportional distribution
-2. Cap items that hit min/max limits
-3. Redistribute remaining space
-4. Repeat until space is fully allocated
-
----
+Both use CSS spec's basis-weighted shrink (`flexShrink × flexBasis`).
 
 ## Performance
 
-See [performance.md](performance.md) for detailed benchmarks, methodology, and technical explanation.
+See [performance.md](performance.md) for detailed benchmarks.
 
-**Summary:** Flexx is 1.5-2x faster for most layouts after JIT warmup. Both handle terminal UIs (<500 nodes) in under 1ms.
-
-| Layout Type | Flexx vs Yoga |
-|-------------|---------------|
-| Flat (100-1000 nodes) | Flexx 1.6-2.0x faster |
-| Nested (1-50 levels) | Flexx 1.5-2.1x faster |
-| Very deep (100 levels) | ~Equal |
-
-**Why?** Every Yoga call crosses the JS/WASM boundary (type conversion, memory marshalling). For a 100-node layout, that's 400+ boundary crossings. Flexx stays in JS where property access is direct and JIT-optimized.
-
-Run benchmarks: `bun bench bench/yoga-compare-warmup.bench.ts`
-
----
-
-## Exports
-
-```typescript
-// Default: Zero-allocation algorithm (faster for typical TUI workloads)
-import { Node } from "@beorn/flexx";
-
-// Classic algorithm (for debugging or comparison)
-import { Node } from "@beorn/flexx/classic";
-```
-
-Both exports have identical APIs.
-
----
+**Summary:** Flexx is 2-3x faster for flat layouts (100-5000 nodes), 1.5-2x faster for nested layouts (1-50 levels), equal at 100+ levels.
 
 ## Known Limitations
 
-### Intentional Simplifications
-
-1. **No `order` property** - Items laid out in insertion order
-2. **No writing modes** - Horizontal-tb only
-
----
+1. **No `order` property** — Items laid out in insertion order
+2. **No writing modes** — Horizontal-tb only
 
 ## Migration Guide
-
-### From Yoga to Flexx
 
 ```diff
 - import Yoga from 'yoga-wasm-web';
@@ -182,58 +90,15 @@ Both exports have identical APIs.
 + const root = Node.create();  // Synchronous!
 
 // Rest of the API is identical
-root.setWidth(100);
-root.setFlexDirection(FLEX_DIRECTION_ROW);
-// ...
 ```
-
-### Key Changes
-
-1. **No async init** - Remove `await Yoga.init()`
-2. **Import from package** - `import { Node, FLEX_DIRECTION_ROW } from '@beorn/flexx'`
-
----
 
 ## Test Coverage
 
-Flexx includes 524 tests covering:
-
-- ✅ Basic layout (single node, column, row)
-- ✅ Flex grow distribution
-- ✅ Flex shrink with constraints
-- ✅ Gap between items
-- ✅ Absolute positioning
-- ✅ Padding and border
-- ✅ Justify content (all 6 values)
-- ✅ Align items and align-content
-- ✅ Measure functions (text sizing)
-- ✅ Min/max constraints
-- ✅ Percent values
-- ✅ RTL direction with EDGE_START/END
-- ✅ Baseline alignment
-- ✅ Dirty tracking
-- ✅ Node lifecycle (create, insert, remove, free)
-- ✅ Style getters/setters
-- ✅ Differential fuzz tests (401 tests comparing vs Yoga)
-- ✅ Cache stress tests
-
-See [tests/](../tests/) for the full test suite.
-
----
-
-## Contributing
-
-Found a bug? Layout doesn't match Yoga? We want to know!
-
-- File issues with reproduction cases
-- Include expected vs actual layout values
-- Bonus: Include equivalent Yoga output for comparison
-
----
+Flexx includes 524 tests covering all flexbox features, plus 401 differential fuzz tests comparing random layouts against Yoga.
 
 ## References
 
-- [Yoga Layout](https://yogalayout.dev/) - Facebook's flexbox implementation
-- [Taffy](https://github.com/DioxusLabs/taffy) - Rust flexbox/grid engine (comparison methodology inspiration)
-- [CSS Flexbox Spec](https://www.w3.org/TR/css-flexbox-1/) - W3C specification
-- [Planning-nl/flexbox.js](https://github.com/Planning-nl/flexbox.js) - Algorithm reference
+- [Yoga Layout](https://yogalayout.dev/)
+- [Taffy](https://github.com/DioxusLabs/taffy)
+- [CSS Flexbox Spec](https://www.w3.org/TR/css-flexbox-1/)
+- [Planning-nl/flexbox.js](https://github.com/Planning-nl/flexbox.js)
