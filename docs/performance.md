@@ -99,9 +99,13 @@ Cold benchmarks (without JIT warmup) show high variance:
 | Flexx | ±5-12% | ±1-3% |
 | Yoga | ±0.3-1% | ±0.3-1% |
 
-**Why?** JavaScript requires JIT warmup to optimize hot paths. WASM is AOT-compiled, so it's consistent from the first run.
+**Why?** Two factors affect cold JavaScript performance:
+1. **JIT compilation** - JS engines need warmup to optimize hot paths
+2. **GC pauses** - Object allocation triggers garbage collection cycles
 
-**Implication:** For single cold-start layouts, performance is roughly equal. For repeated high-frequency layouts (TUI updates), Flexx pulls ahead after warmup.
+WASM is AOT-compiled with manual memory management, so it's consistent from the first run.
+
+**Implication:** For single cold-start layouts, performance is roughly equal. For repeated high-frequency layouts (TUI updates), Flexx pulls ahead after warmup. The zero-allocation design also minimizes GC pauses during sustained rendering.
 
 ## Running Benchmarks
 
