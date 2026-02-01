@@ -2,7 +2,7 @@
 
 Flexx is a pure JavaScript flexbox layout engine with a Yoga-compatible API.
 
-**TL;DR:** Flexx is **1.5-3x faster for flat layouts**, **5x smaller** than Yoga, with a synchronous API and zero dependencies. Yoga is faster for deeply nested layouts.
+**TL;DR:** Flexx is **1.5-2x faster** for most layouts (with JIT warmup), **5x smaller** than Yoga, with a synchronous API and zero dependencies. They're roughly equal at 100+ nesting levels.
 
 ## Status
 
@@ -45,7 +45,7 @@ Flexx is **5-7x smaller** than Yoga, which matters for:
 
 **Use Yoga when:**
 
-- You have deeply nested layouts (>50 levels) as your primary use case
+- You have extremely deep nesting (100+ levels) as your primary use case
 - You're already using React Native or another Yoga-based system
 - You need the battle-tested stability of a mature project
 
@@ -88,7 +88,7 @@ console.log(child.getComputedWidth()); // Same output
 | ----------------------------------------- | ---- | ----- | -------------------------- |
 | **flex-direction** (row, column, reverse) | ✅   | ✅    |                            |
 | **flex-grow**                             | ✅   | ✅    |                            |
-| **flex-shrink**                           | ✅   | ✅\*  | Simplified algorithm       |
+| **flex-shrink**                           | ✅   | ✅    | CSS-spec compliant         |
 | **flex-basis**                            | ✅   | ✅    |                            |
 | **justify-content** (6 values)            | ✅   | ✅    |                            |
 | **align-items** (5 values)                | ✅   | ✅    |                            |
@@ -131,95 +131,19 @@ Both engines iterate to handle min/max constraints:
 
 ## Performance
 
-Benchmarks run on Apple M1 Max, Bun 1.3.7 (January 2026).
+See [performance.md](performance.md) for detailed benchmarks, methodology, and technical explanation.
 
-### Flat Layouts (Flexx wins)
+**Summary:** Flexx is 1.5-2x faster for most layouts after JIT warmup. Both handle terminal UIs (<500 nodes) in under 1ms.
 
-Tree creation + layout together (the fair comparison):
+| Layout Type | Flexx vs Yoga |
+|-------------|---------------|
+| Flat (100-1000 nodes) | Flexx 1.6-2.0x faster |
+| Nested (1-50 levels) | Flexx 1.5-2.1x faster |
+| Very deep (100 levels) | ~Equal |
 
-| Benchmark                     | Flexx   | Yoga    | Comparison        |
-| ----------------------------- | ------- | ------- | ----------------- |
-| **Flat 100 nodes**            | 101 µs  | 157 µs  | Flexx 1.6x faster |
-| **Flat 500 nodes**            | 470 µs  | 884 µs  | Flexx 1.9x faster |
-| **Flat 1000 nodes**           | 964 µs  | 1889 µs | Flexx 2.0x faster |
+**Why?** Every Yoga call crosses the JS/WASM boundary (type conversion, memory marshalling). For a 100-node layout, that's 400+ boundary crossings. Flexx stays in JS where property access is direct and JIT-optimized.
 
-### Deep Layouts (Flexx wins, with warmup)
-
-| Depth      | Flexx    | Yoga     | Comparison        |
-| ---------- | -------- | -------- | ----------------- |
-| **1 level**  | 1.5 µs | 3.2 µs   | Flexx 2.1x faster |
-| **2 levels** | 3.5 µs | 5.2 µs   | Flexx 1.5x faster |
-| **5 levels** | 7.0 µs | 11.4 µs  | Flexx 1.6x faster |
-| **10 levels**| 13 µs  | 22 µs    | Flexx 1.6x faster |
-| **15 levels**| 21 µs  | 32 µs    | Flexx 1.5x faster |
-| **20 levels**| 26 µs  | 42 µs    | Flexx 1.6x faster |
-| **50 levels**| 67 µs  | 104 µs   | Flexx 1.55x faster|
-| **100 levels**| 237 µs| 227 µs   | ~Equal            |
-
-With JIT warmup (1000 iterations), Flexx wins at all depths except 100 levels where they're roughly equal. Cold benchmarks show higher variance due to JIT compilation.
-
-### TUI Patterns (Mixed)
-
-| Benchmark                     | Flexx   | Yoga    | Comparison        |
-| ----------------------------- | ------- | ------- | ----------------- |
-| **Kanban 3×10 (~36 nodes)**   | 78 µs   | 82 µs   | ~Equal            |
-| **Kanban 3×50 (~156 nodes)**  | 348 µs  | 306 µs  | Yoga 1.1x faster  |
-| **Kanban 3×100 (~306 nodes)** | 354 µs  | 598 µs  | Flexx 1.7x faster |
-
-### Feature-Specific Performance
-
-Different flexbox features have different performance characteristics:
-
-| Feature                 | Winner    | Speed Difference |
-| ----------------------- | --------- | ---------------- |
-| **AbsolutePositioning** | **Flexx** | 3.5x faster      |
-| **FlexShrink**          | **Flexx** | 2.7x faster      |
-| **AlignContent**        | **Flexx** | 2.3x faster      |
-| **FlexGrow**            | **Flexx** | 1.9x faster      |
-| **Gap**                 | **Flexx** | 1.5x faster      |
-| **MeasureFunc**         | **Flexx** | 1.4x faster      |
-| **FlexWrap**            | **Flexx** | 1.2x faster      |
-| **PercentValues**       | ~Equal    | -                |
-| **NestedLayouts**       | Yoga      | 1.2x faster      |
-
-**Flexx wins 7 of 9 features**, with 1 tie and Yoga winning nested layouts.
-
-### Why is Pure JavaScript Faster for Flat Layouts?
-
-- Flexx avoids WASM ↔ JS boundary crossing overhead
-- Bun's JS engine is highly optimized for this workload
-- No FFI marshalling for node properties
-- Tree creation dominates these benchmarks (both allocate nodes)
-
-### Benchmark Variance
-
-Cold benchmarks (without warmup) show high variance for Flexx:
-- Flexx rme: ±5-12% (JIT compilation, GC pauses)
-- Yoga rme: ±0.3-1% (WASM has predictable performance)
-
-With 1000-iteration warmup, Flexx variance drops to ±1-3% and wins consistently.
-
-### Why Is Flexx Faster?
-
-- Avoids WASM ↔ JS boundary crossing per node
-- Zero-allocation design reduces per-node overhead
-- JS engines optimize hot paths after warmup
-- No FFI marshalling for property access
-
-### Key Takeaways
-
-- Both engines handle terminal UIs (<500 nodes) in under 1ms
-- Both are fast enough for 60fps (16.67ms budget per frame)
-- Flexx excels at absolute positioning, flex distribution, and flat layouts
-- Yoga excels at deeply nested layouts
-
-Run benchmarks yourself:
-
-```bash
-bun bench                          # All benchmarks
-bun bench bench/features.bench.ts  # Feature comparison
-bun bench bench/yoga-compare.bench.ts  # Overall comparison
-```
+Run benchmarks: `bun bench bench/yoga-compare-warmup.bench.ts`
 
 ---
 

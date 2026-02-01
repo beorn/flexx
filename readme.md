@@ -58,67 +58,19 @@ npm install @beorn/flexx
 
 ## Performance
 
-Benchmarks on Apple M1 Max, Bun 1.3.7 (tree creation + layout):
+**Flexx is 1.5-2x faster than Yoga** for most layouts. This seems counterintuitive—shouldn't compiled WASM be faster? The answer: JS/WASM interop overhead.
 
-### Flat Layouts (Flexx wins)
+Every Yoga call crosses the JS/WASM boundary (type conversion, memory marshalling). For a 100-node layout, that's 400+ boundary crossings. Flexx stays entirely in JS where property access is direct and JIT-optimized.
 
-| Benchmark        | Flexx   | Yoga    | Winner            |
-| ---------------- | ------- | ------- | ----------------- |
-| Flat 100 nodes   | 101 µs  | 157 µs  | Flexx 1.6x faster |
-| Flat 500 nodes   | 470 µs  | 884 µs  | Flexx 1.9x faster |
-| Flat 1000 nodes  | 964 µs  | 1889 µs | Flexx 2.0x faster |
+| Layout Type | Flexx vs Yoga |
+|-------------|---------------|
+| Flat (100-1000 nodes) | Flexx 1.6-2.0x faster |
+| Nested (1-50 levels) | Flexx 1.5-2.1x faster |
+| Very deep (100 levels) | ~Equal |
 
-### Deep Layouts (Flexx wins, with warmup)
+See [docs/performance.md](docs/performance.md) for detailed benchmarks, methodology, and explanation of the zero-allocation design.
 
-| Depth   | Flexx   | Yoga    | Winner            |
-| ------- | ------- | ------- | ----------------- |
-| 1 level | 1.5 µs  | 3.2 µs  | Flexx 2.1x faster |
-| 2 levels| 3.5 µs  | 5.2 µs  | Flexx 1.5x faster |
-| 5 levels| 7.0 µs  | 11.4 µs | Flexx 1.6x faster |
-| 10 levels| 13 µs  | 22 µs   | Flexx 1.6x faster |
-| 15 levels| 21 µs  | 32 µs   | Flexx 1.5x faster |
-| 20 levels| 26 µs  | 42 µs   | Flexx 1.6x faster |
-| 50 levels| 67 µs  | 104 µs  | Flexx 1.55x faster|
-| 100 levels| 237 µs| 227 µs  | ~Equal            |
-
-With JIT warmup, Flexx wins at all depths except 100 levels where they're equal.
-
-### TUI Patterns (Mixed)
-
-| Benchmark            | Flexx   | Yoga    | Winner            |
-| -------------------- | ------- | ------- | ----------------- |
-| Kanban 36 nodes      | 78 µs   | 82 µs   | ~Equal            |
-| Kanban 156 nodes     | 348 µs  | 306 µs  | Yoga 1.1x faster  |
-| Kanban 306 nodes     | 354 µs  | 598 µs  | Flexx 1.7x faster |
-
-### Feature-Specific
-
-| Feature              | Winner    | Difference   |
-| -------------------- | --------- | ------------ |
-| AbsolutePositioning  | **Flexx** | 3.5x faster  |
-| FlexShrink           | **Flexx** | 2.7x faster  |
-| AlignContent         | **Flexx** | 2.3x faster  |
-| FlexGrow             | **Flexx** | 1.9x faster  |
-| Gap                  | **Flexx** | 1.5x faster  |
-| MeasureFunc          | **Flexx** | 1.4x faster  |
-| FlexWrap             | **Flexx** | 1.2x faster  |
-| PercentValues        | ~Equal    | -            |
-| NestedLayouts        | Yoga      | 1.2x faster  |
-
-**Why is pure JS faster for flat layouts?**
-
-- Avoids WASM ↔ JS boundary crossing overhead
-- Bun's JS engine is highly optimized
-- Tree creation dominates benchmarks
-- No FFI marshalling for node properties
-
-**Why do cold benchmarks show variance?**
-
-Without warmup, Flexx shows high variance (±5-12% rme) due to JIT compilation
-and GC pauses. With 1000-iteration warmup, variance drops to ±1-3% and Flexx
-wins consistently. Run `bun bench bench/yoga-compare-warmup.bench.ts` for stable results.
-
-Run benchmarks: `bun bench` or `bun bench bench/features.bench.ts`
+Run benchmarks: `bun bench bench/yoga-compare-warmup.bench.ts`
 
 ## Bundle Size
 
