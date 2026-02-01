@@ -143,20 +143,20 @@ Tree creation + layout together (the fair comparison):
 | **Flat 500 nodes**            | 470 µs  | 884 µs  | Flexx 1.9x faster |
 | **Flat 1000 nodes**           | 964 µs  | 1889 µs | Flexx 2.0x faster |
 
-### Deep Layouts (Flexx wins most depths)
+### Deep Layouts (Flexx wins, with warmup)
 
 | Depth      | Flexx    | Yoga     | Comparison        |
 | ---------- | -------- | -------- | ----------------- |
-| **1 level**  | 1.6 µs | 3.3 µs   | Flexx 2.0x faster |
-| **2 levels** | 5.8 µs | 5.3 µs   | ~Equal            |
-| **5 levels** | 14.7 µs| 11.8 µs  | Yoga 1.25x faster |
-| **10 levels**| 16.5 µs| 21.8 µs  | Flexx 1.3x faster |
-| **15 levels**| 17.7 µs| 33.6 µs  | Flexx 1.9x faster |
-| **20 levels**| 25.6 µs| 42.5 µs  | Flexx 1.7x faster |
-| **50 levels**| 61.9 µs| 105.7 µs | Flexx 1.7x faster |
-| **100 levels**| 139 µs| 216 µs   | Flexx 1.6x faster |
+| **1 level**  | 1.5 µs | 3.2 µs   | Flexx 2.1x faster |
+| **2 levels** | 3.5 µs | 5.2 µs   | Flexx 1.5x faster |
+| **5 levels** | 7.0 µs | 11.4 µs  | Flexx 1.6x faster |
+| **10 levels**| 13 µs  | 22 µs    | Flexx 1.6x faster |
+| **15 levels**| 21 µs  | 32 µs    | Flexx 1.5x faster |
+| **20 levels**| 26 µs  | 42 µs    | Flexx 1.6x faster |
+| **50 levels**| 67 µs  | 104 µs   | Flexx 1.55x faster|
+| **100 levels**| 237 µs| 227 µs   | ~Equal            |
 
-Yoga has a slight edge at 2-5 levels where WASM overhead is amortized but JS recursion overhead hasn't accumulated. Beyond that, Flexx wins consistently.
+With JIT warmup (1000 iterations), Flexx wins at all depths except 100 levels where they're roughly equal. Cold benchmarks show higher variance due to JIT compilation.
 
 ### TUI Patterns (Mixed)
 
@@ -191,17 +191,20 @@ Different flexbox features have different performance characteristics:
 - No FFI marshalling for node properties
 - Tree creation dominates these benchmarks (both allocate nodes)
 
-### Why Does Yoga Win at 2-5 Levels?
+### Benchmark Variance
 
-- WASM initialization overhead is amortized over more work
-- Not enough depth for JS function call overhead to accumulate
-- Tree creation cost is roughly equal at small sizes
+Cold benchmarks (without warmup) show high variance for Flexx:
+- Flexx rme: ±5-12% (JIT compilation, GC pauses)
+- Yoga rme: ±0.3-1% (WASM has predictable performance)
 
-### Why Does Flexx Win at Deeper Levels?
+With 1000-iteration warmup, Flexx variance drops to ±1-3% and wins consistently.
+
+### Why Is Flexx Faster?
 
 - Avoids WASM ↔ JS boundary crossing per node
 - Zero-allocation design reduces per-node overhead
-- JS engines optimize hot recursive paths well
+- JS engines optimize hot paths after warmup
+- No FFI marshalling for property access
 
 ### Key Takeaways
 

@@ -68,20 +68,20 @@ Benchmarks on Apple M1 Max, Bun 1.3.7 (tree creation + layout):
 | Flat 500 nodes   | 470 µs  | 884 µs  | Flexx 1.9x faster |
 | Flat 1000 nodes  | 964 µs  | 1889 µs | Flexx 2.0x faster |
 
-### Deep Layouts (Flexx wins most depths)
+### Deep Layouts (Flexx wins, with warmup)
 
 | Depth   | Flexx   | Yoga    | Winner            |
 | ------- | ------- | ------- | ----------------- |
-| 1 level | 1.6 µs  | 3.3 µs  | Flexx 2.0x faster |
-| 2 levels| 5.8 µs  | 5.3 µs  | ~Equal            |
-| 5 levels| 14.7 µs | 11.8 µs | Yoga 1.25x faster |
-| 10 levels| 16.5 µs| 21.8 µs | Flexx 1.3x faster |
-| 15 levels| 17.7 µs| 33.6 µs | Flexx 1.9x faster |
-| 20 levels| 25.6 µs| 42.5 µs | Flexx 1.7x faster |
-| 50 levels| 61.9 µs| 105.7 µs| Flexx 1.7x faster |
-| 100 levels| 139 µs| 216 µs  | Flexx 1.6x faster |
+| 1 level | 1.5 µs  | 3.2 µs  | Flexx 2.1x faster |
+| 2 levels| 3.5 µs  | 5.2 µs  | Flexx 1.5x faster |
+| 5 levels| 7.0 µs  | 11.4 µs | Flexx 1.6x faster |
+| 10 levels| 13 µs  | 22 µs   | Flexx 1.6x faster |
+| 15 levels| 21 µs  | 32 µs   | Flexx 1.5x faster |
+| 20 levels| 26 µs  | 42 µs   | Flexx 1.6x faster |
+| 50 levels| 67 µs  | 104 µs  | Flexx 1.55x faster|
+| 100 levels| 237 µs| 227 µs  | ~Equal            |
 
-Yoga has a slight advantage at 2-5 levels of nesting. Beyond that, Flexx wins.
+With JIT warmup, Flexx wins at all depths except 100 levels where they're equal.
 
 ### TUI Patterns (Mixed)
 
@@ -112,11 +112,11 @@ Yoga has a slight advantage at 2-5 levels of nesting. Beyond that, Flexx wins.
 - Tree creation dominates benchmarks
 - No FFI marshalling for node properties
 
-**Why does Yoga win at 2-5 levels?**
+**Why do cold benchmarks show variance?**
 
-- WASM initialization overhead is amortized
-- Not enough depth for JS recursion overhead to matter
-- Tree creation cost roughly equal at small sizes
+Without warmup, Flexx shows high variance (±5-12% rme) due to JIT compilation
+and GC pauses. With 1000-iteration warmup, variance drops to ±1-3% and Flexx
+wins consistently. Run `bun bench bench/yoga-compare-warmup.bench.ts` for stable results.
 
 Run benchmarks: `bun bench` or `bun bench bench/features.bench.ts`
 
