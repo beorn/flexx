@@ -186,8 +186,8 @@ The layout algorithm implements CSS Flexbox spec Section 9.7 (resolving flexible
 ## Documentation
 
 - [Yoga Comparison](docs/yoga-comparison.md) — detailed feature comparison and benchmarks
-- [Algorithm](ALGORITHM.md) — how the layout algorithm works
-- [Zero-Allocation Design](docs/ZERO_ALLOCATION.md) — zero-alloc optimization details
+- [Algorithm](algorithm.md) — how the layout algorithm works
+- [Zero-Allocation Design](docs/zero-allocation.md) — zero-alloc optimization details
 
 ## Related Projects
 
