@@ -27,6 +27,7 @@ import {
   setEdgeBorder,
   getEdgeValue,
   getEdgeBorderValue,
+  traversalStack,
 } from "./utils.js";
 
 const debug = createDebug("flexx:layout");
@@ -459,9 +460,6 @@ export class Node {
     this._lc0.computedH = computedH;
   }
 
-  // Static stack for iterative tree traversal (avoids stack overflow on deep trees)
-  private static _traversalStack: Node[] = [];
-
   /**
    * Clear layout cache for this node and all descendants.
    * Called at the start of each calculateLayout pass.
@@ -469,16 +467,15 @@ export class Node {
    * Uses iterative traversal to avoid stack overflow on deep trees.
    */
   resetLayoutCache(): void {
-    const stack = Node._traversalStack;
-    stack.length = 0;
-    stack.push(this);
-    while (stack.length > 0) {
-      const node = stack.pop()!;
+    traversalStack.length = 0;
+    traversalStack.push(this);
+    while (traversalStack.length > 0) {
+      const node = traversalStack.pop() as Node;
       // Invalidate by setting availW to NaN
       if (node._lc0) node._lc0.availW = NaN;
       if (node._lc1) node._lc1.availW = NaN;
       for (const child of node._children) {
-        stack.push(child);
+        traversalStack.push(child);
       }
     }
   }

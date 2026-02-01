@@ -7,6 +7,20 @@
 import * as C from "./constants.js";
 import type { Value } from "./types.js";
 
+// ============================================================================
+// Shared Traversal Stack
+// ============================================================================
+// Pre-allocated stack array for iterative tree traversal. Shared across all
+// layout functions to avoid multiple allocations. Using a single stack is safe
+// because layout operations are synchronous (no concurrent traversals).
+
+/**
+ * Shared traversal stack for iterative tree operations.
+ * Avoids recursion (prevents stack overflow on deep trees) and avoids
+ * allocation during layout passes.
+ */
+export const traversalStack: unknown[] = [];
+
 /**
  * Set a value on an edge array (supports all edge types including logical START/END).
  */

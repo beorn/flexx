@@ -9,7 +9,7 @@ import createDebug from "debug";
 import * as C from "./constants.js";
 import type { Node } from "./node-zero.js";
 import type { Value } from "./types.js";
-import { resolveValue, applyMinMax } from "./utils.js";
+import { resolveValue, applyMinMax, traversalStack } from "./utils.js";
 
 const debug = createDebug("flexx:layout");
 
@@ -127,27 +127,22 @@ export function isEdgeAuto(
   return arr[physicalIndex].unit === C.UNIT_AUTO;
 }
 
-// ============================================================================
-// Reusable Stack for Iterative Tree Traversal
-// ============================================================================
-// Pre-allocated stack array to avoid recursion (prevents stack overflow on deep trees)
-// and avoids allocation during layout passes.
-let _traversalStack: Node[] = [];
+// Note: Uses shared traversalStack from utils.ts for iterative tree traversal
 
 /**
  * Mark subtree as having new layout and clear dirty flags (iterative to avoid stack overflow).
  * This is called after layout completes to reset dirty tracking for all nodes.
  */
 export function markSubtreeLayoutSeen(node: Node): void {
-  _traversalStack.length = 0;
-  _traversalStack.push(node);
-  while (_traversalStack.length > 0) {
-    const current = _traversalStack.pop()!;
+  traversalStack.length = 0;
+  traversalStack.push(node);
+  while (traversalStack.length > 0) {
+    const current = traversalStack.pop() as Node;
     // Clear dirty flag - layout is now complete
     (current as Node)["_isDirty"] = false;
     (current as Node)["_hasNewLayout"] = true;
     for (const child of current.children) {
-      _traversalStack.push(child);
+      traversalStack.push(child);
     }
   }
 }
@@ -157,13 +152,13 @@ export function markSubtreeLayoutSeen(node: Node): void {
  */
 export function countNodes(node: Node): number {
   let count = 0;
-  _traversalStack.length = 0;
-  _traversalStack.push(node);
-  while (_traversalStack.length > 0) {
-    const current = _traversalStack.pop()!;
+  traversalStack.length = 0;
+  traversalStack.push(node);
+  while (traversalStack.length > 0) {
+    const current = traversalStack.pop() as Node;
     count++;
     for (const child of current.children) {
-      _traversalStack.push(child);
+      traversalStack.push(child);
     }
   }
   return count;
@@ -517,19 +512,19 @@ function distributeFlexSpaceForLine(
  * Used when parent position changes but layout is cached.
  */
 function propagatePositionDelta(node: Node, deltaX: number, deltaY: number): void {
-  _traversalStack.length = 0;
+  traversalStack.length = 0;
   // Start with all children of the node
   for (const child of node.children) {
-    _traversalStack.push(child);
+    traversalStack.push(child);
   }
-  while (_traversalStack.length > 0) {
-    const current = _traversalStack.pop()!;
+  while (traversalStack.length > 0) {
+    const current = traversalStack.pop() as Node;
     current.layout.left += deltaX;
     current.layout.top += deltaY;
     current.flex.lastOffsetX += deltaX;
     current.flex.lastOffsetY += deltaY;
     for (const child of current.children) {
-      _traversalStack.push(child);
+      traversalStack.push(child);
     }
   }
 }
