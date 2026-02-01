@@ -576,7 +576,7 @@ export class Node {
         Object.is(this._lastCalcW, availableWidth) &&
         Object.is(this._lastCalcH, availableHeight) &&
         this._lastCalcDir === direction) {
-      debug("layout skip (not dirty, constraints unchanged)");
+      if (debug.enabled) debug("layout skip (not dirty, constraints unchanged)");
       return;
     }
 
@@ -599,7 +599,7 @@ export class Node {
     this._hasNewLayout = true;
     markSubtreeLayoutSeen(this);
 
-    debug(
+    if (debug.enabled) debug(
       "layout: %dx%d, %d nodes in %dms (measure: calls=%d hits=%d)",
       width,
       height,
