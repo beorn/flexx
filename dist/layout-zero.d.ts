@@ -49,8 +49,9 @@ export declare function resetLayoutStats(): void;
  * @param node - The node to measure
  * @param availableWidth - Available width (NaN for unconstrained)
  * @param availableHeight - Available height (NaN for unconstrained)
+ * @param direction - Layout direction (LTR or RTL)
  */
-export declare function measureNode(node: Node, availableWidth: number, availableHeight: number): void;
+export declare function measureNode(node: Node, availableWidth: number, availableHeight: number, direction?: number): void;
 /**
  * Compute layout for a node tree.
  */
