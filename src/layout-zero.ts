@@ -279,13 +279,16 @@ function breakIntoLines(
   // No wrapping or unconstrained - all children on one line
   if (wrap === C.WRAP_NO_WRAP || Number.isNaN(mainAxisSize) || relativeCount === 0) {
     // All relative children on line 0, populate _lineChildren for O(n) access
-    _lineChildren[0].length = 0;
+    // Use index-based assignment to avoid push() backing store growth
+    const lineArr = _lineChildren[0];
+    let idx = 0;
     for (const child of parent.children) {
       if (child.flex.relativeIndex >= 0) {
         child.flex.lineIndex = 0;
-        _lineChildren[0].push(child);
+        lineArr[idx++] = child;
       }
     }
+    lineArr.length = idx; // Trim to actual size
     _lineLengths[0] = relativeCount;
     _lineCrossSizes[0] = 0;
     _lineCrossOffsets[0] = 0;
@@ -295,7 +298,7 @@ function breakIntoLines(
   let lineIndex = 0;
   let lineMainSize = 0;
   let lineChildCount = 0;
-  _lineChildren[0].length = 0; // Clear first line
+  let lineChildIdx = 0; // Index within current line array
 
   for (const child of parent.children) {
     if (child.flex.relativeIndex < 0) continue;
@@ -306,14 +309,15 @@ function breakIntoLines(
 
     // Check if child fits on current line
     if (lineChildCount > 0 && lineMainSize + gapIfNotFirst + childMainSize > mainAxisSize) {
-      // Finalize current line and start new one
+      // Finalize current line: trim array to actual size
+      _lineChildren[lineIndex].length = lineChildIdx;
       _lineLengths[lineIndex] = lineChildCount;
       lineIndex++;
       if (lineIndex >= MAX_FLEX_LINES) {
         // Grow arrays dynamically (rare - only for >32 line layouts)
         growLineArrays(lineIndex + 16);
       }
-      _lineChildren[lineIndex].length = 0; // Clear new line
+      lineChildIdx = 0; // Reset index for new line
       lineMainSize = childMainSize;
       lineChildCount = 1;
     } else {
@@ -321,11 +325,13 @@ function breakIntoLines(
       lineChildCount++;
     }
     flex.lineIndex = lineIndex;
-    _lineChildren[lineIndex].push(child);
+    // Use index-based assignment to avoid push() backing store growth
+    _lineChildren[lineIndex][lineChildIdx++] = child;
   }
 
   // Finalize the last line
   if (lineChildCount > 0) {
+    _lineChildren[lineIndex].length = lineChildIdx; // Trim to actual size
     _lineLengths[lineIndex] = lineChildCount;
     lineIndex++;
   }
