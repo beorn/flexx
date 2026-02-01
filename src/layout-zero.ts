@@ -127,17 +127,41 @@ export function isEdgeAuto(
   return arr[physicalIndex].unit === C.UNIT_AUTO;
 }
 
+// ============================================================================
+// Reusable Stack for Iterative Tree Traversal
+// ============================================================================
+// Pre-allocated stack array to avoid recursion (prevents stack overflow on deep trees)
+// and avoids allocation during layout passes.
+let _traversalStack: Node[] = [];
+
+/**
+ * Mark subtree as having new layout (iterative to avoid stack overflow).
+ */
 export function markSubtreeLayoutSeen(node: Node): void {
-  for (const child of node.children) {
-    (child as Node)["_hasNewLayout"] = true;
-    markSubtreeLayoutSeen(child);
+  _traversalStack.length = 0;
+  _traversalStack.push(node);
+  while (_traversalStack.length > 0) {
+    const current = _traversalStack.pop()!;
+    for (const child of current.children) {
+      (child as Node)["_hasNewLayout"] = true;
+      _traversalStack.push(child);
+    }
   }
 }
 
+/**
+ * Count total nodes in tree (iterative to avoid stack overflow).
+ */
 export function countNodes(node: Node): number {
-  let count = 1;
-  for (const child of node.children) {
-    count += countNodes(child);
+  let count = 0;
+  _traversalStack.length = 0;
+  _traversalStack.push(node);
+  while (_traversalStack.length > 0) {
+    const current = _traversalStack.pop()!;
+    count++;
+    for (const child of current.children) {
+      _traversalStack.push(child);
+    }
   }
   return count;
 }
@@ -463,17 +487,23 @@ function distributeFlexSpaceForLine(
 }
 
 /**
- * Propagate position delta to all descendants.
+ * Propagate position delta to all descendants (iterative to avoid stack overflow).
  * Used when parent position changes but layout is cached.
  */
 function propagatePositionDelta(node: Node, deltaX: number, deltaY: number): void {
+  _traversalStack.length = 0;
+  // Start with all children of the node
   for (const child of node.children) {
-    child.layout.left += deltaX;
-    child.layout.top += deltaY;
-    child.flex.lastOffsetX += deltaX;
-    child.flex.lastOffsetY += deltaY;
-    if (child.children.length > 0) {
-      propagatePositionDelta(child, deltaX, deltaY);
+    _traversalStack.push(child);
+  }
+  while (_traversalStack.length > 0) {
+    const current = _traversalStack.pop()!;
+    current.layout.left += deltaX;
+    current.layout.top += deltaY;
+    current.flex.lastOffsetX += deltaX;
+    current.flex.lastOffsetY += deltaY;
+    for (const child of current.children) {
+      _traversalStack.push(child);
     }
   }
 }

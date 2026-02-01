@@ -451,17 +451,27 @@ export class Node {
     this._lc0.computedH = computedH;
   }
 
+  // Static stack for iterative tree traversal (avoids stack overflow on deep trees)
+  private static _traversalStack: Node[] = [];
+
   /**
    * Clear layout cache for this node and all descendants.
    * Called at the start of each calculateLayout pass.
    * Zero-allocation: invalidates entries (availW = NaN) rather than deallocating.
+   * Uses iterative traversal to avoid stack overflow on deep trees.
    */
   resetLayoutCache(): void {
-    // Invalidate by setting availW to NaN (getCachedLayout uses Object.is for NaN comparison)
-    if (this._lc0) this._lc0.availW = NaN;
-    if (this._lc1) this._lc1.availW = NaN;
-    for (const child of this._children) {
-      child.resetLayoutCache();
+    const stack = Node._traversalStack;
+    stack.length = 0;
+    stack.push(this);
+    while (stack.length > 0) {
+      const node = stack.pop()!;
+      // Invalidate by setting availW to NaN
+      if (node._lc0) node._lc0.availW = NaN;
+      if (node._lc1) node._lc1.availW = NaN;
+      for (const child of node._children) {
+        stack.push(child);
+      }
     }
   }
 
