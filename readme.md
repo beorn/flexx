@@ -68,13 +68,15 @@ Benchmarks on Apple M1 Max, Bun 1.3.7 (tree creation + layout):
 | Flat 500 nodes   | 470 µs  | 884 µs  | Flexx 1.9x faster |
 | Flat 1000 nodes  | 964 µs  | 1889 µs | Flexx 2.0x faster |
 
-### Deep Layouts (Yoga wins)
+### Deep Layouts (Yoga wins at ~15+ levels)
 
 | Benchmark         | Flexx   | Yoga    | Winner            |
 | ----------------- | ------- | ------- | ----------------- |
-| Deep 20 levels    | 59 µs   | 43 µs   | Yoga 1.4x faster  |
-| Deep 50 levels    | 129 µs  | 106 µs  | Yoga 1.2x faster  |
-| Deep 100 levels   | 296 µs  | 213 µs  | Yoga 1.4x faster  |
+| Deep 20 levels    | 52 µs   | 43 µs   | Yoga 1.2x faster  |
+| Deep 50 levels    | 122 µs  | 105 µs  | Yoga 1.2x faster  |
+| Deep 100 levels   | 267 µs  | 210 µs  | Yoga 1.3x faster  |
+
+**Crossover point:** Yoga becomes faster at ~15-20 levels of nesting depth.
 
 ### TUI Patterns (Mixed)
 
