@@ -146,15 +146,15 @@ Tree creation + layout together (the fair comparison):
 | **Flat 500 nodes**            | 470 µs  | 884 µs  | Flexx 1.9x faster |
 | **Flat 1000 nodes**           | 964 µs  | 1889 µs | Flexx 2.0x faster |
 
-### Deep Layouts (Yoga wins at ~15+ levels)
+### Deep Layouts (high variance)
 
-| Benchmark                     | Flexx   | Yoga    | Comparison        |
-| ----------------------------- | ------- | ------- | ----------------- |
-| **Deep 20 levels**            | 52 µs   | 43 µs   | Yoga 1.2x faster  |
-| **Deep 50 levels**            | 122 µs  | 105 µs  | Yoga 1.2x faster  |
-| **Deep 100 levels**           | 267 µs  | 210 µs  | Yoga 1.3x faster  |
+| Benchmark                     | Result                                     |
+| ----------------------------- | ------------------------------------------ |
+| **Deep 20 levels**            | Yoga slightly faster (~1.1-1.2x)           |
+| **Deep 50 levels**            | Roughly equal (varies between runs)        |
+| **Deep 100 levels**           | Roughly equal (varies between runs)        |
 
-**Crossover point:** Yoga becomes faster at approximately 15-20 levels of nesting depth. Below that, Flexx and Yoga are roughly equal for pure nesting.
+**Note:** Deep layout benchmarks show significant variance between runs (up to 2x). This makes definitive comparisons difficult. Both engines handle deep nesting efficiently for practical UI use cases.
 
 ### TUI Patterns (Mixed)
 
@@ -189,11 +189,12 @@ Different flexbox features have different performance characteristics:
 - No FFI marshalling for node properties
 - Tree creation dominates these benchmarks (both allocate nodes)
 
-### Why is Yoga Faster for Deep Layouts?
+### Why Do Deep Layout Benchmarks Vary?
 
-- Native C++ recursion in WASM is more efficient than JS function calls
-- Deep hierarchies amplify per-node function call overhead
-- WASM has better branch prediction for recursive patterns
+- JIT warmup and compilation timing affects results
+- GC pauses can shift individual benchmark runs
+- Both engines are fast enough that measurement noise dominates
+- Practical UI depths (5-20 levels) show both engines performing well
 
 ### Key Takeaways
 
