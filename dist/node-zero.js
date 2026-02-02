@@ -172,14 +172,12 @@ export class Node {
      */
     removeChild(child) {
         const index = this._children.indexOf(child);
-        console.log(`[flexx.removeChild] index=${index}, children.length=${this._children.length}`);
         if (index !== -1) {
             this._children.splice(index, 1);
             child._parent = null;
             // Invalidate layoutValid for remaining siblings after the removal point
             // Their positions may change due to the removal
             for (let i = index; i < this._children.length; i++) {
-                console.log(`[flexx.removeChild] invalidating child ${i}`);
                 this._children[i]._flex.layoutValid = false;
             }
             this.markDirty();
