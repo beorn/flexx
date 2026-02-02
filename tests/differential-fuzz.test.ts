@@ -14,7 +14,7 @@
 
 import { describe, expect, it, beforeAll } from "bun:test";
 import * as Flexx from "../src/index.js";
-import initYoga, { type Yoga, type Node as YogaNode } from "yoga-wasm-web";
+import initYoga, { type Yoga, type Node as YogaNode, type FlexDirection, type Justify, type Align } from "yoga-wasm-web";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -58,7 +58,7 @@ function randomInt(ctx: RandomContext, min: number, max: number): number {
 }
 
 function randomChoice<T>(ctx: RandomContext, options: T[]): T {
-  return options[randomInt(ctx, 0, options.length - 1)];
+  return options[randomInt(ctx, 0, options.length - 1)]!;
 }
 
 function randomBool(ctx: RandomContext, probability = 0.5): boolean {
@@ -130,7 +130,7 @@ function layoutsMatch(a: NodeLayout, b: NodeLayout, path = "root", epsilon = EPS
   }
 
   for (let i = 0; i < a.children.length; i++) {
-    const childResult = layoutsMatch(a.children[i], b.children[i], `${path}.children[${i}]`, epsilon);
+    const childResult = layoutsMatch(a.children[i]!, b.children[i]!, `${path}.children[${i}]`, epsilon);
     if (!childResult.match && childResult.diff) {
       diffs.push(childResult.diff);
     }
@@ -314,11 +314,11 @@ function applyStyleToFlexxNode(node: Flexx.Node, style: NodeStyle): void {
 function applyStyleToYogaNode(node: YogaNode, style: NodeStyle): void {
   if (style.width !== undefined) node.setWidth(style.width);
   if (style.height !== undefined) node.setHeight(style.height);
-  if (style.flexDirection !== undefined) node.setFlexDirection(style.flexDirection);
+  if (style.flexDirection !== undefined) node.setFlexDirection(style.flexDirection as FlexDirection);
   if (style.flexGrow !== undefined) node.setFlexGrow(style.flexGrow);
   if (style.flexShrink !== undefined) node.setFlexShrink(style.flexShrink);
-  if (style.justifyContent !== undefined) node.setJustifyContent(style.justifyContent);
-  if (style.alignItems !== undefined) node.setAlignItems(style.alignItems);
+  if (style.justifyContent !== undefined) node.setJustifyContent(style.justifyContent as Justify);
+  if (style.alignItems !== undefined) node.setAlignItems(style.alignItems as Align);
   if (style.padding !== undefined) node.setPadding(yoga.EDGE_ALL, style.padding);
   if (style.margin !== undefined) node.setMargin(yoga.EDGE_ALL, style.margin);
   if (style.gap !== undefined) node.setGap(yoga.GUTTER_ALL, style.gap);
@@ -328,7 +328,7 @@ function buildFlexxTree(spec: TreeSpec): Flexx.Node {
   const node = Flexx.Node.create();
   applyStyleToFlexxNode(node, spec.style);
   for (let i = 0; i < spec.children.length; i++) {
-    node.insertChild(buildFlexxTree(spec.children[i]), i);
+    node.insertChild(buildFlexxTree(spec.children[i]!), i);
   }
   return node;
 }
@@ -337,7 +337,7 @@ function buildYogaTree(spec: TreeSpec): YogaNode {
   const node = yoga.Node.create();
   applyStyleToYogaNode(node, spec.style);
   for (let i = 0; i < spec.children.length; i++) {
-    node.insertChild(buildYogaTree(spec.children[i]), i);
+    node.insertChild(buildYogaTree(spec.children[i]!), i);
   }
   return node;
 }

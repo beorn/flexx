@@ -457,7 +457,7 @@ describe("Flexx vs Yoga - Large Scale TUI", () => {
 
   for (const nodeCount of [500, 1000, 1500, 2000]) {
     bench(`Flexx: Large TUI ~${nodeCount} nodes`, () => {
-      const tree = createLargeTUI("flexx", nodeCount)
+      const tree = createLargeTUI("flexx", nodeCount) as Flexx.Node
       tree.calculateLayout(250, 120, Flexx.DIRECTION_LTR)
     })
 

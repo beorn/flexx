@@ -4,7 +4,7 @@
  */
 
 import * as Classic from "../src/index.js"
-import * as Zero from "../src/index-zero.js"
+import * as Zero from "../src/index.js"
 
 function bench(fn: () => void, iterations = 1000): number {
   for (let i = 0; i < 50; i++) fn() // warmup

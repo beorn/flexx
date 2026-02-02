@@ -5,7 +5,7 @@
  */
 
 import * as Classic from "../src/index.js"
-import * as Zero from "../src/index-zero.js"
+import * as Zero from "../src/index.js"
 
 function bench(name: string, fn: () => void, iterations = 1000): number {
   // Warmup

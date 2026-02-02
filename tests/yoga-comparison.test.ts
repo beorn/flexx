@@ -76,7 +76,7 @@ function layoutsMatch(a: NodeLayout, b: NodeLayout, tolerance = 0.001): boolean 
     return false;
   }
   if (a.children.length !== b.children.length) return false;
-  return a.children.every((child, i) => layoutsMatch(child, b.children[i], tolerance));
+  return a.children.every((child, i) => layoutsMatch(child, b.children[i]!, tolerance));
 }
 
 function formatLayout(layout: NodeLayout, indent = 0): string {

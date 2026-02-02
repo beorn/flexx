@@ -4,7 +4,7 @@
  */
 
 import { Node } from "../src/index.js";
-import * as layout from "../src/layout.js";
+import * as layout from "../src/layout-zero.js";
 
 // Track unique measure call parameters
 const measureParams = new Map<string, number>();

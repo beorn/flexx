@@ -10,7 +10,7 @@
 
 import { bench, describe, beforeAll } from "vitest"
 import * as Classic from "../src/index.js"
-import * as Zero from "../src/index-zero.js"
+import * as Zero from "../src/index.js"
 
 // ============================================================================
 // Tree Generators

@@ -5,7 +5,7 @@
  */
 
 import * as Flexx from "../src/index.js"
-import { layoutNodeCalls } from "../src/layout.js"
+import { layoutNodeCalls } from "../src/layout-zero.js"
 import initYoga, { type Yoga } from "yoga-wasm-web"
 import { readFileSync } from "node:fs"
 import { dirname, join } from "node:path"

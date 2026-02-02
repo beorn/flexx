@@ -104,7 +104,7 @@ export function resolveEdgeValue(
   }
 
   // Fall back to physical
-  return resolveValue(arr[physicalIndex], availableSize);
+  return resolveValue(arr[physicalIndex]!, availableSize);
 }
 
 /**
@@ -124,7 +124,7 @@ export function isEdgeAuto(
   }
 
   // Fall back to physical
-  return arr[physicalIndex].unit === C.UNIT_AUTO;
+  return arr[physicalIndex]!.unit === C.UNIT_AUTO;
 }
 
 // Note: Uses shared traversalStack from utils.ts for iterative tree traversal
@@ -278,7 +278,7 @@ function breakIntoLines(
   if (wrap === C.WRAP_NO_WRAP || Number.isNaN(mainAxisSize) || relativeCount === 0) {
     // All relative children on line 0, populate _lineChildren for O(n) access
     // Use index-based assignment to avoid push() backing store growth
-    const lineArr = _lineChildren[0];
+    const lineArr = _lineChildren[0]!;
     let idx = 0;
     for (const child of parent.children) {
       if (child.flex.relativeIndex >= 0) {
@@ -308,7 +308,7 @@ function breakIntoLines(
     // Check if child fits on current line
     if (lineChildCount > 0 && lineMainSize + gapIfNotFirst + childMainSize > mainAxisSize) {
       // Finalize current line: trim array to actual size
-      _lineChildren[lineIndex].length = lineChildIdx;
+      _lineChildren[lineIndex]!.length = lineChildIdx;
       _lineLengths[lineIndex] = lineChildCount;
       lineIndex++;
       if (lineIndex >= MAX_FLEX_LINES) {
@@ -324,12 +324,12 @@ function breakIntoLines(
     }
     flex.lineIndex = lineIndex;
     // Use index-based assignment to avoid push() backing store growth
-    _lineChildren[lineIndex][lineChildIdx++] = child;
+    _lineChildren[lineIndex]![lineChildIdx++] = child;
   }
 
   // Finalize the last line
   if (lineChildCount > 0) {
-    _lineChildren[lineIndex].length = lineChildIdx; // Trim to actual size
+    _lineChildren[lineIndex]!.length = lineChildIdx; // Trim to actual size
     _lineLengths[lineIndex] = lineChildCount;
     lineIndex++;
   }
@@ -348,8 +348,8 @@ function breakIntoLines(
     // Swap contents between symmetric line pairs (element-by-element, zero allocation)
     for (let i = 0; i < Math.floor(numLines / 2); i++) {
       const j = numLines - 1 - i;
-      const lineI = _lineChildren[i];
-      const lineJ = _lineChildren[j];
+      const lineI = _lineChildren[i]!;
+      const lineJ = _lineChildren[j]!;
       const lenI = lineI.length;
       const lenJ = lineJ.length;
 
@@ -370,9 +370,9 @@ function breakIntoLines(
     }
     // Update lineIndex on each child to match new positions
     for (let i = 0; i < numLines; i++) {
-      const lc = _lineChildren[i];
+      const lc = _lineChildren[i]!;
       for (let c = 0; c < lc.length; c++) {
-        lc[c].flex.lineIndex = i;
+        lc[c]!.flex.lineIndex = i;
       }
     }
   }
@@ -402,7 +402,7 @@ function distributeFlexSpaceForLine(
 
   // Single-child fast path: skip iteration, direct assignment
   if (childCount === 1) {
-    const flex = lineChildren[0].flex;
+    const flex = lineChildren[0]!.flex;
     const canFlex = isGrowing ? flex.flexGrow > 0 : flex.flexShrink > 0;
     if (canFlex) {
       // Target = base + all free space, clamped by min/max
@@ -416,14 +416,14 @@ function distributeFlexSpaceForLine(
   // Calculate container inner size
   let totalBase = 0;
   for (let i = 0; i < childCount; i++) {
-    totalBase += lineChildren[i].flex.baseSize;
+    totalBase += lineChildren[i]!.flex.baseSize;
   }
 
   const containerInner = initialFreeSpace + totalBase;
 
   // Initialize: all items start unfrozen
   for (let i = 0; i < childCount; i++) {
-    lineChildren[i].flex.frozen = false;
+    lineChildren[i]!.flex.frozen = false;
   }
 
   let freeSpace = initialFreeSpace;
@@ -433,7 +433,7 @@ function distributeFlexSpaceForLine(
   while (iterations++ < maxIterations) {
     let totalFlex = 0;
     for (let i = 0; i < childCount; i++) {
-      const flex = lineChildren[i].flex;
+      const flex = lineChildren[i]!.flex;
       if (flex.frozen) continue;
       if (isGrowing) {
         totalFlex += flex.flexGrow;
@@ -451,7 +451,7 @@ function distributeFlexSpaceForLine(
 
     let totalViolation = 0;
     for (let i = 0; i < childCount; i++) {
-      const flex = lineChildren[i].flex;
+      const flex = lineChildren[i]!.flex;
       if (flex.frozen) continue;
 
       const flexFactor = isGrowing ? flex.flexGrow : flex.flexShrink * flex.baseSize;
@@ -465,12 +465,12 @@ function distributeFlexSpaceForLine(
     let anyFrozen = false;
     if (Math.abs(totalViolation) < EPSILON_FLOAT) {
       for (let i = 0; i < childCount; i++) {
-        lineChildren[i].flex.frozen = true;
+        lineChildren[i]!.flex.frozen = true;
       }
       break;
     } else if (totalViolation > 0) {
       for (let i = 0; i < childCount; i++) {
-        const flex = lineChildren[i].flex;
+        const flex = lineChildren[i]!.flex;
         if (flex.frozen) continue;
         const target = flex.baseSize + (isGrowing ? flex.flexGrow : flex.flexShrink * flex.baseSize) / totalFlex * effectiveFreeSpace;
         if (flex.mainSize > target + EPSILON_FLOAT) {
@@ -480,7 +480,7 @@ function distributeFlexSpaceForLine(
       }
     } else {
       for (let i = 0; i < childCount; i++) {
-        const flex = lineChildren[i].flex;
+        const flex = lineChildren[i]!.flex;
         if (flex.frozen) continue;
         const flexFactor = isGrowing ? flex.flexGrow : flex.flexShrink * flex.baseSize;
         const target = flex.baseSize + flexFactor / totalFlex * effectiveFreeSpace;
@@ -496,7 +496,7 @@ function distributeFlexSpaceForLine(
     let frozenSpace = 0;
     let unfrozenBase = 0;
     for (let i = 0; i < childCount; i++) {
-      const flex = lineChildren[i].flex;
+      const flex = lineChildren[i]!.flex;
       if (flex.frozen) {
         frozenSpace += flex.mainSize;
       } else {
@@ -1219,14 +1219,14 @@ function layoutNode(
     // Process each line: distribute flex space
     // Uses pre-collected _lineChildren to avoid O(n*m) iteration
     for (let lineIdx = 0; lineIdx < numLines; lineIdx++) {
-      const lineChildren = _lineChildren[lineIdx];
+      const lineChildren = _lineChildren[lineIdx]!;
       const lineLength = lineChildren.length;
       if (lineLength === 0) continue;
 
       // Calculate total base main and gaps for this line
       let lineTotalBaseMain = 0;
       for (let i = 0; i < lineLength; i++) {
-        const c = lineChildren[i];
+        const c = lineChildren[i]!;
         lineTotalBaseMain += c.flex.baseSize + c.flex.mainMargin;
       }
       const lineTotalGaps = lineLength > 1 ? mainGap * (lineLength - 1) : 0;
@@ -1252,7 +1252,7 @@ function layoutNode(
 
       // Apply min/max constraints to final sizes
       for (let i = 0; i < lineLength; i++) {
-        const flex = lineChildren[i].flex;
+        const flex = lineChildren[i]!.flex;
         flex.mainSize = Math.max(flex.minMain, Math.min(flex.maxMain, flex.mainSize));
       }
     }
@@ -1266,7 +1266,7 @@ function layoutNode(
 
     // Compute per-line justify-content and auto margins
     for (let lineIdx = 0; lineIdx < numLines; lineIdx++) {
-      const lineChildren = _lineChildren[lineIdx];
+      const lineChildren = _lineChildren[lineIdx]!;
       const lineLength = lineChildren.length;
       if (lineLength === 0) {
         _lineJustifyStarts[lineIdx] = 0;
@@ -1278,7 +1278,7 @@ function layoutNode(
       let lineUsedMain = 0;
       let lineAutoMargins = 0;
       for (let i = 0; i < lineLength; i++) {
-        const c = lineChildren[i];
+        const c = lineChildren[i]!;
         lineUsedMain += c.flex.mainSize + c.flex.mainMargin;
         if (c.flex.mainStartMarginAuto) lineAutoMargins++;
         if (c.flex.mainEndMarginAuto) lineAutoMargins++;
@@ -1299,7 +1299,7 @@ function layoutNode(
         const positiveRemaining = Math.max(0, lineRemainingSpace);
         const autoMarginValue = positiveRemaining / lineAutoMargins;
         for (let i = 0; i < lineLength; i++) {
-          const child = lineChildren[i];
+          const child = lineChildren[i]!;
           if (child.flex.mainStartMarginAuto) {
             child.flex.mainStartMarginValue = autoMarginValue;
           }
@@ -1455,11 +1455,11 @@ function layoutNode(
       _lineCrossOffsets[lineIdx] = cumulativeCrossOffset;
 
       // Calculate max cross size for this line using pre-collected _lineChildren
-      const lineChildren = _lineChildren[lineIdx];
+      const lineChildren = _lineChildren[lineIdx]!;
       const lineLength = lineChildren.length;
       let maxLineCross = 0;
       for (let i = 0; i < lineLength; i++) {
-        const child = lineChildren[i];
+        const child = lineChildren[i]!;
         // Estimate child cross size (will be computed more precisely during layout)
         const childStyle = child.style;
         const crossDim = isRow ? childStyle.height : childStyle.width;
@@ -1506,7 +1506,7 @@ function layoutNode(
           case C.ALIGN_FLEX_END:
             // Lines packed at end
             for (let i = 0; i < numLines; i++) {
-              _lineCrossOffsets[i] += freeSpace;
+              _lineCrossOffsets[i]! += freeSpace;
             }
             break;
 
@@ -1514,7 +1514,7 @@ function layoutNode(
             // Lines centered
             const centerOffset = freeSpace / 2;
             for (let i = 0; i < numLines; i++) {
-              _lineCrossOffsets[i] += centerOffset;
+              _lineCrossOffsets[i]! += centerOffset;
             }
             break;
 
@@ -1523,7 +1523,7 @@ function layoutNode(
             if (numLines > 1) {
               const gap = freeSpace / (numLines - 1);
               for (let i = 1; i < numLines; i++) {
-                _lineCrossOffsets[i] += gap * i;
+                _lineCrossOffsets[i]! += gap * i;
               }
             }
             break;
@@ -1532,7 +1532,7 @@ function layoutNode(
             // Even spacing with half-space at edges
             const halfGap = freeSpace / (numLines * 2);
             for (let i = 0; i < numLines; i++) {
-              _lineCrossOffsets[i] += halfGap + halfGap * 2 * i;
+              _lineCrossOffsets[i]! += halfGap + halfGap * 2 * i;
             }
             break;
 
@@ -1541,10 +1541,10 @@ function layoutNode(
             if (freeSpace > 0 && numLines > 0) {
               const extraPerLine = freeSpace / numLines;
               for (let i = 0; i < numLines; i++) {
-                _lineCrossSizes[i] += extraPerLine;
+                _lineCrossSizes[i]! += extraPerLine;
                 // Recalculate offset for subsequent lines
                 if (i > 0) {
-                  _lineCrossOffsets[i] = _lineCrossOffsets[i - 1] + _lineCrossSizes[i - 1] + crossGap;
+                  _lineCrossOffsets[i] = _lineCrossOffsets[i - 1]! + _lineCrossSizes[i - 1]! + crossGap;
                 }
               }
             }
@@ -1560,12 +1560,12 @@ function layoutNode(
       if (isWrapReverse) {
         let totalLineCrossSize = 0;
         for (let i = 0; i < numLines; i++) {
-          totalLineCrossSize += _lineCrossSizes[i];
+          totalLineCrossSize += _lineCrossSizes[i]!;
         }
         totalLineCrossSize += crossGap * (numLines - 1);
         const crossStartOffset = crossAxisSize - totalLineCrossSize;
         for (let i = 0; i < numLines; i++) {
-          _lineCrossOffsets[i] += crossStartOffset;
+          _lineCrossOffsets[i]! += crossStartOffset;
         }
       }
     }
@@ -1602,7 +1602,7 @@ function layoutNode(
 
     // Use fractional mainPos for edge-based rounding
     // Initialize with first line's startOffset (may be overridden when processing lines)
-    let mainPos = effectiveReverse ? effectiveMainAxisSize - startOffset : startOffset;
+    let mainPos = effectiveReverse ? effectiveMainAxisSize - startOffset! : startOffset!;
     let currentLineIdx = -1;
     let relIdx = 0; // Track relative child index globally
     let lineChildIdx = 0; // Track position within current line (for gap handling)
@@ -1621,10 +1621,10 @@ function layoutNode(
       if (childLineIdx !== currentLineIdx) {
         currentLineIdx = childLineIdx;
         lineChildIdx = 0; // Reset position within line
-        currentLineLength = _lineChildren[childLineIdx].length;
+        currentLineLength = _lineChildren[childLineIdx]!.length;
         // Reset mainPos for new line using line-specific justify offset
-        const lineOffset = _lineJustifyStarts[childLineIdx];
-        currentItemSpacing = _lineItemSpacings[childLineIdx];
+        const lineOffset = _lineJustifyStarts[childLineIdx]!;
+        currentItemSpacing = _lineItemSpacings[childLineIdx]!;
         mainPos = effectiveReverse ? effectiveMainAxisSize - lineOffset : lineOffset;
       }
 
@@ -1769,13 +1769,13 @@ function layoutNode(
           // For unconstrained dimensions (NaN), use Infinity for measure func
           const rawAvailW = widthAuto
             ? isRow
-              ? mainAxisSize - mainPos // Remaining space after previous children
+              ? mainAxisSize - mainPos! // Remaining space after previous children
               : crossAxisSize - crossMargin
             : childStyle.width.value;
           const rawAvailH = heightAuto
             ? isRow
               ? crossAxisSize - crossMargin
-              : mainAxisSize - mainPos // Remaining space for COLUMN
+              : mainAxisSize - mainPos! // Remaining space for COLUMN
             : childStyle.height.value;
           const availW = Number.isNaN(rawAvailW) ? Infinity : rawAvailW;
           const availH = Number.isNaN(rawAvailH) ? Infinity : rawAvailH;
@@ -1809,16 +1809,16 @@ function layoutNode(
         if (isRow) {
           // Row-reverse or RTL: items positioned from right
           // In RTL/reverse, use right margin as trailing margin
-          childX = mainPos - childMainSize - childMarginRight;
-          childY = lineCrossOffset + childMarginTop;
+          childX = mainPos! - childMainSize - childMarginRight;
+          childY = lineCrossOffset! + childMarginTop;
         } else {
           // Column-reverse: items positioned from bottom
-          childX = lineCrossOffset + childMarginLeft;
-          childY = mainPos - childMainSize - childMarginTop;
+          childX = lineCrossOffset! + childMarginLeft;
+          childY = mainPos! - childMainSize - childMarginTop;
         }
       } else {
-        childX = isRow ? mainPos + childMarginLeft : lineCrossOffset + childMarginLeft;
-        childY = isRow ? lineCrossOffset + childMarginTop : mainPos + childMarginTop;
+        childX = isRow ? mainPos! + childMarginLeft : lineCrossOffset! + childMarginLeft;
+        childY = isRow ? lineCrossOffset! + childMarginTop : mainPos! + childMarginTop;
       }
 
       // Edge-based rounding using ABSOLUTE coordinates (Yoga-compatible)
@@ -2041,16 +2041,16 @@ function layoutNode(
       const totalMainMargin = flex.mainStartMarginValue + flex.mainEndMarginValue;
       if (debug.enabled) debug('  child %d: mainPos=%d → top=%d (fractionalMainSize=%d, totalMainMargin=%d)', relIdx, mainPos, child.layout.top, fractionalMainSize, totalMainMargin);
       if (effectiveReverse) {
-        mainPos -= fractionalMainSize + totalMainMargin;
+        mainPos! -= fractionalMainSize + totalMainMargin;
         // Add spacing only between items on the SAME LINE (not across line breaks)
         if (lineChildIdx < currentLineLength - 1) {
-          mainPos -= currentItemSpacing;
+          mainPos! -= currentItemSpacing!;
         }
       } else {
-        mainPos += fractionalMainSize + totalMainMargin;
+        mainPos! += fractionalMainSize + totalMainMargin;
         // Add spacing only between items on the SAME LINE (not across line breaks)
         if (lineChildIdx < currentLineLength - 1) {
-          mainPos += currentItemSpacing;
+          mainPos! += currentItemSpacing!;
         }
       }
       relIdx++;

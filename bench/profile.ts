@@ -4,7 +4,7 @@
  */
 
 import { Node } from "../src/index.js";
-import * as layout from "../src/layout.js";
+import * as layout from "../src/layout-zero.js";
 
 // Create a wide tree (like kanban board)
 function createWideTree(cols: number, rows: number): Node {

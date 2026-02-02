@@ -99,7 +99,7 @@ export function resolveEdgeValue(
   }
 
   // Fall back to physical
-  return resolveValue(arr[physicalIndex], availableSize);
+  return resolveValue(arr[physicalIndex]!, availableSize);
 }
 
 /**
@@ -119,7 +119,7 @@ export function isEdgeAuto(
   }
 
   // Fall back to physical
-  return arr[physicalIndex].unit === C.UNIT_AUTO;
+  return arr[physicalIndex]!.unit === C.UNIT_AUTO;
 }
 
 export function markSubtreeLayoutSeen(node: Node): void {
@@ -258,7 +258,7 @@ function distributeFlexSpace(
 
   // Single-child fast path: skip iteration, direct assignment
   if (children.length === 1) {
-    const child = children[0];
+    const child = children[0]!;
     const canFlex = isGrowing ? child.flexGrow > 0 : child.flexShrink > 0;
     if (canFlex) {
       const target = child.baseSize + initialFreeSpace;
@@ -958,7 +958,7 @@ function layoutNode(
           case C.ALIGN_FLEX_END:
             // Lines packed at end
             for (let i = 0; i < numLines; i++) {
-              lineCrossOffsets[i] += freeSpace;
+              lineCrossOffsets[i]! += freeSpace;
             }
             break;
 
@@ -966,7 +966,7 @@ function layoutNode(
             // Lines centered
             const centerOffset = freeSpace / 2;
             for (let i = 0; i < numLines; i++) {
-              lineCrossOffsets[i] += centerOffset;
+              lineCrossOffsets[i]! += centerOffset;
             }
             break;
 
@@ -975,7 +975,7 @@ function layoutNode(
             if (numLines > 1) {
               const gap = freeSpace / (numLines - 1);
               for (let i = 1; i < numLines; i++) {
-                lineCrossOffsets[i] += gap * i;
+                lineCrossOffsets[i]! += gap * i;
               }
             }
             break;
@@ -984,7 +984,7 @@ function layoutNode(
             // Even spacing with half-space at edges
             const halfGap = freeSpace / (numLines * 2);
             for (let i = 0; i < numLines; i++) {
-              lineCrossOffsets[i] += halfGap + halfGap * 2 * i;
+              lineCrossOffsets[i]! += halfGap + halfGap * 2 * i;
             }
             break;
 
@@ -996,7 +996,7 @@ function layoutNode(
                 lines[i]!.crossSize += extraPerLine;
                 // Recalculate offset for subsequent lines
                 if (i > 0) {
-                  lineCrossOffsets[i] = lineCrossOffsets[i - 1] + lines[i - 1]!.crossSize + crossGap;
+                  lineCrossOffsets[i] = lineCrossOffsets[i - 1]! + lines[i - 1]!.crossSize + crossGap;
                 }
               }
             }
@@ -1017,7 +1017,7 @@ function layoutNode(
         totalLineCrossSize += crossGap * (numLines - 1);
         const crossStartOffset = crossAxisSize - totalLineCrossSize;
         for (let i = 0; i < numLines; i++) {
-          lineCrossOffsets[i] += crossStartOffset;
+          lineCrossOffsets[i]! += crossStartOffset;
         }
       }
     }

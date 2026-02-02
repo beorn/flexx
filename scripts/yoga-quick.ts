@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import * as Flexx from "../src/index-zero.js"
+import * as Flexx from "../src/index.js"
 import initYoga from "yoga-wasm-web"
 import { readFileSync } from "node:fs"
 
