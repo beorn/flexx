@@ -429,6 +429,10 @@ export class Node {
    * NaN dimensions are handled specially via Object.is (NaN === NaN is false, but Object.is(NaN, NaN) is true).
    */
   getCachedLayout(availW: number, availH: number): { width: number; height: number } | null {
+    // Never return cached layout for dirty nodes - content may have changed
+    if (this._isDirty) {
+      return null;
+    }
     // Returns stable _layoutResult object to avoid allocation on cache hit
     const lc0 = this._lc0;
     if (lc0 && Object.is(lc0.availW, availW) && Object.is(lc0.availH, availH)) {
@@ -513,13 +517,15 @@ export class Node {
   markDirty(): void {
     let current: Node | null = this;
     while (current !== null) {
-      // Skip if already dirty (all ancestors will be dirty too)
+      // Always clear caches - even if already dirty, a child's content change
+      // may invalidate cached layout results that used the old child size
+      current._m0 = current._m1 = current._m2 = current._m3 = undefined;
+      current._lc0 = current._lc1 = undefined;
+      // Skip setting dirty flag if already dirty (but still cleared caches above)
       if (current._isDirty) break;
       current._isDirty = true;
       // Invalidate layout fingerprint
       current._flex.layoutValid = false;
-      // Clear 4-entry measure cache since content may have changed
-      current._m0 = current._m1 = current._m2 = current._m3 = undefined;
       current = current._parent;
     }
   }
