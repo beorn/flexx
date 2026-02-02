@@ -86,6 +86,7 @@ export declare class Node {
      * Remove a child node from this node.
      * The child's parent reference will be cleared.
      * Marks the node as dirty to trigger layout recalculation.
+     * Invalidates layout validity of remaining siblings whose positions may change.
      *
      * @param child - The child node to remove
      */

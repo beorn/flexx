@@ -197,6 +197,11 @@ export class Node {
     // Clamp index to valid range to ensure deterministic behavior
     const clampedIndex = Math.max(0, Math.min(index, this._children.length));
     this._children.splice(clampedIndex, 0, child);
+    // Invalidate layoutValid for siblings after the insertion point
+    // Their positions may change due to the insertion
+    for (let i = clampedIndex + 1; i < this._children.length; i++) {
+      this._children[i]._flex.layoutValid = false;
+    }
     this.markDirty();
   }
 
@@ -204,6 +209,7 @@ export class Node {
    * Remove a child node from this node.
    * The child's parent reference will be cleared.
    * Marks the node as dirty to trigger layout recalculation.
+   * Invalidates layout validity of remaining siblings whose positions may change.
    *
    * @param child - The child node to remove
    */
@@ -212,6 +218,11 @@ export class Node {
     if (index !== -1) {
       this._children.splice(index, 1);
       child._parent = null;
+      // Invalidate layoutValid for remaining siblings after the removal point
+      // Their positions may change due to the removal
+      for (let i = index; i < this._children.length; i++) {
+        this._children[i]._flex.layoutValid = false;
+      }
       this.markDirty();
     }
   }

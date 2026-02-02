@@ -739,11 +739,13 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
         // Constraints unchanged - just update position based on offset delta
         const deltaX = offsetX - flex.lastOffsetX;
         const deltaY = offsetY - flex.lastOffsetY;
+        console.log(`[flexx.skip] offsetX=${offsetX} lastOffsetX=${flex.lastOffsetX} deltaX=${deltaX} layout.left=${layout.left}`);
         if (deltaX !== 0 || deltaY !== 0) {
             layout.left += deltaX;
             layout.top += deltaY;
             flex.lastOffsetX = offsetX;
             flex.lastOffsetY = offsetY;
+            console.log(`[flexx.skip] after: layout.left=${layout.left}`);
             // Propagate position delta to all children
             propagatePositionDelta(node, deltaX, deltaY);
         }
