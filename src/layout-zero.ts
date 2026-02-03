@@ -5,13 +5,11 @@
  * Based on Planning-nl/flexbox.js reference implementation.
  */
 
-import createDebug from "debug";
 import * as C from "./constants.js";
 import type { Node } from "./node-zero.js";
 import type { Value } from "./types.js";
 import { resolveValue, applyMinMax, traversalStack } from "./utils.js";
-
-const debug = createDebug("flexx:layout");
+import { log } from "./logger.js";
 
 // ============================================================================
 // Constants for Edge Indices (avoid magic numbers)
@@ -819,7 +817,7 @@ function layoutNode(
   } else {
     layoutPositioningCalls++;
   }
-  if (debug.enabled) debug('layoutNode called: availW=%d, availH=%d, offsetX=%d, offsetY=%d, absX=%d, absY=%d, children=%d', availableWidth, availableHeight, offsetX, offsetY, absX, absY, node.children.length);
+  log.debug?.('layoutNode called: availW=%d, availH=%d, offsetX=%d, offsetY=%d, absX=%d, absY=%d, children=%d', availableWidth, availableHeight, offsetX, offsetY, absX, absY, node.children.length);
   const style = node.style;
   const layout = node.layout;
 
@@ -1203,7 +1201,7 @@ function layoutNode(
       }
     }
 
-  if (debug.enabled) debug('layoutNode: node.children=%d, relativeCount=%d', node.children.length, relativeCount);
+  log.debug?.('layoutNode: node.children=%d, relativeCount=%d', node.children.length, relativeCount);
   if (relativeCount > 0) {
     // ─────────────────────────────────────────────────────────────────────────
     // PHASE 6a: Flex Line Breaking and Space Distribution
@@ -1609,7 +1607,7 @@ function layoutNode(
     let currentLineLength = 0; // Length of current line
     let currentItemSpacing = itemSpacing; // Track current line's item spacing
 
-    if (debug.enabled) debug('positioning children: isRow=%s, startOffset=%d, relativeCount=%d, effectiveReverse=%s, numLines=%d', isRow, startOffset, relativeCount, effectiveReverse, numLines);
+    log.debug?.('positioning children: isRow=%s, startOffset=%d, relativeCount=%d, effectiveReverse=%s, numLines=%d', isRow, startOffset, relativeCount, effectiveReverse, numLines);
 
     for (const child of node.children) {
       if (child.flex.relativeIndex < 0) continue;
@@ -2039,7 +2037,7 @@ function layoutNode(
       const fractionalMainSize = constrainedMainSize;
       // Use computed margin values (including auto margins)
       const totalMainMargin = flex.mainStartMarginValue + flex.mainEndMarginValue;
-      if (debug.enabled) debug('  child %d: mainPos=%d → top=%d (fractionalMainSize=%d, totalMainMargin=%d)', relIdx, mainPos, child.layout.top, fractionalMainSize, totalMainMargin);
+      log.debug?.('  child %d: mainPos=%d → top=%d (fractionalMainSize=%d, totalMainMargin=%d)', relIdx, mainPos, child.layout.top, fractionalMainSize, totalMainMargin);
       if (effectiveReverse) {
         mainPos! -= fractionalMainSize + totalMainMargin;
         // Add spacing only between items on the SAME LINE (not across line breaks)

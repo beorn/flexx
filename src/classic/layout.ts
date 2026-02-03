@@ -5,13 +5,11 @@
  * Based on Planning-nl/flexbox.js reference implementation.
  */
 
-import createDebug from "debug";
 import * as C from "../constants.js";
 import type { Node } from "./node.js";
 import type { Value } from "../types.js";
 import { resolveValue, applyMinMax } from "../utils.js";
-
-const debug = createDebug("flexx:layout");
+import { log } from "../logger.js";
 
 // ============================================================================
 // Helper Functions
@@ -412,7 +410,7 @@ function layoutNode(
   absY: number,
   direction: number = C.DIRECTION_LTR,
 ): void {
-  debug('layoutNode called: availW=%d, availH=%d, offsetX=%d, offsetY=%d, absX=%d, absY=%d, children=%d', availableWidth, availableHeight, offsetX, offsetY, absX, absY, node.children.length);
+  log.debug?.('layoutNode called: availW=%d, availH=%d, offsetX=%d, offsetY=%d, absX=%d, absY=%d, children=%d', availableWidth, availableHeight, offsetX, offsetY, absX, absY, node.children.length);
   const style = node.style;
   const layout = node.layout;
 
@@ -607,7 +605,7 @@ function layoutNode(
   );
 
   // Flex layout for relative children
-  debug('layoutNode: node.children=%d, relativeChildren=%d, absolute=%d', node.children.length, relativeChildren.length, absoluteChildren.length);
+  log.debug?.('layoutNode: node.children=%d, relativeChildren=%d, absolute=%d', node.children.length, relativeChildren.length, absoluteChildren.length);
   if (relativeChildren.length > 0) {
     const isRow = isRowDirection(style.flexDirection);
     const isReverse = isReverseDirection(style.flexDirection);
@@ -1032,7 +1030,7 @@ function layoutNode(
     let mainPos = effectiveReverse ? mainAxisSize - startOffset : startOffset;
     let currentLineIdx = -1;
 
-    debug('positioning children: isRow=%s, startOffset=%d, relativeChildren=%d, isReverse=%s, lines=%d', isRow, startOffset, relativeChildren.length, isReverse, lines.length);
+    log.debug?.('positioning children: isRow=%s, startOffset=%d, relativeChildren=%d, isReverse=%s, lines=%d', isRow, startOffset, relativeChildren.length, isReverse, lines.length);
 
     for (let i = 0; i < children.length; i++) {
       const childLayout = children[i]!
@@ -1474,7 +1472,7 @@ function layoutNode(
       const fractionalMainSize = constrainedMainSize;
       // Use computed margin values (including auto margins)
       const totalMainMargin = childLayout.mainStartMarginValue + childLayout.mainEndMarginValue;
-      debug('  child %d: mainPos=%d → top=%d (fractionalMainSize=%d, totalMainMargin=%d)', i, mainPos, child.layout.top, fractionalMainSize, totalMainMargin);
+      log.debug?.('  child %d: mainPos=%d → top=%d (fractionalMainSize=%d, totalMainMargin=%d)', i, mainPos, child.layout.top, fractionalMainSize, totalMainMargin);
       if (effectiveReverse) {
         mainPos -= fractionalMainSize + totalMainMargin;
         if (i < children.length - 1) {

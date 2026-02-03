@@ -4,7 +4,6 @@
  * Yoga-compatible Node class for flexbox layout.
  */
 
-import createDebug from "debug";
 import * as C from "../constants.js";
 import {
   computeLayout,
@@ -25,8 +24,7 @@ import {
   getEdgeValue,
   getEdgeBorderValue,
 } from "../utils.js";
-
-const debug = createDebug("flexx:layout");
+import { log } from "../logger.js";
 
 /**
  * A layout node in the flexbox tree.
@@ -330,7 +328,7 @@ export class Node {
     _direction: number = C.DIRECTION_LTR,
   ): void {
     if (!this._isDirty) {
-      debug("layout skip (not dirty)");
+      log.debug?.("layout skip (not dirty)");
       return;
     }
 
@@ -349,7 +347,7 @@ export class Node {
     this._hasNewLayout = true;
     markSubtreeLayoutSeen(this);
 
-    debug(
+    log.debug?.(
       "layout: %dx%d, %d nodes in %dms",
       width,
       height,
