@@ -8,6 +8,9 @@
  */
 
 import { describe, expect, it, beforeAll } from "vitest";
+import { createConditionalLogger } from "@beorn/logger";
+
+const log = createConditionalLogger("flexx:test:compat");
 import * as Flexx from "../src/index.js";
 import initYoga, { type Yoga, type Node as YogaNode } from "yoga-wasm-web";
 import { readFileSync } from "node:fs";
@@ -1962,10 +1965,10 @@ describe("Yoga Comparison: IntentionalDifferences", () => {
     });
     // This test documents the difference - we expect it MAY differ
     // Just recording the result, not asserting
-    console.log(`\n[INFO] shrink-weighted-by-basis: ${match ? "MATCHES" : "DIFFERS (expected)"}`);
+    log.debug?.(`shrink-weighted-by-basis: ${match ? "MATCHES" : "DIFFERS (expected)"}`);
     if (!match) {
-      console.log("  Yoga (CSS spec weighted shrink):", yogaLayout.children.map(c => c.width));
-      console.log("  Flexx (proportional shrink):", flexxLayout.children.map(c => c.width));
+      log.debug?.(`  Yoga (CSS spec weighted shrink): ${JSON.stringify(yogaLayout.children.map(c => c.width))}`);
+      log.debug?.(`  Flexx (proportional shrink): ${JSON.stringify(flexxLayout.children.map(c => c.width))}`);
     }
   });
 });
@@ -2225,17 +2228,18 @@ describe("Summary Report", () => {
     const passed = results.filter(r => r.passed);
     const failed = results.filter(r => !r.passed);
 
-    console.log("\n" + "=".repeat(80));
-    console.log("YOGA COMPATIBILITY TEST REPORT");
-    console.log("=".repeat(80));
-    console.log(`\nTotal: ${results.length} tests`);
-    console.log(`Passed: ${passed.length}`);
-    console.log(`Failed: ${failed.length}`);
+    const lines: string[] = [];
+    lines.push("=".repeat(80));
+    lines.push("YOGA COMPATIBILITY TEST REPORT");
+    lines.push("=".repeat(80));
+    lines.push(`Total: ${results.length} tests`);
+    lines.push(`Passed: ${passed.length}`);
+    lines.push(`Failed: ${failed.length}`);
 
     if (failed.length > 0) {
-      console.log("\n" + "-".repeat(80));
-      console.log("FAILED TESTS:");
-      console.log("-".repeat(80));
+      lines.push("-".repeat(80));
+      lines.push("FAILED TESTS:");
+      lines.push("-".repeat(80));
 
       // Group by category
       const byCategory = new Map<string, TestResult[]>();
@@ -2246,24 +2250,24 @@ describe("Summary Report", () => {
       }
 
       for (const [category, tests] of byCategory) {
-        console.log(`\n### ${category}`);
+        lines.push(`\n### ${category}`);
         for (const test of tests) {
-          console.log(`\n**${test.name}**`);
+          lines.push(`\n**${test.name}**`);
           if (test.yoga && test.flexx) {
-            console.log("Expected (Yoga):");
-            console.log(formatLayout(test.yoga));
-            console.log("Actual (Flexx):");
-            console.log(formatLayout(test.flexx));
+            lines.push("Expected (Yoga):");
+            lines.push(formatLayout(test.yoga));
+            lines.push("Actual (Flexx):");
+            lines.push(formatLayout(test.flexx));
           }
           if (test.error) {
-            console.log(`Error: ${test.error}`);
+            lines.push(`Error: ${test.error}`);
           }
         }
       }
 
-      console.log("\n" + "-".repeat(80));
-      console.log("TOP 10 HIGHEST-IMPACT FIXES:");
-      console.log("-".repeat(80));
+      lines.push("-".repeat(80));
+      lines.push("TOP 10 HIGHEST-IMPACT FIXES:");
+      lines.push("-".repeat(80));
 
       // Prioritize by category importance
       const categoryPriority: Record<string, number> = {
@@ -2286,10 +2290,11 @@ describe("Summary Report", () => {
 
       const top10 = sorted.slice(0, 10);
       top10.forEach((test, i) => {
-        console.log(`${i + 1}. [${test.category}] ${test.name}`);
+        lines.push(`${i + 1}. [${test.category}] ${test.name}`);
       });
     }
 
-    console.log("\n" + "=".repeat(80));
+    lines.push("=".repeat(80));
+    log.debug?.(lines.join("\n"));
   });
 });

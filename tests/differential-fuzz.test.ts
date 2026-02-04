@@ -13,6 +13,9 @@
  */
 
 import { describe, expect, it, beforeAll } from "vitest";
+import { createConditionalLogger } from "@beorn/logger";
+
+const log = createConditionalLogger("flexx:test:fuzz");
 import * as Flexx from "../src/index.js";
 import initYoga, { type Yoga, type Node as YogaNode, type FlexDirection, type Justify, type Align } from "yoga-wasm-web";
 import { readFileSync } from "node:fs";
@@ -401,7 +404,7 @@ describe("Fuzz: Simple Flat Layouts", () => {
     it(`seed=${seed} children=${childCount}`, () => {
       const result = runSimpleTest(seed, childCount);
       if (!result.passed) {
-        console.log(`Difference: ${result.diff}`);
+        log.debug?.(`Difference: ${result.diff}`);
       }
       expect(result.passed).toBe(true);
     });
@@ -659,22 +662,6 @@ describe("Fuzz: Stress Test (50 Nested)", () => {
 
 describe("Differential Fuzz Summary", () => {
   it("prints summary", () => {
-    console.log("\n" + "=".repeat(60));
-    console.log("DIFFERENTIAL FUZZ TEST SUMMARY");
-    console.log("=".repeat(60));
-    console.log(`
-These tests generate random flexbox trees and compare Flexx vs Yoga.
-Use seed values to reproduce any failing cases.
-
-Test categories:
-- Simple Flat: Single level with fixed/flex children
-- Nested: Two-level layouts with flexGrow
-- Kanban: Column-based card layouts (TUI pattern)
-- Dashboard: Header + sidebar + content (TUI pattern)
-- Stress: Many random seeds for broad coverage
-
-Tolerance: ${EPSILON}px (for rounding differences)
-`);
-    console.log("=".repeat(60));
+    log.debug?.(`\n${"=".repeat(60)}\nDIFFERENTIAL FUZZ TEST SUMMARY\n${"=".repeat(60)}\n\nThese tests generate random flexbox trees and compare Flexx vs Yoga.\nUse seed values to reproduce any failing cases.\n\nTest categories:\n- Simple Flat: Single level with fixed/flex children\n- Nested: Two-level layouts with flexGrow\n- Kanban: Column-based card layouts (TUI pattern)\n- Dashboard: Header + sidebar + content (TUI pattern)\n- Stress: Many random seeds for broad coverage\n\nTolerance: ${EPSILON}px (for rounding differences)\n\n${"=".repeat(60)}`);
   });
 });

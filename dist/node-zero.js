@@ -3,12 +3,11 @@
  *
  * Yoga-compatible Node class for flexbox layout.
  */
-import createDebug from "debug";
 import * as C from "./constants.js";
 import { computeLayout, countNodes, markSubtreeLayoutSeen, } from "./layout-zero.js";
 import { createDefaultStyle, } from "./types.js";
 import { setEdgeValue, setEdgeBorder, getEdgeValue, getEdgeBorderValue, traversalStack, } from "./utils.js";
-const debug = createDebug("flexx:layout");
+import { log } from "./logger.js";
 /**
  * A layout node in the flexbox tree.
  */
@@ -530,8 +529,7 @@ export class Node {
             Object.is(this._lastCalcW, availableWidth) &&
             Object.is(this._lastCalcH, availableHeight) &&
             this._lastCalcDir === direction) {
-            if (debug.enabled)
-                debug("layout skip (not dirty, constraints unchanged)");
+            log.debug?.("layout skip (not dirty, constraints unchanged)");
             return;
         }
         // Track constraints for future skip check
@@ -548,8 +546,7 @@ export class Node {
         this._isDirty = false;
         this._hasNewLayout = true;
         markSubtreeLayoutSeen(this);
-        if (debug.enabled)
-            debug("layout: %dx%d, %d nodes in %dms (measure: calls=%d hits=%d)", width, height, nodeCount, Date.now() - start, Node.measureCalls, Node.measureCacheHits);
+        log.debug?.("layout: %dx%d, %d nodes in %dms (measure: calls=%d hits=%d)", width, height, nodeCount, Date.now() - start, Node.measureCalls, Node.measureCacheHits);
     }
     // ============================================================================
     // Layout Results

@@ -508,6 +508,11 @@ function distributeFlexSpaceForLine(
 /**
  * Propagate position delta to all descendants (iterative to avoid stack overflow).
  * Used when parent position changes but layout is cached.
+ *
+ * Only updates the constraint fingerprint's lastOffset values, NOT layout.top/left.
+ * layout.top/left store RELATIVE positions (relative to parent's border box),
+ * so they don't change when an ancestor moves — only the absolute offset
+ * (tracked via lastOffsetX/Y) changes.
  */
 function propagatePositionDelta(node: Node, deltaX: number, deltaY: number): void {
   traversalStack.length = 0;
@@ -517,8 +522,6 @@ function propagatePositionDelta(node: Node, deltaX: number, deltaY: number): voi
   }
   while (traversalStack.length > 0) {
     const current = traversalStack.pop() as Node;
-    current.layout.left += deltaX;
-    current.layout.top += deltaY;
     current.flex.lastOffsetX += deltaX;
     current.flex.lastOffsetY += deltaY;
     for (const child of current.children) {
