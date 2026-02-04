@@ -6,7 +6,7 @@
  *
  * Uses seeded random generation for reproducibility.
  *
- * Run: bun test tests/differential-fuzz.test.ts
+ * Run: bun test tests/differential-fuzz.fuzz.ts
  *
  * Known Differences (documented, not bugs):
  * - Some edge cases with deeply nested flex-wrap
