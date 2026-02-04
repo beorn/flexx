@@ -11,7 +11,7 @@
  * Run: bun test tests/cache-stress.test.ts
  */
 
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import {
   ALIGN_BASELINE,
   ALIGN_CENTER,

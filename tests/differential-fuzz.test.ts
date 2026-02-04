@@ -12,7 +12,7 @@
  * - Some edge cases with deeply nested flex-wrap
  */
 
-import { describe, expect, it, beforeAll } from "bun:test";
+import { describe, expect, it, beforeAll } from "vitest";
 import * as Flexx from "../src/index.js";
 import initYoga, { type Yoga, type Node as YogaNode, type FlexDirection, type Justify, type Align } from "yoga-wasm-web";
 import { readFileSync } from "node:fs";

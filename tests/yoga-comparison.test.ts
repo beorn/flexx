@@ -7,7 +7,7 @@
  * Run: bun test tests/yoga-comparison.test.ts
  */
 
-import { describe, expect, it, beforeAll } from "bun:test";
+import { describe, expect, it, beforeAll } from "vitest";
 import * as Flexx from "../src/index.js";
 import initYoga, { type Yoga, type Node as YogaNode } from "yoga-wasm-web";
 import { readFileSync } from "node:fs";
