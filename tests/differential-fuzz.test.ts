@@ -343,15 +343,18 @@ function generateNestedTree(
 function applyStyleToFlexxNode(node: Flexx.Node, style: NodeStyle): void {
   if (style.width !== undefined) node.setWidth(style.width)
   if (style.height !== undefined) node.setHeight(style.height)
-  if (style.flexDirection !== undefined)
+  if (style.flexDirection !== undefined) {
     node.setFlexDirection(style.flexDirection)
+  }
   if (style.flexGrow !== undefined) node.setFlexGrow(style.flexGrow)
   if (style.flexShrink !== undefined) node.setFlexShrink(style.flexShrink)
-  if (style.justifyContent !== undefined)
+  if (style.justifyContent !== undefined) {
     node.setJustifyContent(style.justifyContent)
+  }
   if (style.alignItems !== undefined) node.setAlignItems(style.alignItems)
-  if (style.padding !== undefined)
+  if (style.padding !== undefined) {
     node.setPadding(Flexx.EDGE_ALL, style.padding)
+  }
   if (style.margin !== undefined) node.setMargin(Flexx.EDGE_ALL, style.margin)
   if (style.gap !== undefined) node.setGap(Flexx.GUTTER_ALL, style.gap)
 }
@@ -359,14 +362,17 @@ function applyStyleToFlexxNode(node: Flexx.Node, style: NodeStyle): void {
 function applyStyleToYogaNode(node: YogaNode, style: NodeStyle): void {
   if (style.width !== undefined) node.setWidth(style.width)
   if (style.height !== undefined) node.setHeight(style.height)
-  if (style.flexDirection !== undefined)
+  if (style.flexDirection !== undefined) {
     node.setFlexDirection(style.flexDirection as FlexDirection)
+  }
   if (style.flexGrow !== undefined) node.setFlexGrow(style.flexGrow)
   if (style.flexShrink !== undefined) node.setFlexShrink(style.flexShrink)
-  if (style.justifyContent !== undefined)
+  if (style.justifyContent !== undefined) {
     node.setJustifyContent(style.justifyContent as Justify)
-  if (style.alignItems !== undefined)
+  }
+  if (style.alignItems !== undefined) {
     node.setAlignItems(style.alignItems as Align)
+  }
   if (style.padding !== undefined) node.setPadding(yoga.EDGE_ALL, style.padding)
   if (style.margin !== undefined) node.setMargin(yoga.EDGE_ALL, style.margin)
   if (style.gap !== undefined) node.setGap(yoga.GUTTER_ALL, style.gap)
