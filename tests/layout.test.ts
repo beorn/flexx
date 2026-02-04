@@ -12,7 +12,6 @@ import {
   DISPLAY_FLEX,
   DISPLAY_NONE,
   EDGE_ALL,
-  EDGE_BOTTOM,
   EDGE_END,
   EDGE_LEFT,
   EDGE_RIGHT,
@@ -27,7 +26,6 @@ import {
   JUSTIFY_SPACE_BETWEEN,
   MEASURE_MODE_AT_MOST,
   MEASURE_MODE_EXACTLY,
-  MEASURE_MODE_UNDEFINED,
   Node,
   POSITION_TYPE_ABSOLUTE,
   POSITION_TYPE_RELATIVE,
@@ -37,8 +35,8 @@ import {
   UNIT_UNDEFINED,
   WRAP_NO_WRAP,
   WRAP_WRAP,
-  WRAP_WRAP_REVERSE,
 } from "../src/index.js"
+import { createChild, expectLayout, expectWidth } from "./test-utils.js"
 
 describe("Flexx Layout Engine", () => {
   describe("Basic Layout", () => {
@@ -46,13 +44,9 @@ describe("Flexx Layout Engine", () => {
       const root = Node.create()
       root.setWidth(80)
       root.setHeight(24)
-
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      expect(root.getComputedWidth()).toBe(80)
-      expect(root.getComputedHeight()).toBe(24)
-      expect(root.getComputedLeft()).toBe(0)
-      expect(root.getComputedTop()).toBe(0)
+      expectLayout(root, { left: 0, top: 0, width: 80, height: 24 })
     })
 
     it("should set display:none node to zero size", () => {
@@ -60,11 +54,9 @@ describe("Flexx Layout Engine", () => {
       root.setWidth(80)
       root.setHeight(24)
       root.setDisplay(DISPLAY_NONE)
-
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      expect(root.getComputedWidth()).toBe(0)
-      expect(root.getComputedHeight()).toBe(0)
+      expectLayout(root, { width: 0, height: 0 })
     })
 
     it("should exclude display:none children from layout", () => {
@@ -72,35 +64,16 @@ describe("Flexx Layout Engine", () => {
       root.setWidth(100)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
 
-      const child1 = Node.create()
-      child1.setWidth(30)
-      child1.setHeight(20)
-      root.insertChild(child1, 0)
-
-      const hiddenChild = Node.create()
-      hiddenChild.setWidth(30)
-      hiddenChild.setHeight(20)
+      const child1 = createChild(root, 0, { width: 30, height: 20 })
+      const hiddenChild = createChild(root, 1, { width: 30, height: 20 })
       hiddenChild.setDisplay(DISPLAY_NONE)
-      root.insertChild(hiddenChild, 1)
-
-      const child2 = Node.create()
-      child2.setWidth(30)
-      child2.setHeight(20)
-      root.insertChild(child2, 2)
+      const child2 = createChild(root, 2, { width: 30, height: 20 })
 
       root.calculateLayout(100, 100)
 
-      // Child1 at left edge
-      expect(child1.getComputedLeft()).toBe(0)
-      expect(child1.getComputedWidth()).toBe(30)
-
-      // Hidden child should have zero size
-      expect(hiddenChild.getComputedWidth()).toBe(0)
-      expect(hiddenChild.getComputedHeight()).toBe(0)
-
-      // Child2 should be right after child1, ignoring hidden child
-      expect(child2.getComputedLeft()).toBe(30)
-      expect(child2.getComputedWidth()).toBe(30)
+      expectLayout(child1, { left: 0, width: 30 })
+      expectLayout(hiddenChild, { width: 0, height: 0 })
+      expectLayout(child2, { left: 30, width: 30 })
     })
 
     it("should layout a column with fixed-height children", () => {
@@ -109,37 +82,15 @@ describe("Flexx Layout Engine", () => {
       root.setHeight(24)
       root.setFlexDirection(FLEX_DIRECTION_COLUMN)
 
-      const header = Node.create()
-      header.setHeight(1)
-      root.insertChild(header, 0)
-
-      const content = Node.create()
-      content.setFlexGrow(1)
-      root.insertChild(content, 1)
-
-      const footer = Node.create()
-      footer.setHeight(1)
-      root.insertChild(footer, 2)
+      const header = createChild(root, 0, { height: 1 })
+      const content = createChild(root, 1, { flexGrow: 1 })
+      const footer = createChild(root, 2, { height: 1 })
 
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      // Header: top of container
-      expect(header.getComputedLeft()).toBe(0)
-      expect(header.getComputedTop()).toBe(0)
-      expect(header.getComputedWidth()).toBe(80)
-      expect(header.getComputedHeight()).toBe(1)
-
-      // Content: fills remaining space (24 - 1 - 1 = 22)
-      expect(content.getComputedLeft()).toBe(0)
-      expect(content.getComputedTop()).toBe(1)
-      expect(content.getComputedWidth()).toBe(80)
-      expect(content.getComputedHeight()).toBe(22)
-
-      // Footer: bottom of container
-      expect(footer.getComputedLeft()).toBe(0)
-      expect(footer.getComputedTop()).toBe(23)
-      expect(footer.getComputedWidth()).toBe(80)
-      expect(footer.getComputedHeight()).toBe(1)
+      expectLayout(header, { left: 0, top: 0, width: 80, height: 1 })
+      expectLayout(content, { left: 0, top: 1, width: 80, height: 22 })
+      expectLayout(footer, { left: 0, top: 23, width: 80, height: 1 })
     })
 
     it("should layout a row with equal flex grow", () => {
@@ -148,24 +99,13 @@ describe("Flexx Layout Engine", () => {
       root.setHeight(24)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
 
-      const col1 = Node.create()
-      col1.setFlexGrow(1)
-      root.insertChild(col1, 0)
-
-      const col2 = Node.create()
-      col2.setFlexGrow(1)
-      root.insertChild(col2, 1)
+      const col1 = createChild(root, 0, { flexGrow: 1 })
+      const col2 = createChild(root, 1, { flexGrow: 1 })
 
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      // Each column gets half the width
-      expect(col1.getComputedWidth()).toBe(40)
-      expect(col1.getComputedHeight()).toBe(24)
-      expect(col1.getComputedLeft()).toBe(0)
-
-      expect(col2.getComputedWidth()).toBe(40)
-      expect(col2.getComputedHeight()).toBe(24)
-      expect(col2.getComputedLeft()).toBe(40)
+      expectLayout(col1, { left: 0, width: 40, height: 24 })
+      expectLayout(col2, { left: 40, width: 40, height: 24 })
     })
   })
 
@@ -177,31 +117,14 @@ describe("Flexx Layout Engine", () => {
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setGap(GUTTER_ALL, 2)
 
-      const col1 = Node.create()
-      col1.setFlexGrow(1)
-      root.insertChild(col1, 0)
-
-      const col2 = Node.create()
-      col2.setFlexGrow(1)
-      root.insertChild(col2, 1)
-
-      const col3 = Node.create()
-      col3.setFlexGrow(1)
-      root.insertChild(col3, 2)
+      const col1 = createChild(root, 0, { flexGrow: 1 })
+      const col2 = createChild(root, 1, { flexGrow: 1 })
+      const col3 = createChild(root, 2, { flexGrow: 1 })
 
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      // Available: 80 - 4 (2 gaps * 2) = 76
-      // Each column: ~25.33, rounded
       expect(col1.getComputedLeft()).toBe(0)
-      expect(col2.getComputedLeft()).toBeGreaterThan(
-        col1.getComputedLeft() + col1.getComputedWidth(),
-      )
-      expect(col3.getComputedLeft()).toBeGreaterThan(
-        col2.getComputedLeft() + col2.getComputedWidth(),
-      )
-
-      // Verify gap is applied
+      // Verify gaps are applied correctly
       const gap1 =
         col2.getComputedLeft() -
         (col1.getComputedLeft() + col1.getComputedWidth())
@@ -229,10 +152,7 @@ describe("Flexx Layout Engine", () => {
 
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      expect(modal.getComputedLeft()).toBe(20)
-      expect(modal.getComputedTop()).toBe(7)
-      expect(modal.getComputedWidth()).toBe(40)
-      expect(modal.getComputedHeight()).toBe(10)
+      expectLayout(modal, { left: 20, top: 7, width: 40, height: 10 })
     })
   })
 
@@ -243,17 +163,10 @@ describe("Flexx Layout Engine", () => {
       root.setHeight(24)
       root.setPadding(EDGE_ALL, 2)
 
-      const child = Node.create()
-      child.setFlexGrow(1)
-      root.insertChild(child, 0)
-
+      const child = createChild(root, 0, { flexGrow: 1 })
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      // Child should be inset by padding
-      expect(child.getComputedLeft()).toBe(2)
-      expect(child.getComputedTop()).toBe(2)
-      expect(child.getComputedWidth()).toBe(76) // 80 - 2 - 2
-      expect(child.getComputedHeight()).toBe(20) // 24 - 2 - 2
+      expectLayout(child, { left: 2, top: 2, width: 76, height: 20 })
     })
 
     it("should account for border in child layout", () => {
@@ -262,51 +175,28 @@ describe("Flexx Layout Engine", () => {
       root.setHeight(24)
       root.setBorder(EDGE_ALL, 1)
 
-      const child = Node.create()
-      child.setFlexGrow(1)
-      root.insertChild(child, 0)
-
+      const child = createChild(root, 0, { flexGrow: 1 })
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      // Child should be inset by border
-      expect(child.getComputedLeft()).toBe(1)
-      expect(child.getComputedTop()).toBe(1)
-      expect(child.getComputedWidth()).toBe(78) // 80 - 1 - 1
-      expect(child.getComputedHeight()).toBe(22) // 24 - 1 - 1
+      expectLayout(child, { left: 1, top: 1, width: 78, height: 22 })
     })
   })
 
   describe("Justify Content", () => {
-    it("should justify content flex-end", () => {
+    it.each([
+      { justify: JUSTIFY_FLEX_END, expectedLeft: 60, name: "flex-end" },
+      { justify: JUSTIFY_CENTER, expectedLeft: 30, name: "center" },
+    ])("should justify content $name", ({ justify, expectedLeft }) => {
       const root = Node.create()
       root.setWidth(80)
       root.setHeight(24)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
-      root.setJustifyContent(JUSTIFY_FLEX_END)
+      root.setJustifyContent(justify)
 
-      const child = Node.create()
-      child.setWidth(20)
-      root.insertChild(child, 0)
-
+      const child = createChild(root, 0, { width: 20 })
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      expect(child.getComputedLeft()).toBe(60) // 80 - 20
-    })
-
-    it("should justify content center", () => {
-      const root = Node.create()
-      root.setWidth(80)
-      root.setHeight(24)
-      root.setFlexDirection(FLEX_DIRECTION_ROW)
-      root.setJustifyContent(JUSTIFY_CENTER)
-
-      const child = Node.create()
-      child.setWidth(20)
-      root.insertChild(child, 0)
-
-      root.calculateLayout(80, 24, DIRECTION_LTR)
-
-      expect(child.getComputedLeft()).toBe(30) // (80 - 20) / 2
+      expectLayout(child, { left: expectedLeft })
     })
 
     it("should justify content space-between", () => {
@@ -316,54 +206,31 @@ describe("Flexx Layout Engine", () => {
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setJustifyContent(JUSTIFY_SPACE_BETWEEN)
 
-      const child1 = Node.create()
-      child1.setWidth(20)
-      root.insertChild(child1, 0)
-
-      const child2 = Node.create()
-      child2.setWidth(20)
-      root.insertChild(child2, 1)
+      const child1 = createChild(root, 0, { width: 20 })
+      const child2 = createChild(root, 1, { width: 20 })
 
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      expect(child1.getComputedLeft()).toBe(0)
-      expect(child2.getComputedLeft()).toBe(60) // 80 - 20
+      expectLayout(child1, { left: 0 })
+      expectLayout(child2, { left: 60 })
     })
   })
 
   describe("Align Items", () => {
-    it("should align items center", () => {
+    it.each([
+      { align: ALIGN_CENTER, expectedTop: 7, name: "center" },
+      { align: ALIGN_FLEX_END, expectedTop: 14, name: "flex-end" },
+    ])("should align items $name", ({ align, expectedTop }) => {
       const root = Node.create()
       root.setWidth(80)
       root.setHeight(24)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
-      root.setAlignItems(ALIGN_CENTER)
+      root.setAlignItems(align)
 
-      const child = Node.create()
-      child.setWidth(20)
-      child.setHeight(10)
-      root.insertChild(child, 0)
-
+      const child = createChild(root, 0, { width: 20, height: 10 })
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      expect(child.getComputedTop()).toBe(7) // (24 - 10) / 2
-    })
-
-    it("should align items flex-end", () => {
-      const root = Node.create()
-      root.setWidth(80)
-      root.setHeight(24)
-      root.setFlexDirection(FLEX_DIRECTION_ROW)
-      root.setAlignItems(ALIGN_FLEX_END)
-
-      const child = Node.create()
-      child.setWidth(20)
-      child.setHeight(10)
-      root.insertChild(child, 0)
-
-      root.calculateLayout(80, 24, DIRECTION_LTR)
-
-      expect(child.getComputedTop()).toBe(14) // 24 - 10
+      expectLayout(child, { top: expectedTop })
     })
   })
 
@@ -375,7 +242,6 @@ describe("Flexx Layout Engine", () => {
 
       const text = Node.create()
       text.setMeasureFunc((width, widthMode, _height, _heightMode) => {
-        // Simulate text that is 10 chars wide and 1 line tall
         const textWidth = 10
         const textHeight = 1
 
@@ -390,8 +256,7 @@ describe("Flexx Layout Engine", () => {
 
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      expect(text.getComputedWidth()).toBe(10)
-      expect(text.getComputedHeight()).toBe(1)
+      expectLayout(text, { width: 10, height: 1 })
     })
   })
 
@@ -413,9 +278,8 @@ describe("Flexx Layout Engine", () => {
 
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
-      // Both should shrink to fit: 80 / 2 = 40 each
-      expect(child1.getComputedWidth()).toBe(40)
-      expect(child2.getComputedWidth()).toBe(40)
+      expectWidth(child1, 40)
+      expectWidth(child2, 40)
     })
   })
 
@@ -427,7 +291,6 @@ describe("Flexx Layout Engine", () => {
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
       expect(root.isDirty()).toBe(false)
-
       root.setWidth(100)
       expect(root.isDirty()).toBe(true)
     })
@@ -461,8 +324,7 @@ describe("Flexx Layout Engine", () => {
 
       root.calculateLayout(100, 50, DIRECTION_LTR)
 
-      expect(child.getComputedWidth()).toBe(50)
-      expect(child.getComputedHeight()).toBe(25)
+      expectLayout(child, { width: 50, height: 25 })
     })
   })
 
@@ -472,14 +334,9 @@ describe("Flexx Layout Engine", () => {
       root.setWidth(80)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
 
-      const child = Node.create()
-      child.setFlexGrow(1)
+      const child = createChild(root, 0, { flexGrow: 1 })
       child.setMinWidth(50)
-      root.insertChild(child, 0)
-
-      const child2 = Node.create()
-      child2.setFlexGrow(1)
-      root.insertChild(child2, 1)
+      createChild(root, 1, { flexGrow: 1 })
 
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
@@ -491,10 +348,8 @@ describe("Flexx Layout Engine", () => {
       root.setWidth(80)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
 
-      const child = Node.create()
-      child.setFlexGrow(1)
+      const child = createChild(root, 0, { flexGrow: 1 })
       child.setMaxWidth(30)
-      root.insertChild(child, 0)
 
       root.calculateLayout(80, 24, DIRECTION_LTR)
 
@@ -532,147 +387,156 @@ describe("Flexx Layout Engine", () => {
   })
 
   describe("Style Getters", () => {
-    it("should get width value after setting", () => {
-      const node = Node.create()
-      node.setWidth(100)
-      expect(node.getWidth()).toEqual({ value: 100, unit: UNIT_POINT })
-    })
+    describe("dimension getters", () => {
+      it.each([
+        {
+          method: "setWidth",
+          getter: "getWidth",
+          value: 100,
+          expected: { value: 100, unit: UNIT_POINT },
+        },
+        {
+          method: "setWidthPercent",
+          getter: "getWidth",
+          value: 50,
+          expected: { value: 50, unit: UNIT_PERCENT },
+        },
+        {
+          method: "setHeight",
+          getter: "getHeight",
+          value: 200,
+          expected: { value: 200, unit: UNIT_POINT },
+        },
+      ] as const)(
+        "should get $getter after $method($value)",
+        ({ method, getter, value, expected }) => {
+          const node = Node.create()
+          ;(node[method] as (v: number) => void)(value)
+          expect(node[getter]()).toEqual(expected)
+        },
+      )
 
-    it("should get width percent after setting", () => {
-      const node = Node.create()
-      node.setWidthPercent(50)
-      expect(node.getWidth()).toEqual({ value: 50, unit: UNIT_PERCENT })
-    })
-
-    it("should get width auto after setting", () => {
-      const node = Node.create()
-      node.setWidthAuto()
-      expect(node.getWidth()).toEqual({ value: 0, unit: UNIT_AUTO })
-    })
-
-    it("should get height value after setting", () => {
-      const node = Node.create()
-      node.setHeight(200)
-      expect(node.getHeight()).toEqual({ value: 200, unit: UNIT_POINT })
-    })
-
-    it("should get flex grow after setting", () => {
-      const node = Node.create()
-      node.setFlexGrow(2)
-      expect(node.getFlexGrow()).toBe(2)
-    })
-
-    it("should get flex shrink after setting", () => {
-      const node = Node.create()
-      node.setFlexShrink(0.5)
-      expect(node.getFlexShrink()).toBe(0.5)
-    })
-
-    it("should get flex direction after setting", () => {
-      const node = Node.create()
-      node.setFlexDirection(FLEX_DIRECTION_ROW)
-      expect(node.getFlexDirection()).toBe(FLEX_DIRECTION_ROW)
-    })
-
-    it("should get flex wrap after setting", () => {
-      const node = Node.create()
-      node.setFlexWrap(WRAP_NO_WRAP)
-      expect(node.getFlexWrap()).toBe(WRAP_NO_WRAP)
-    })
-
-    it("should get align items after setting", () => {
-      const node = Node.create()
-      node.setAlignItems(ALIGN_CENTER)
-      expect(node.getAlignItems()).toBe(ALIGN_CENTER)
-    })
-
-    it("should get align self after setting", () => {
-      const node = Node.create()
-      node.setAlignSelf(ALIGN_FLEX_END)
-      expect(node.getAlignSelf()).toBe(ALIGN_FLEX_END)
-    })
-
-    it("should get justify content after setting", () => {
-      const node = Node.create()
-      node.setJustifyContent(JUSTIFY_SPACE_BETWEEN)
-      expect(node.getJustifyContent()).toBe(JUSTIFY_SPACE_BETWEEN)
-    })
-
-    it("should get padding after setting", () => {
-      const node = Node.create()
-      node.setPadding(EDGE_LEFT, 10)
-      expect(node.getPadding(EDGE_LEFT)).toEqual({
-        value: 10,
-        unit: UNIT_POINT,
+      it("should get width auto after setting", () => {
+        const node = Node.create()
+        node.setWidthAuto()
+        expect(node.getWidth()).toEqual({ value: 0, unit: UNIT_AUTO })
       })
     })
 
-    it("should get margin after setting", () => {
-      const node = Node.create()
-      node.setMargin(EDGE_TOP, 5)
-      expect(node.getMargin(EDGE_TOP)).toEqual({ value: 5, unit: UNIT_POINT })
+    describe("flex property getters", () => {
+      it.each([
+        { method: "setFlexGrow", getter: "getFlexGrow", value: 2 },
+        { method: "setFlexShrink", getter: "getFlexShrink", value: 0.5 },
+        {
+          method: "setFlexDirection",
+          getter: "getFlexDirection",
+          value: FLEX_DIRECTION_ROW,
+        },
+        { method: "setFlexWrap", getter: "getFlexWrap", value: WRAP_NO_WRAP },
+        {
+          method: "setAlignItems",
+          getter: "getAlignItems",
+          value: ALIGN_CENTER,
+        },
+        {
+          method: "setAlignSelf",
+          getter: "getAlignSelf",
+          value: ALIGN_FLEX_END,
+        },
+        {
+          method: "setJustifyContent",
+          getter: "getJustifyContent",
+          value: JUSTIFY_SPACE_BETWEEN,
+        },
+        {
+          method: "setPositionType",
+          getter: "getPositionType",
+          value: POSITION_TYPE_ABSOLUTE,
+        },
+      ] as const)(
+        "should get $getter after $method",
+        ({ method, getter, value }) => {
+          const node = Node.create()
+          ;(node[method] as (v: number) => void)(value)
+          expect(node[getter]()).toBe(value)
+        },
+      )
     })
 
-    it("should get border after setting", () => {
-      const node = Node.create()
-      node.setBorder(EDGE_ALL, 1)
-      expect(node.getBorder(EDGE_LEFT)).toBe(1)
-      expect(node.getBorder(EDGE_RIGHT)).toBe(1)
-    })
+    describe("edge property getters", () => {
+      it("should get padding after setting", () => {
+        const node = Node.create()
+        node.setPadding(EDGE_LEFT, 10)
+        expect(node.getPadding(EDGE_LEFT)).toEqual({
+          value: 10,
+          unit: UNIT_POINT,
+        })
+      })
 
-    it("should get position type after setting", () => {
-      const node = Node.create()
-      node.setPositionType(POSITION_TYPE_ABSOLUTE)
-      expect(node.getPositionType()).toBe(POSITION_TYPE_ABSOLUTE)
+      it("should get margin after setting", () => {
+        const node = Node.create()
+        node.setMargin(EDGE_TOP, 5)
+        expect(node.getMargin(EDGE_TOP)).toEqual({ value: 5, unit: UNIT_POINT })
+      })
+
+      it("should get border after setting", () => {
+        const node = Node.create()
+        node.setBorder(EDGE_ALL, 1)
+        expect(node.getBorder(EDGE_LEFT)).toBe(1)
+        expect(node.getBorder(EDGE_RIGHT)).toBe(1)
+      })
     })
 
     it("should have correct default values", () => {
       const node = Node.create()
-      // Default flex shrink is 0 (Yoga native default; CSS uses 1)
       expect(node.getFlexShrink()).toBe(0)
-      // Default flex grow is 0
       expect(node.getFlexGrow()).toBe(0)
-      // Default flex direction is column
       expect(node.getFlexDirection()).toBe(FLEX_DIRECTION_COLUMN)
-      // Default align items is stretch
       expect(node.getAlignItems()).toBe(ALIGN_STRETCH)
-      // Default justify content is flex start
       expect(node.getJustifyContent()).toBe(JUSTIFY_FLEX_START)
-      // Default position type is relative
       expect(node.getPositionType()).toBe(POSITION_TYPE_RELATIVE)
     })
   })
 
   describe("Aspect Ratio", () => {
-    it("should compute height from width when aspectRatio is set", () => {
-      const root = Node.create()
-      root.setWidth(200)
-      root.setAspectRatio(2) // width/height = 2, so height = 100
-      root.calculateLayout(200, 200)
+    it.each([
+      {
+        width: 200,
+        height: undefined,
+        ratio: 2,
+        expectedW: 200,
+        expectedH: 100,
+        name: "height from width",
+      },
+      {
+        width: undefined,
+        height: 100,
+        ratio: 2,
+        expectedW: 200,
+        expectedH: 100,
+        name: "width from height",
+      },
+    ])(
+      "should compute $name when aspectRatio is set",
+      ({ width, height, ratio, expectedW, expectedH }) => {
+        const root = Node.create()
+        if (width !== undefined) root.setWidth(width)
+        if (height !== undefined) root.setHeight(height)
+        root.setAspectRatio(ratio)
+        root.calculateLayout(200, 200)
 
-      expect(root.getComputedWidth()).toBe(200)
-      expect(root.getComputedHeight()).toBe(100)
-    })
-
-    it("should compute width from height when aspectRatio is set", () => {
-      const root = Node.create()
-      root.setHeight(100)
-      root.setAspectRatio(2) // width/height = 2, so width = 200
-      root.calculateLayout(200, 200)
-
-      expect(root.getComputedWidth()).toBe(200)
-      expect(root.getComputedHeight()).toBe(100)
-    })
+        expectLayout(root, { width: expectedW, height: expectedH })
+      },
+    )
 
     it("should respect explicit dimensions over aspectRatio", () => {
       const root = Node.create()
       root.setWidth(200)
-      root.setHeight(50) // Explicit height takes precedence
+      root.setHeight(50)
       root.setAspectRatio(2)
       root.calculateLayout(200, 200)
 
-      expect(root.getComputedWidth()).toBe(200)
-      expect(root.getComputedHeight()).toBe(50)
+      expectLayout(root, { width: 200, height: 50 })
     })
 
     it("should have NaN as default aspectRatio", () => {
@@ -695,33 +559,17 @@ describe("Flexx Layout Engine", () => {
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setFlexWrap(WRAP_WRAP)
 
-      // Three 40px items can't fit in 100px row, should wrap
-      const child1 = Node.create()
-      child1.setWidth(40)
-      child1.setHeight(20)
-      root.insertChild(child1, 0)
-
-      const child2 = Node.create()
-      child2.setWidth(40)
-      child2.setHeight(20)
-      root.insertChild(child2, 1)
-
-      const child3 = Node.create()
-      child3.setWidth(40)
-      child3.setHeight(20)
-      root.insertChild(child3, 2)
+      const child1 = createChild(root, 0, { width: 40, height: 20 })
+      const child2 = createChild(root, 1, { width: 40, height: 20 })
+      const child3 = createChild(root, 2, { width: 40, height: 20 })
 
       root.calculateLayout(100, 100)
 
       // First two items on first line
-      expect(child1.getComputedLeft()).toBe(0)
-      expect(child1.getComputedTop()).toBe(0)
-      expect(child2.getComputedLeft()).toBe(40)
-      expect(child2.getComputedTop()).toBe(0)
-
+      expectLayout(child1, { left: 0, top: 0 })
+      expectLayout(child2, { left: 40, top: 0 })
       // Third item wrapped to second line
-      expect(child3.getComputedLeft()).toBe(0)
-      expect(child3.getComputedTop()).toBe(20)
+      expectLayout(child3, { left: 0, top: 20 })
     })
 
     it("should not wrap when flex-wrap is no-wrap (default)", () => {
@@ -729,22 +577,10 @@ describe("Flexx Layout Engine", () => {
       root.setWidth(100)
       root.setHeight(100)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
-      // Default is WRAP_NO_WRAP
 
-      const child1 = Node.create()
-      child1.setWidth(40)
-      child1.setHeight(20)
-      root.insertChild(child1, 0)
-
-      const child2 = Node.create()
-      child2.setWidth(40)
-      child2.setHeight(20)
-      root.insertChild(child2, 1)
-
-      const child3 = Node.create()
-      child3.setWidth(40)
-      child3.setHeight(20)
-      root.insertChild(child3, 2)
+      const child1 = createChild(root, 0, { width: 40, height: 20 })
+      const child2 = createChild(root, 1, { width: 40, height: 20 })
+      const child3 = createChild(root, 2, { width: 40, height: 20 })
 
       root.calculateLayout(100, 100)
 
@@ -757,29 +593,35 @@ describe("Flexx Layout Engine", () => {
 
   describe("Utility Functions", () => {
     describe("createValue", () => {
-      it("should create a value with default parameters", () => {
-        const value = createValue()
-        expect(value).toEqual({ value: 0, unit: UNIT_UNDEFINED })
-      })
-
-      it("should create a value with specified value", () => {
-        const value = createValue(100)
-        expect(value).toEqual({ value: 100, unit: UNIT_UNDEFINED })
-      })
-
-      it("should create a value with specified value and unit", () => {
-        const value = createValue(50, UNIT_PERCENT)
-        expect(value).toEqual({ value: 50, unit: UNIT_PERCENT })
-      })
-
-      it("should create a point value", () => {
-        const value = createValue(200, UNIT_POINT)
-        expect(value).toEqual({ value: 200, unit: UNIT_POINT })
-      })
-
-      it("should create an auto value", () => {
-        const value = createValue(0, UNIT_AUTO)
-        expect(value).toEqual({ value: 0, unit: UNIT_AUTO })
+      it.each([
+        {
+          args: [],
+          expected: { value: 0, unit: UNIT_UNDEFINED },
+          name: "default",
+        },
+        {
+          args: [100],
+          expected: { value: 100, unit: UNIT_UNDEFINED },
+          name: "value only",
+        },
+        {
+          args: [50, UNIT_PERCENT],
+          expected: { value: 50, unit: UNIT_PERCENT },
+          name: "percent",
+        },
+        {
+          args: [200, UNIT_POINT],
+          expected: { value: 200, unit: UNIT_POINT },
+          name: "point",
+        },
+        {
+          args: [0, UNIT_AUTO],
+          expected: { value: 0, unit: UNIT_AUTO },
+          name: "auto",
+        },
+      ] as const)("should create $name value", ({ args, expected }) => {
+        const value = createValue(...(args as [number?, number?]))
+        expect(value).toEqual(expected)
       })
     })
 
@@ -787,30 +629,18 @@ describe("Flexx Layout Engine", () => {
       it("should create a style object with correct defaults", () => {
         const style = createDefaultStyle()
 
-        // Display and position
         expect(style.display).toBe(DISPLAY_FLEX)
         expect(style.positionType).toBe(POSITION_TYPE_RELATIVE)
-
-        // Flex properties
         expect(style.flexDirection).toBe(FLEX_DIRECTION_COLUMN)
         expect(style.flexGrow).toBe(0)
-        expect(style.flexShrink).toBe(0) // Yoga native default (CSS uses 1)
+        expect(style.flexShrink).toBe(0)
         expect(style.flexBasis).toEqual({ value: 0, unit: UNIT_AUTO })
-
-        // Alignment
         expect(style.alignItems).toBe(ALIGN_STRETCH)
         expect(style.justifyContent).toBe(JUSTIFY_FLEX_START)
-
-        // Dimensions default to auto
         expect(style.width).toEqual({ value: 0, unit: UNIT_AUTO })
         expect(style.height).toEqual({ value: 0, unit: UNIT_AUTO })
-
-        // Min/max dimensions default to undefined
         expect(style.minWidth).toEqual({ value: 0, unit: UNIT_UNDEFINED })
         expect(style.maxWidth).toEqual({ value: 0, unit: UNIT_UNDEFINED })
-
-        // Spacing defaults to zero/undefined
-        // 6 slots: [left, top, right, bottom, start, end] for logical edge support
         expect(style.padding).toHaveLength(6)
         expect(style.margin).toHaveLength(6)
         expect(style.position).toHaveLength(6)
@@ -822,7 +652,6 @@ describe("Flexx Layout Engine", () => {
         const style1 = createDefaultStyle()
         const style2 = createDefaultStyle()
 
-        // Modifying one shouldn't affect the other
         style1.flexGrow = 5
         expect(style2.flexGrow).toBe(0)
 
@@ -840,23 +669,14 @@ describe("Flexx Layout Engine", () => {
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setAlignItems(ALIGN_BASELINE)
 
-      const child1 = Node.create()
-      child1.setWidth(30)
-      child1.setHeight(20)
-      root.insertChild(child1, 0)
-
-      const child2 = Node.create()
-      child2.setWidth(30)
-      child2.setHeight(40)
-      root.insertChild(child2, 1)
+      const child1 = createChild(root, 0, { width: 30, height: 20 })
+      const child2 = createChild(root, 1, { width: 30, height: 40 })
 
       root.calculateLayout(100, 50, DIRECTION_LTR)
 
       // Without baselineFunc, baseline is at bottom of each child
-      // child2 has baseline at 40, child1 has baseline at 20
-      // To align baselines: child1 moves down by (40-20)=20
-      expect(child1.getComputedTop()).toBe(20)
-      expect(child2.getComputedTop()).toBe(0)
+      expectLayout(child1, { top: 20 })
+      expectLayout(child2, { top: 0 })
 
       root.free()
     })
@@ -868,26 +688,15 @@ describe("Flexx Layout Engine", () => {
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setAlignItems(ALIGN_BASELINE)
 
-      const child1 = Node.create()
-      child1.setWidth(30)
-      child1.setHeight(20)
-      // Baseline at 80% of height (16px from top)
+      const child1 = createChild(root, 0, { width: 30, height: 20 })
       child1.setBaselineFunc((w, h) => h * 0.8)
-      root.insertChild(child1, 0)
-
-      const child2 = Node.create()
-      child2.setWidth(30)
-      child2.setHeight(40)
-      // Baseline at 80% of height (32px from top)
+      const child2 = createChild(root, 1, { width: 30, height: 40 })
       child2.setBaselineFunc((w, h) => h * 0.8)
-      root.insertChild(child2, 1)
 
       root.calculateLayout(100, 50, DIRECTION_LTR)
 
-      // child1 baseline at 16, child2 baseline at 32
-      // Max baseline is 32, so child1 moves down by (32-16)=16
-      expect(child1.getComputedTop()).toBe(16)
-      expect(child2.getComputedTop()).toBe(0)
+      expectLayout(child1, { top: 16 })
+      expectLayout(child2, { top: 0 })
 
       root.free()
     })
@@ -899,25 +708,15 @@ describe("Flexx Layout Engine", () => {
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setAlignItems(ALIGN_BASELINE)
 
-      // Small text: 12px height, baseline at 10px from top (typical for text)
-      const small = Node.create()
-      small.setWidth(50)
-      small.setHeight(12)
+      const small = createChild(root, 0, { width: 50, height: 12 })
       small.setBaselineFunc(() => 10)
-      root.insertChild(small, 0)
-
-      // Large text: 24px height, baseline at 20px from top
-      const large = Node.create()
-      large.setWidth(50)
-      large.setHeight(24)
+      const large = createChild(root, 1, { width: 50, height: 24 })
       large.setBaselineFunc(() => 20)
-      root.insertChild(large, 1)
 
       root.calculateLayout(200, 50, DIRECTION_LTR)
 
-      // Max baseline is 20, so small text moves down by (20-10)=10
-      expect(small.getComputedTop()).toBe(10)
-      expect(large.getComputedTop()).toBe(0)
+      expectLayout(small, { top: 10 })
+      expectLayout(large, { top: 0 })
 
       root.free()
     })
@@ -927,25 +726,17 @@ describe("Flexx Layout Engine", () => {
       root.setWidth(100)
       root.setHeight(50)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
-      root.setAlignItems(ALIGN_FLEX_START) // Default is flex-start
+      root.setAlignItems(ALIGN_FLEX_START)
 
-      const child1 = Node.create()
-      child1.setWidth(30)
-      child1.setHeight(20)
+      const child1 = createChild(root, 0, { width: 30, height: 20 })
       child1.setAlignSelf(ALIGN_BASELINE)
-      root.insertChild(child1, 0)
-
-      const child2 = Node.create()
-      child2.setWidth(30)
-      child2.setHeight(40)
+      const child2 = createChild(root, 1, { width: 30, height: 40 })
       child2.setAlignSelf(ALIGN_BASELINE)
-      root.insertChild(child2, 1)
 
       root.calculateLayout(100, 50, DIRECTION_LTR)
 
-      // Both have align-self: baseline, so they align by bottom edge
-      expect(child1.getComputedTop()).toBe(20)
-      expect(child2.getComputedTop()).toBe(0)
+      expectLayout(child1, { top: 20 })
+      expectLayout(child2, { top: 0 })
 
       root.free()
     })
@@ -957,21 +748,14 @@ describe("Flexx Layout Engine", () => {
       root.setFlexDirection(FLEX_DIRECTION_COLUMN)
       root.setAlignItems(ALIGN_BASELINE)
 
-      const child1 = Node.create()
-      child1.setWidth(30)
-      child1.setHeight(20)
-      root.insertChild(child1, 0)
-
-      const child2 = Node.create()
-      child2.setWidth(40)
-      child2.setHeight(30)
-      root.insertChild(child2, 1)
+      const child1 = createChild(root, 0, { width: 30, height: 20 })
+      const child2 = createChild(root, 1, { width: 40, height: 30 })
 
       root.calculateLayout(50, 100, DIRECTION_LTR)
 
       // In column direction, baseline alignment falls back to flex-start
-      expect(child1.getComputedTop()).toBe(0)
-      expect(child2.getComputedTop()).toBe(20)
+      expectLayout(child1, { top: 0 })
+      expectLayout(child2, { top: 20 })
 
       root.free()
     })
@@ -998,26 +782,19 @@ describe("Flexx Layout Engine", () => {
       root.setHeight(50)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
 
-      const child1 = Node.create()
-      child1.setWidth(30)
-      child1.setHeight(50)
-      root.insertChild(child1, 0)
+      const child1 = createChild(root, 0, { width: 30, height: 50 })
+      const child2 = createChild(root, 1, { width: 20, height: 50 })
 
-      const child2 = Node.create()
-      child2.setWidth(20)
-      child2.setHeight(50)
-      root.insertChild(child2, 1)
-
-      // LTR: child1 at left (0), child2 at 30
+      // LTR
       root.calculateLayout(100, 50, DIRECTION_LTR)
-      expect(child1.getComputedLeft()).toBe(0)
-      expect(child2.getComputedLeft()).toBe(30)
+      expectLayout(child1, { left: 0 })
+      expectLayout(child2, { left: 30 })
 
-      // RTL: child1 at right (70), child2 at 50
+      // RTL
       root.markDirty()
       root.calculateLayout(100, 50, DIRECTION_RTL)
-      expect(child1.getComputedLeft()).toBe(70) // 100 - 30 = 70
-      expect(child2.getComputedLeft()).toBe(50) // 70 - 20 = 50
+      expectLayout(child1, { left: 70 })
+      expectLayout(child2, { left: 50 })
 
       root.free()
     })
@@ -1028,20 +805,17 @@ describe("Flexx Layout Engine", () => {
       root.setHeight(50)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
 
-      const child = Node.create()
-      child.setWidth(30)
-      child.setHeight(50)
-      child.setMargin(EDGE_START, 10) // Start margin
-      root.insertChild(child, 0)
+      const child = createChild(root, 0, { width: 30, height: 50 })
+      child.setMargin(EDGE_START, 10)
 
-      // LTR: START means left, so left margin = 10, child at x=10
+      // LTR: START means left
       root.calculateLayout(100, 50, DIRECTION_LTR)
-      expect(child.getComputedLeft()).toBe(10)
+      expectLayout(child, { left: 10 })
 
-      // RTL: START means right, so right margin = 10, child at x=100-30-10=60
+      // RTL: START means right
       root.markDirty()
       root.calculateLayout(100, 50, DIRECTION_RTL)
-      expect(child.getComputedLeft()).toBe(60)
+      expectLayout(child, { left: 60 })
 
       root.free()
     })
@@ -1052,25 +826,17 @@ describe("Flexx Layout Engine", () => {
       root.setHeight(100)
       root.setFlexDirection(FLEX_DIRECTION_COLUMN)
 
-      const child1 = Node.create()
-      child1.setWidth(50)
-      child1.setHeight(30)
-      root.insertChild(child1, 0)
+      const child1 = createChild(root, 0, { width: 50, height: 30 })
+      const child2 = createChild(root, 1, { width: 50, height: 20 })
 
-      const child2 = Node.create()
-      child2.setWidth(50)
-      child2.setHeight(20)
-      root.insertChild(child2, 1)
-
-      // Column direction should be unaffected by RTL
       root.calculateLayout(50, 100, DIRECTION_LTR)
-      expect(child1.getComputedTop()).toBe(0)
-      expect(child2.getComputedTop()).toBe(30)
+      expectLayout(child1, { top: 0 })
+      expectLayout(child2, { top: 30 })
 
       root.markDirty()
       root.calculateLayout(50, 100, DIRECTION_RTL)
-      expect(child1.getComputedTop()).toBe(0)
-      expect(child2.getComputedTop()).toBe(30)
+      expectLayout(child1, { top: 0 })
+      expectLayout(child2, { top: 30 })
 
       root.free()
     })
@@ -1081,21 +847,17 @@ describe("Flexx Layout Engine", () => {
       root.setHeight(50)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
 
-      const child = Node.create()
-      child.setWidth(30)
-      child.setHeight(50)
-      child.setMargin(EDGE_END, 15) // End margin
-      root.insertChild(child, 0)
+      const child = createChild(root, 0, { width: 30, height: 50 })
+      child.setMargin(EDGE_END, 15)
 
-      // LTR: END means right margin, child at x=0
+      // LTR: END means right margin
       root.calculateLayout(100, 50, DIRECTION_LTR)
-      expect(child.getComputedLeft()).toBe(0)
+      expectLayout(child, { left: 0 })
 
-      // RTL: END means left margin (trailing edge when positioned from right)
-      // Child at x=70 (100-30), plus no effect on position (margin is on trailing side)
+      // RTL: END means left margin
       root.markDirty()
       root.calculateLayout(100, 50, DIRECTION_RTL)
-      expect(child.getComputedLeft()).toBe(70)
+      expectLayout(child, { left: 70 })
 
       root.free()
     })
@@ -1107,19 +869,16 @@ describe("Flexx Layout Engine", () => {
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setJustifyContent(JUSTIFY_FLEX_END)
 
-      const child = Node.create()
-      child.setWidth(30)
-      child.setHeight(50)
-      root.insertChild(child, 0)
+      const child = createChild(root, 0, { width: 30, height: 50 })
 
-      // LTR + flex-end: child pushed to right (x=70)
+      // LTR + flex-end: pushed to right
       root.calculateLayout(100, 50, DIRECTION_LTR)
-      expect(child.getComputedLeft()).toBe(70)
+      expectLayout(child, { left: 70 })
 
       // RTL + flex-end: flex-end means left in RTL
       root.markDirty()
       root.calculateLayout(100, 50, DIRECTION_RTL)
-      expect(child.getComputedLeft()).toBe(0)
+      expectLayout(child, { left: 0 })
 
       root.free()
     })
@@ -1130,30 +889,19 @@ describe("Flexx Layout Engine", () => {
       root.setHeight(50)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
 
-      const child1 = Node.create()
-      child1.setFlexGrow(1)
-      child1.setHeight(50)
-      root.insertChild(child1, 0)
+      const child1 = createChild(root, 0, { height: 50, flexGrow: 1 })
+      const child2 = createChild(root, 1, { height: 50, flexGrow: 1 })
 
-      const child2 = Node.create()
-      child2.setFlexGrow(1)
-      child2.setHeight(50)
-      root.insertChild(child2, 1)
-
-      // LTR: child1 at 0-50, child2 at 50-100
+      // LTR
       root.calculateLayout(100, 50, DIRECTION_LTR)
-      expect(child1.getComputedLeft()).toBe(0)
-      expect(child1.getComputedWidth()).toBe(50)
-      expect(child2.getComputedLeft()).toBe(50)
-      expect(child2.getComputedWidth()).toBe(50)
+      expectLayout(child1, { left: 0, width: 50 })
+      expectLayout(child2, { left: 50, width: 50 })
 
-      // RTL: child1 at 50-100, child2 at 0-50 (visual order reversed)
+      // RTL: visual order reversed
       root.markDirty()
       root.calculateLayout(100, 50, DIRECTION_RTL)
-      expect(child1.getComputedLeft()).toBe(50)
-      expect(child1.getComputedWidth()).toBe(50)
-      expect(child2.getComputedLeft()).toBe(0)
-      expect(child2.getComputedWidth()).toBe(50)
+      expectLayout(child1, { left: 50, width: 50 })
+      expectLayout(child2, { left: 0, width: 50 })
 
       root.free()
     })
@@ -1166,23 +914,16 @@ describe("Flexx Layout Engine", () => {
       root.setPadding(EDGE_START, 10)
       root.setPadding(EDGE_END, 20)
 
-      const child = Node.create()
-      child.setFlexGrow(1)
-      child.setHeight(50)
-      root.insertChild(child, 0)
+      const child = createChild(root, 0, { height: 50, flexGrow: 1 })
 
-      // LTR: START=left (10), END=right (20), child spans 10-80 (width=70)
+      // LTR: START=left (10), END=right (20)
       root.calculateLayout(100, 50, DIRECTION_LTR)
-      expect(child.getComputedLeft()).toBe(10)
-      expect(child.getComputedWidth()).toBe(70)
+      expectLayout(child, { left: 10, width: 70 })
 
-      // RTL: START=right (10), END=left (20), child still spans 20-90
-      // But in RTL, content area starts from right-10=90, ends at left+20=20
-      // Child: from right, position is (90-70)=20
+      // RTL: START=right (10), END=left (20)
       root.markDirty()
       root.calculateLayout(100, 50, DIRECTION_RTL)
-      expect(child.getComputedLeft()).toBe(20)
-      expect(child.getComputedWidth()).toBe(70)
+      expectLayout(child, { left: 20, width: 70 })
 
       root.free()
     })

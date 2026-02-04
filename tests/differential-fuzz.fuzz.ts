@@ -13,9 +13,9 @@
  */
 
 import { describe, expect, it, beforeAll } from "vitest"
-import { createConditionalLogger } from "@beorn/logger"
+import { createlogger } from "@beorn/logger"
 
-const log = createConditionalLogger("flexx:test:fuzz")
+const log = createlogger("flexx:test:fuzz")
 import * as Flexx from "../src/index.js"
 import initYoga, {
   type Yoga,
