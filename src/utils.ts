@@ -4,8 +4,8 @@
  * Helper functions for edge value manipulation and value resolution.
  */
 
-import * as C from "./constants.js";
-import type { Value } from "./types.js";
+import * as C from "./constants.js"
+import type { Value } from "./types.js"
 
 // ============================================================================
 // Shared Traversal Stack
@@ -19,7 +19,7 @@ import type { Value } from "./types.js";
  * Avoids recursion (prevents stack overflow on deep trees) and avoids
  * allocation during layout passes.
  */
-export const traversalStack: unknown[] = [];
+export const traversalStack: unknown[] = []
 
 /**
  * Set a value on an edge array (supports all edge types including logical START/END).
@@ -30,42 +30,42 @@ export function setEdgeValue(
   value: number,
   unit: number,
 ): void {
-  const v = { value, unit };
+  const v = { value, unit }
   switch (edge) {
     case C.EDGE_LEFT:
-      arr[0] = v;
-      break;
+      arr[0] = v
+      break
     case C.EDGE_TOP:
-      arr[1] = v;
-      break;
+      arr[1] = v
+      break
     case C.EDGE_RIGHT:
-      arr[2] = v;
-      break;
+      arr[2] = v
+      break
     case C.EDGE_BOTTOM:
-      arr[3] = v;
-      break;
+      arr[3] = v
+      break
     case C.EDGE_HORIZONTAL:
-      arr[0] = v;
-      arr[2] = v;
-      break;
+      arr[0] = v
+      arr[2] = v
+      break
     case C.EDGE_VERTICAL:
-      arr[1] = v;
-      arr[3] = v;
-      break;
+      arr[1] = v
+      arr[3] = v
+      break
     case C.EDGE_ALL:
-      arr[0] = v;
-      arr[1] = v;
-      arr[2] = v;
-      arr[3] = v;
-      break;
+      arr[0] = v
+      arr[1] = v
+      arr[2] = v
+      arr[3] = v
+      break
     case C.EDGE_START:
       // Store in logical START slot (resolved to physical at layout time)
-      arr[4] = v;
-      break;
+      arr[4] = v
+      break
     case C.EDGE_END:
       // Store in logical END slot (resolved to physical at layout time)
-      arr[5] = v;
-      break;
+      arr[5] = v
+      break
   }
 }
 
@@ -79,61 +79,64 @@ export function setEdgeBorder(
 ): void {
   switch (edge) {
     case C.EDGE_LEFT:
-      arr[0] = value;
-      break;
+      arr[0] = value
+      break
     case C.EDGE_TOP:
-      arr[1] = value;
-      break;
+      arr[1] = value
+      break
     case C.EDGE_RIGHT:
-      arr[2] = value;
-      break;
+      arr[2] = value
+      break
     case C.EDGE_BOTTOM:
-      arr[3] = value;
-      break;
+      arr[3] = value
+      break
     case C.EDGE_HORIZONTAL:
-      arr[0] = value;
-      arr[2] = value;
-      break;
+      arr[0] = value
+      arr[2] = value
+      break
     case C.EDGE_VERTICAL:
-      arr[1] = value;
-      arr[3] = value;
-      break;
+      arr[1] = value
+      arr[3] = value
+      break
     case C.EDGE_ALL:
-      arr[0] = value;
-      arr[1] = value;
-      arr[2] = value;
-      arr[3] = value;
-      break;
+      arr[0] = value
+      arr[1] = value
+      arr[2] = value
+      arr[3] = value
+      break
     case C.EDGE_START:
       // In LTR mode, START = LEFT
-      arr[0] = value;
-      break;
+      arr[0] = value
+      break
     case C.EDGE_END:
       // In LTR mode, END = RIGHT
-      arr[2] = value;
-      break;
+      arr[2] = value
+      break
   }
 }
 
 /**
  * Get a value from an edge array.
  */
-export function getEdgeValue(arr: [Value, Value, Value, Value, Value, Value], edge: number): Value {
+export function getEdgeValue(
+  arr: [Value, Value, Value, Value, Value, Value],
+  edge: number,
+): Value {
   switch (edge) {
     case C.EDGE_LEFT:
-      return arr[0];
+      return arr[0]
     case C.EDGE_TOP:
-      return arr[1];
+      return arr[1]
     case C.EDGE_RIGHT:
-      return arr[2];
+      return arr[2]
     case C.EDGE_BOTTOM:
-      return arr[3];
+      return arr[3]
     case C.EDGE_START:
-      return arr[4];
+      return arr[4]
     case C.EDGE_END:
-      return arr[5];
+      return arr[5]
     default:
-      return arr[0]; // Default to left
+      return arr[0] // Default to left
   }
 }
 
@@ -146,15 +149,15 @@ export function getEdgeBorderValue(
 ): number {
   switch (edge) {
     case C.EDGE_LEFT:
-      return arr[0];
+      return arr[0]
     case C.EDGE_TOP:
-      return arr[1];
+      return arr[1]
     case C.EDGE_RIGHT:
-      return arr[2];
+      return arr[2]
     case C.EDGE_BOTTOM:
-      return arr[3];
+      return arr[3]
     default:
-      return arr[0]; // Default to left
+      return arr[0] // Default to left
   }
 }
 
@@ -164,15 +167,15 @@ export function getEdgeBorderValue(
 export function resolveValue(value: Value, availableSize: number): number {
   switch (value.unit) {
     case C.UNIT_POINT:
-      return value.value;
+      return value.value
     case C.UNIT_PERCENT:
       // Percentage against NaN (auto-sized parent) resolves to 0
       if (Number.isNaN(availableSize)) {
-        return 0;
+        return 0
       }
-      return availableSize * (value.value / 100);
+      return availableSize * (value.value / 100)
     default:
-      return 0;
+      return 0
   }
 }
 
@@ -189,33 +192,33 @@ export function applyMinMax(
   max: Value,
   available: number,
 ): number {
-  let result = size;
+  let result = size
 
   if (min.unit !== C.UNIT_UNDEFINED) {
-    const minValue = resolveValue(min, available);
+    const minValue = resolveValue(min, available)
     // Only apply if minValue is valid (not NaN from percent with NaN available)
     if (!Number.isNaN(minValue)) {
       // When size is NaN (auto-sized), min establishes the floor
       if (Number.isNaN(result)) {
-        result = minValue;
+        result = minValue
       } else {
-        result = Math.max(result, minValue);
+        result = Math.max(result, minValue)
       }
     }
   }
 
   if (max.unit !== C.UNIT_UNDEFINED) {
-    const maxValue = resolveValue(max, available);
+    const maxValue = resolveValue(max, available)
     // Only apply if maxValue is valid (not NaN from percent with NaN available)
     if (!Number.isNaN(maxValue)) {
       // When size is NaN (auto-sized), max alone doesn't set the size
       // (the element should shrink-wrap to content, then be capped by max)
       // Only apply max if we have a concrete size to constrain
       if (!Number.isNaN(result)) {
-        result = Math.min(result, maxValue);
+        result = Math.min(result, maxValue)
       }
     }
   }
 
-  return result;
+  return result
 }

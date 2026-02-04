@@ -28,12 +28,14 @@ diff /tmp/bench-before.txt /tmp/bench-after.txt
 ```
 
 **Changes that require benchmarking:**
+
 - Any modification to `src/layout-zero.ts` (the core algorithm)
 - Any modification to `src/node-zero.ts` (Node class)
 - Adding new features that affect layout calculation
 - Refactoring hot paths
 
 **Acceptable performance impact:**
+
 - Regressions < 5% for minor features
 - No regressions for refactoring (must be neutral or faster)
 - Document any trade-offs in PR description
@@ -53,12 +55,12 @@ src/
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `src/layout-zero.ts` | Core layout algorithm - **most performance-critical** |
-| `src/node-zero.ts` | Node class - **second most performance-critical** |
-| `bench/yoga-compare-warmup.bench.ts` | Main benchmark comparing Flexx vs Yoga |
-| `tests/yoga-compat/` | Yoga compatibility tests (41 tests) |
+| File                                 | Purpose                                               |
+| ------------------------------------ | ----------------------------------------------------- |
+| `src/layout-zero.ts`                 | Core layout algorithm - **most performance-critical** |
+| `src/node-zero.ts`                   | Node class - **second most performance-critical**     |
+| `bench/yoga-compare-warmup.bench.ts` | Main benchmark comparing Flexx vs Yoga                |
+| `tests/yoga-compat/`                 | Yoga compatibility tests (41 tests)                   |
 
 ## Architecture
 

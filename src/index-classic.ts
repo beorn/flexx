@@ -24,7 +24,7 @@
  */
 
 // Node class (classic allocating variant)
-export { Node } from "./classic/node.js";
+export { Node } from "./classic/node.js"
 
 // All constants (Yoga-compatible)
 export {
@@ -91,13 +91,26 @@ export {
   UNIT_POINT,
   UNIT_PERCENT,
   UNIT_AUTO,
-} from "./constants.js";
+} from "./constants.js"
 
 // Types
-export type { BaselineFunc, Layout, MeasureFunc, Style, Value } from "./types.js";
+export type {
+  BaselineFunc,
+  Layout,
+  MeasureFunc,
+  Style,
+  Value,
+} from "./types.js"
 
 // Utility functions
-export { createDefaultStyle, createValue } from "./types.js";
+export { createDefaultStyle, createValue } from "./types.js"
 
 // Layout stats (for debugging/benchmarking)
-export { layoutNodeCalls, resolveEdgeCalls, layoutSizingCalls, layoutPositioningCalls, layoutCacheHits, resetLayoutStats } from "./classic/layout.js";
+export {
+  layoutNodeCalls,
+  resolveEdgeCalls,
+  layoutSizingCalls,
+  layoutPositioningCalls,
+  layoutCacheHits,
+  resetLayoutStats,
+} from "./classic/layout.js"

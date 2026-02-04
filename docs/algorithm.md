@@ -14,10 +14,10 @@ The algorithm works in multiple passes:
 
 Flexx provides two layout algorithm implementations:
 
-| Algorithm | File | Default | Strengths |
-|-----------|------|---------|-----------|
-| **Zero-alloc** | `layout-zero.ts` | ✅ Yes | Faster for flat layouts, no GC pressure |
-| **Classic** | `layout.ts` | No | Simpler code, good for debugging |
+| Algorithm      | File             | Default | Strengths                               |
+| -------------- | ---------------- | ------- | --------------------------------------- |
+| **Zero-alloc** | `layout-zero.ts` | ✅ Yes  | Faster for flat layouts, no GC pressure |
+| **Classic**    | `layout.ts`      | No      | Simpler code, good for debugging        |
 
 Both implement identical Yoga-compatible behavior. The zero-alloc version uses pre-allocated arrays and node-attached FlexInfo structs to eliminate temporary allocations during layout.
 
@@ -104,6 +104,7 @@ Both algorithms fully support RTL (right-to-left) layouts:
 - All margin, padding, and position edges respect direction
 
 The `resolveEdgeValue()` function maps logical edges to physical edges:
+
 - In LTR: START → LEFT, END → RIGHT
 - In RTL: START → RIGHT, END → LEFT
 
@@ -114,8 +115,8 @@ Baseline alignment is supported via `setBaselineFunc()`:
 ```typescript
 node.setBaselineFunc((node, width, height) => {
   // Return the baseline offset from the top
-  return height * 0.8; // Example: 80% down
-});
+  return height * 0.8 // Example: 80% down
+})
 ```
 
 The baseline is used when `ALIGN_BASELINE` is set on the container's `alignItems`.
@@ -140,11 +141,11 @@ To port this to Flexx's Yoga-compatible API:
 
 ## Files
 
-| File | Description |
-|------|-------------|
-| `src/layout-zero.ts` | Layout algorithm (default, ~2200 lines) |
-| `src/node-zero.ts` | Node class with FlexInfo |
-| `src/index.ts` | Default export |
-| `src/classic/layout.ts` | Classic layout algorithm (~1600 lines) |
-| `src/classic/node.ts` | Classic Node class |
-| `src/index-classic.ts` | Classic export |
+| File                    | Description                             |
+| ----------------------- | --------------------------------------- |
+| `src/layout-zero.ts`    | Layout algorithm (default, ~2200 lines) |
+| `src/node-zero.ts`      | Node class with FlexInfo                |
+| `src/index.ts`          | Default export                          |
+| `src/classic/layout.ts` | Classic layout algorithm (~1600 lines)  |
+| `src/classic/node.ts`   | Classic Node class                      |
+| `src/index-classic.ts`  | Classic export                          |

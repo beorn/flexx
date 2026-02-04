@@ -6,11 +6,11 @@ Flexx is a pure JavaScript flexbox layout engine with a Yoga-compatible API.
 
 ## Status
 
-|                      | Yoga                                                 | Flexx                                        |
-| -------------------- | ---------------------------------------------------- | -------------------------------------------- |
-| **Maturity**         | Production, battle-tested (React Native, Ink, Litho) | Production-ready, fully tested               |
-| **Test coverage**    | Extensive (auto-generated from Chrome)               | 524 tests, 41/41 Yoga compatibility          |
-| **Real-world usage** | Millions of apps                                     | Used in production                           |
+|                      | Yoga                                                 | Flexx                               |
+| -------------------- | ---------------------------------------------------- | ----------------------------------- |
+| **Maturity**         | Production, battle-tested (React Native, Ink, Litho) | Production-ready, fully tested      |
+| **Test coverage**    | Extensive (auto-generated from Chrome)               | 524 tests, 41/41 Yoga compatibility |
+| **Real-world usage** | Millions of apps                                     | Used in production                  |
 
 ---
 
@@ -57,25 +57,21 @@ Flexx is designed as a **drop-in replacement** for Yoga's JavaScript API:
 
 ```typescript
 // Same constants
-import {
-  FLEX_DIRECTION_ROW,
-  JUSTIFY_CENTER,
-  ALIGN_STRETCH,
-} from "@beorn/flexx";
+import { FLEX_DIRECTION_ROW, JUSTIFY_CENTER, ALIGN_STRETCH } from "@beorn/flexx"
 
 // Same Node API
-const root = Node.create();
-root.setWidth(100);
-root.setFlexDirection(FLEX_DIRECTION_ROW);
-root.setJustifyContent(JUSTIFY_CENTER);
+const root = Node.create()
+root.setWidth(100)
+root.setFlexDirection(FLEX_DIRECTION_ROW)
+root.setJustifyContent(JUSTIFY_CENTER)
 
-const child = Node.create();
-child.setFlexGrow(1);
-root.insertChild(child, 0);
+const child = Node.create()
+child.setFlexGrow(1)
+root.insertChild(child, 0)
 
-root.calculateLayout(100, 100, DIRECTION_LTR);
+root.calculateLayout(100, 100, DIRECTION_LTR)
 
-console.log(child.getComputedWidth()); // Same output
+console.log(child.getComputedWidth()) // Same output
 ```
 
 **API coverage**: 100% of Yoga's commonly-used API is implemented with identical method signatures. 41/41 Yoga comparison tests pass.

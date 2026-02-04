@@ -135,16 +135,24 @@ const benchOptions = {
 
 describe("Flexx vs Yoga - Flat (warmed up)", () => {
   for (const nodeCount of [100, 500, 1000, 2000, 5000]) {
-    bench(`Flexx: ${nodeCount} nodes`, () => {
-      const tree = flexxFlatTree(nodeCount)
-      tree.calculateLayout(1000, 1000, Flexx.DIRECTION_LTR)
-    }, benchOptions)
+    bench(
+      `Flexx: ${nodeCount} nodes`,
+      () => {
+        const tree = flexxFlatTree(nodeCount)
+        tree.calculateLayout(1000, 1000, Flexx.DIRECTION_LTR)
+      },
+      benchOptions,
+    )
 
-    bench(`Yoga: ${nodeCount} nodes`, () => {
-      const tree = yogaFlatTree(nodeCount)
-      tree.calculateLayout(1000, 1000, yoga.DIRECTION_LTR)
-      tree.freeRecursive()
-    }, benchOptions)
+    bench(
+      `Yoga: ${nodeCount} nodes`,
+      () => {
+        const tree = yogaFlatTree(nodeCount)
+        tree.calculateLayout(1000, 1000, yoga.DIRECTION_LTR)
+        tree.freeRecursive()
+      },
+      benchOptions,
+    )
   }
 })
 
@@ -154,15 +162,23 @@ describe("Flexx vs Yoga - Flat (warmed up)", () => {
 
 describe("Flexx vs Yoga - Deep (warmed up)", () => {
   for (const depth of [1, 2, 5, 10, 15, 20, 50, 100]) {
-    bench(`Flexx: ${depth} levels`, () => {
-      const tree = flexxDeepTree(depth)
-      tree.calculateLayout(1000, 1000, Flexx.DIRECTION_LTR)
-    }, benchOptions)
+    bench(
+      `Flexx: ${depth} levels`,
+      () => {
+        const tree = flexxDeepTree(depth)
+        tree.calculateLayout(1000, 1000, Flexx.DIRECTION_LTR)
+      },
+      benchOptions,
+    )
 
-    bench(`Yoga: ${depth} levels`, () => {
-      const tree = yogaDeepTree(depth)
-      tree.calculateLayout(1000, 1000, yoga.DIRECTION_LTR)
-      tree.freeRecursive()
-    }, benchOptions)
+    bench(
+      `Yoga: ${depth} levels`,
+      () => {
+        const tree = yogaDeepTree(depth)
+        tree.calculateLayout(1000, 1000, yoga.DIRECTION_LTR)
+        tree.freeRecursive()
+      },
+      benchOptions,
+    )
   }
 })

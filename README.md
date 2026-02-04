@@ -6,48 +6,48 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ```typescript
-import { Node, FLEX_DIRECTION_ROW, DIRECTION_LTR } from "@beorn/flexx";
+import { Node, FLEX_DIRECTION_ROW, DIRECTION_LTR } from "@beorn/flexx"
 
-const root = Node.create();
-root.setWidth(100);
-root.setFlexDirection(FLEX_DIRECTION_ROW);
+const root = Node.create()
+root.setWidth(100)
+root.setFlexDirection(FLEX_DIRECTION_ROW)
 
-const child = Node.create();
-child.setFlexGrow(1);
-root.insertChild(child, 0);
+const child = Node.create()
+child.setFlexGrow(1)
+root.insertChild(child, 0)
 
-root.calculateLayout(100, 100, DIRECTION_LTR);
-console.log(child.getComputedWidth()); // 100
+root.calculateLayout(100, 100, DIRECTION_LTR)
+console.log(child.getComputedWidth()) // 100
 ```
 
 ## Why Flexx?
 
 **TL;DR:** 2-3x faster than Yoga, 5x smaller, pure JavaScript (no WASM), synchronous initialization.
 
-|                      | Yoga              | Flexx            |
-| -------------------- | ----------------- | ---------------- |
-| **Runtime**          | WebAssembly       | Pure JavaScript  |
-| **Bundle (gzipped)** | 38 KB             | ~8 KB            |
-| **Initialization**   | Async (WASM load) | Synchronous      |
-| **Dependencies**     | WASM runtime      | Zero             |
+|                      | Yoga              | Flexx           |
+| -------------------- | ----------------- | --------------- |
+| **Runtime**          | WebAssembly       | Pure JavaScript |
+| **Bundle (gzipped)** | 38 KB             | ~8 KB           |
+| **Initialization**   | Async (WASM load) | Synchronous     |
+| **Dependencies**     | WASM runtime      | Zero            |
 
 ## Status
 
 **Production-ready. 524 tests passing including 41/41 Yoga compatibility tests.**
 
-| Feature                                       | Status             |
-| --------------------------------------------- | ------------------ |
-| Core flexbox (direction, grow, shrink, basis) | ✅ Complete        |
-| Alignment (justify-content, align-items)      | ✅ Complete        |
-| Spacing (gap, padding, margin, border)        | ✅ Complete        |
-| Constraints (min/max width/height)            | ✅ Complete        |
-| Measure functions (text sizing)               | ✅ Complete        |
-| Absolute positioning                          | ✅ Complete        |
-| Aspect ratio                                  | ✅ Complete        |
-| Flex-wrap (multi-line layouts)                | ✅ Complete        |
-| Logical edges (EDGE_START/END)                | ✅ Complete        |
-| RTL support                                   | ✅ Complete        |
-| Baseline alignment                            | ✅ Complete        |
+| Feature                                       | Status      |
+| --------------------------------------------- | ----------- |
+| Core flexbox (direction, grow, shrink, basis) | ✅ Complete |
+| Alignment (justify-content, align-items)      | ✅ Complete |
+| Spacing (gap, padding, margin, border)        | ✅ Complete |
+| Constraints (min/max width/height)            | ✅ Complete |
+| Measure functions (text sizing)               | ✅ Complete |
+| Absolute positioning                          | ✅ Complete |
+| Aspect ratio                                  | ✅ Complete |
+| Flex-wrap (multi-line layouts)                | ✅ Complete |
+| Logical edges (EDGE_START/END)                | ✅ Complete |
+| RTL support                                   | ✅ Complete |
+| Baseline alignment                            | ✅ Complete |
 
 ## Installation
 
@@ -89,13 +89,13 @@ bun bench bench/yoga-compare-warmup.bench.ts
 
 ```typescript
 // Yoga
-import Yoga from "yoga-wasm-web";
-const yoga = await Yoga.init(); // Async!
-const root = yoga.Node.create();
+import Yoga from "yoga-wasm-web"
+const yoga = await Yoga.init() // Async!
+const root = yoga.Node.create()
 
 // Flexx
-import { Node } from "@beorn/flexx";
-const root = Node.create(); // Sync!
+import { Node } from "@beorn/flexx"
+const root = Node.create() // Sync!
 ```
 
 Same constants, same method names, same behavior.
@@ -118,33 +118,33 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 
 ## Documentation
 
-| Document | Description |
-| -------- | ----------- |
-| [Algorithm](docs/algorithm.md) | How the layout algorithm works |
-| [Performance](docs/performance.md) | Benchmarks and methodology |
-| [Yoga Comparison](docs/yoga-comparison.md) | Feature comparison with Yoga |
+| Document                                   | Description                    |
+| ------------------------------------------ | ------------------------------ |
+| [Algorithm](docs/algorithm.md)             | How the layout algorithm works |
+| [Performance](docs/performance.md)         | Benchmarks and methodology     |
+| [Yoga Comparison](docs/yoga-comparison.md) | Feature comparison with Yoga   |
 
 ## Related Projects
 
 ### Flexbox Layout Engines
 
-| Project | Language | Description |
-| ------- | -------- | ----------- |
-| [Yoga](https://yogalayout.dev/) | C++/WASM | Facebook's flexbox engine. The industry standard, used by React Native, Ink, and Litho. Mature and battle-tested across millions of apps. |
-| [Taffy](https://github.com/DioxusLabs/taffy) | Rust | High-performance layout library supporting Flexbox and CSS Grid. Used by Dioxus and Bevy. Evolved from Stretch. |
-| [yoga-wasm-web](https://github.com/nickvdyck/yoga-wasm-web) | WASM | Popular WASM build of Yoga for web/Node.js (~900K weekly npm downloads). Used by Satori and others. |
-| [flexbox.js](https://github.com/nickvdyck/flexbox.js) | JavaScript | Pure JS flexbox engine by Planning-nl. Reference implementation that inspired Flexx's algorithm. |
-| [css-layout](https://www.npmjs.com/package/css-layout) | JavaScript | Facebook's original pure-JS flexbox, predecessor to Yoga. Deprecated but historically significant. |
-| [stretch](https://github.com/nickvdyck/stretch) | Rust | Visly's flexbox implementation. Deprecated; evolved into Taffy. |
-| [troika-flex-layout](https://www.npmjs.com/package/troika-flex-layout) | JavaScript | Flexbox for WebGL/3D scenes via Yoga in a web worker. Part of the Troika framework. |
+| Project                                                                | Language   | Description                                                                                                                               |
+| ---------------------------------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| [Yoga](https://yogalayout.dev/)                                        | C++/WASM   | Facebook's flexbox engine. The industry standard, used by React Native, Ink, and Litho. Mature and battle-tested across millions of apps. |
+| [Taffy](https://github.com/DioxusLabs/taffy)                           | Rust       | High-performance layout library supporting Flexbox and CSS Grid. Used by Dioxus and Bevy. Evolved from Stretch.                           |
+| [yoga-wasm-web](https://github.com/nickvdyck/yoga-wasm-web)            | WASM       | Popular WASM build of Yoga for web/Node.js (~900K weekly npm downloads). Used by Satori and others.                                       |
+| [flexbox.js](https://github.com/nickvdyck/flexbox.js)                  | JavaScript | Pure JS flexbox engine by Planning-nl. Reference implementation that inspired Flexx's algorithm.                                          |
+| [css-layout](https://www.npmjs.com/package/css-layout)                 | JavaScript | Facebook's original pure-JS flexbox, predecessor to Yoga. Deprecated but historically significant.                                        |
+| [stretch](https://github.com/nickvdyck/stretch)                        | Rust       | Visly's flexbox implementation. Deprecated; evolved into Taffy.                                                                           |
+| [troika-flex-layout](https://www.npmjs.com/package/troika-flex-layout) | JavaScript | Flexbox for WebGL/3D scenes via Yoga in a web worker. Part of the Troika framework.                                                       |
 
 ### Terminal UI Frameworks
 
-| Project | Description |
-| ------- | ----------- |
-| [Ink](https://github.com/vadimdemedes/ink) | React for CLIs. Uses Yoga for layout. Powers Claude Code, Wrangler, and many CLI tools. |
-| [blessed](https://github.com/chjj/blessed) | Curses-like terminal library with its own layout system. |
-| [react-blessed](https://github.com/Yomguithereal/react-blessed) | React renderer for blessed. |
+| Project                                                         | Description                                                                             |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Ink](https://github.com/vadimdemedes/ink)                      | React for CLIs. Uses Yoga for layout. Powers Claude Code, Wrangler, and many CLI tools. |
+| [blessed](https://github.com/chjj/blessed)                      | Curses-like terminal library with its own layout system.                                |
+| [react-blessed](https://github.com/Yomguithereal/react-blessed) | React renderer for blessed.                                                             |
 
 ## Code Structure
 
@@ -174,7 +174,7 @@ The layout algorithm implements CSS Flexbox spec Section 9.7 with:
 The classic (allocating) algorithm is available for debugging or comparison:
 
 ```typescript
-import { Node } from "@beorn/flexx/classic";
+import { Node } from "@beorn/flexx/classic"
 ```
 
 Both algorithms pass identical tests and produce identical output.

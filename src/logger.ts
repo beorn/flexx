@@ -18,7 +18,9 @@ function createFallbackLogger(namespace: string): ConditionalLogger {
   // Dynamic require to avoid bundling debug if not needed
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const createDebug = require("debug") as (ns: string) => DebugFn & { enabled: boolean }
+    const createDebug = require("debug") as (
+      ns: string,
+    ) => DebugFn & { enabled: boolean }
     const debug = createDebug(namespace)
     return { debug: debug.enabled ? debug : undefined }
   } catch {

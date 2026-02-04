@@ -4,12 +4,12 @@
  * Yoga-compatible Node class for flexbox layout.
  */
 
-import * as C from "./constants.js";
+import * as C from "./constants.js"
 import {
   computeLayout,
   countNodes,
   markSubtreeLayoutSeen,
-} from "./layout-zero.js";
+} from "./layout-zero.js"
 import {
   type BaselineFunc,
   type FlexInfo,
@@ -20,66 +20,72 @@ import {
   type Style,
   type Value,
   createDefaultStyle,
-} from "./types.js";
+} from "./types.js"
 import {
   setEdgeValue,
   setEdgeBorder,
   getEdgeValue,
   getEdgeBorderValue,
   traversalStack,
-} from "./utils.js";
-import { log } from "./logger.js";
+} from "./utils.js"
+import { log } from "./logger.js"
 
 /**
  * A layout node in the flexbox tree.
  */
 export class Node {
   // Tree structure
-  private _parent: Node | null = null;
-  private _children: Node[] = [];
+  private _parent: Node | null = null
+  private _children: Node[] = []
 
   // Style
-  private _style: Style = createDefaultStyle();
+  private _style: Style = createDefaultStyle()
 
   // Measure function for intrinsic sizing
-  private _measureFunc: MeasureFunc | null = null;
+  private _measureFunc: MeasureFunc | null = null
 
   // Baseline function for baseline alignment
-  private _baselineFunc: BaselineFunc | null = null;
+  private _baselineFunc: BaselineFunc | null = null
 
   // Measure cache - 4-entry numeric cache (faster than Map<string,...>)
   // Each entry stores: w, wm, h, hm, rw, rh
   // Cleared when markDirty() is called since content may have changed
-  private _m0?: MeasureEntry;
-  private _m1?: MeasureEntry;
-  private _m2?: MeasureEntry;
-  private _m3?: MeasureEntry;
+  private _m0?: MeasureEntry
+  private _m1?: MeasureEntry
+  private _m2?: MeasureEntry
+  private _m3?: MeasureEntry
 
   // Layout cache - 2-entry cache for sizing pass (availW, availH -> computedW, computedH)
   // Cleared at start of each calculateLayout pass via resetLayoutCache()
   // This avoids redundant recursive layout calls during intrinsic sizing
-  private _lc0?: LayoutCacheEntry;
-  private _lc1?: LayoutCacheEntry;
+  private _lc0?: LayoutCacheEntry
+  private _lc1?: LayoutCacheEntry
 
   // Stable result objects for zero-allocation cache returns
   // These are mutated in place instead of creating new objects on each cache hit
-  private _measureResult: { width: number; height: number } = { width: 0, height: 0 };
-  private _layoutResult: { width: number; height: number } = { width: 0, height: 0 };
+  private _measureResult: { width: number; height: number } = {
+    width: 0,
+    height: 0,
+  }
+  private _layoutResult: { width: number; height: number } = {
+    width: 0,
+    height: 0,
+  }
 
   // Static counters for cache statistics (reset per layout pass)
-  static measureCalls = 0;
-  static measureCacheHits = 0;
+  static measureCalls = 0
+  static measureCacheHits = 0
 
   /**
    * Reset measure statistics (call before calculateLayout).
    */
   static resetMeasureStats(): void {
-    Node.measureCalls = 0;
-    Node.measureCacheHits = 0;
+    Node.measureCalls = 0
+    Node.measureCacheHits = 0
   }
 
   // Computed layout
-  private _layout: Layout = { left: 0, top: 0, width: 0, height: 0 };
+  private _layout: Layout = { left: 0, top: 0, width: 0, height: 0 }
 
   // Per-node flex calculation state (reused across layout passes to avoid allocation)
   private _flex: FlexInfo = {
@@ -109,16 +115,16 @@ export class Node {
     lastOffsetY: NaN,
     layoutValid: false,
     lastDir: 0,
-  };
+  }
 
   // Dirty flags
-  private _isDirty = true;
-  private _hasNewLayout = false;
+  private _isDirty = true
+  private _hasNewLayout = false
 
   // Last calculateLayout() inputs (for constraint-aware skip)
-  private _lastCalcW: number = NaN;
-  private _lastCalcH: number = NaN;
-  private _lastCalcDir: number = 0;
+  private _lastCalcW: number = NaN
+  private _lastCalcH: number = NaN
+  private _lastCalcDir: number = 0
 
   // ============================================================================
   // Static Factory
@@ -136,7 +142,7 @@ export class Node {
    * ```
    */
   static create(): Node {
-    return new Node();
+    return new Node()
   }
 
   // ============================================================================
@@ -149,7 +155,7 @@ export class Node {
    * @returns The number of children
    */
   getChildCount(): number {
-    return this._children.length;
+    return this._children.length
   }
 
   /**
@@ -159,7 +165,7 @@ export class Node {
    * @returns The child node at the given index, or undefined if index is out of bounds
    */
   getChild(index: number): Node | undefined {
-    return this._children[index];
+    return this._children[index]
   }
 
   /**
@@ -168,7 +174,7 @@ export class Node {
    * @returns The parent node, or null if this is a root node
    */
   getParent(): Node | null {
-    return this._parent;
+    return this._parent
   }
 
   /**
@@ -189,18 +195,18 @@ export class Node {
    */
   insertChild(child: Node, index: number): void {
     if (child._parent !== null) {
-      child._parent.removeChild(child);
+      child._parent.removeChild(child)
     }
-    child._parent = this;
+    child._parent = this
     // Clamp index to valid range to ensure deterministic behavior
-    const clampedIndex = Math.max(0, Math.min(index, this._children.length));
-    this._children.splice(clampedIndex, 0, child);
+    const clampedIndex = Math.max(0, Math.min(index, this._children.length))
+    this._children.splice(clampedIndex, 0, child)
     // Invalidate layoutValid for siblings after the insertion point
     // Their positions may change due to the insertion
     for (let i = clampedIndex + 1; i < this._children.length; i++) {
-      this._children[i]!._flex.layoutValid = false;
+      this._children[i]!._flex.layoutValid = false
     }
-    this.markDirty();
+    this.markDirty()
   }
 
   /**
@@ -212,16 +218,16 @@ export class Node {
    * @param child - The child node to remove
    */
   removeChild(child: Node): void {
-    const index = this._children.indexOf(child);
+    const index = this._children.indexOf(child)
     if (index !== -1) {
-      this._children.splice(index, 1);
-      child._parent = null;
+      this._children.splice(index, 1)
+      child._parent = null
       // Invalidate layoutValid for remaining siblings after the removal point
       // Their positions may change due to the removal
       for (let i = index; i < this._children.length; i++) {
-        this._children[i]!._flex.layoutValid = false;
+        this._children[i]!._flex.layoutValid = false
       }
-      this.markDirty();
+      this.markDirty()
     }
   }
 
@@ -233,22 +239,22 @@ export class Node {
   free(): void {
     // Remove from parent
     if (this._parent !== null) {
-      this._parent.removeChild(this);
+      this._parent.removeChild(this)
     }
     // Clear children
     for (const child of this._children) {
-      child._parent = null;
+      child._parent = null
     }
-    this._children = [];
-    this._measureFunc = null;
-    this._baselineFunc = null;
+    this._children = []
+    this._measureFunc = null
+    this._baselineFunc = null
   }
 
   /**
    * Dispose the node (calls free)
    */
   [Symbol.dispose](): void {
-    this.free();
+    this.free()
   }
 
   // ============================================================================
@@ -272,8 +278,8 @@ export class Node {
    * ```
    */
   setMeasureFunc(measureFunc: MeasureFunc): void {
-    this._measureFunc = measureFunc;
-    this.markDirty();
+    this._measureFunc = measureFunc
+    this.markDirty()
   }
 
   /**
@@ -281,8 +287,8 @@ export class Node {
    * Marks the node as dirty to trigger layout recalculation.
    */
   unsetMeasureFunc(): void {
-    this._measureFunc = null;
-    this.markDirty();
+    this._measureFunc = null
+    this.markDirty()
   }
 
   /**
@@ -291,7 +297,7 @@ export class Node {
    * @returns True if a measure function is set
    */
   hasMeasureFunc(): boolean {
-    return this._measureFunc !== null;
+    return this._measureFunc !== null
   }
 
   // ============================================================================
@@ -312,8 +318,8 @@ export class Node {
    * ```
    */
   setBaselineFunc(baselineFunc: BaselineFunc): void {
-    this._baselineFunc = baselineFunc;
-    this.markDirty();
+    this._baselineFunc = baselineFunc
+    this.markDirty()
   }
 
   /**
@@ -321,8 +327,8 @@ export class Node {
    * Marks the node as dirty to trigger layout recalculation.
    */
   unsetBaselineFunc(): void {
-    this._baselineFunc = null;
-    this.markDirty();
+    this._baselineFunc = null
+    this.markDirty()
   }
 
   /**
@@ -331,7 +337,7 @@ export class Node {
    * @returns True if a baseline function is set
    */
   hasBaselineFunc(): boolean {
-    return this._baselineFunc !== null;
+    return this._baselineFunc !== null
   }
 
   /**
@@ -347,73 +353,85 @@ export class Node {
     h: number,
     hm: number,
   ): { width: number; height: number } | null {
-    if (!this._measureFunc) return null;
+    if (!this._measureFunc) return null
 
-    Node.measureCalls++;
+    Node.measureCalls++
 
     // Check 4-entry cache (most recent first)
     // Returns stable _measureResult object to avoid allocation on cache hit
-    const m0 = this._m0;
+    const m0 = this._m0
     if (m0 && m0.w === w && m0.wm === wm && m0.h === h && m0.hm === hm) {
-      Node.measureCacheHits++;
-      this._measureResult.width = m0.rw;
-      this._measureResult.height = m0.rh;
-      return this._measureResult;
+      Node.measureCacheHits++
+      this._measureResult.width = m0.rw
+      this._measureResult.height = m0.rh
+      return this._measureResult
     }
-    const m1 = this._m1;
+    const m1 = this._m1
     if (m1 && m1.w === w && m1.wm === wm && m1.h === h && m1.hm === hm) {
-      Node.measureCacheHits++;
-      this._measureResult.width = m1.rw;
-      this._measureResult.height = m1.rh;
-      return this._measureResult;
+      Node.measureCacheHits++
+      this._measureResult.width = m1.rw
+      this._measureResult.height = m1.rh
+      return this._measureResult
     }
-    const m2 = this._m2;
+    const m2 = this._m2
     if (m2 && m2.w === w && m2.wm === wm && m2.h === h && m2.hm === hm) {
-      Node.measureCacheHits++;
-      this._measureResult.width = m2.rw;
-      this._measureResult.height = m2.rh;
-      return this._measureResult;
+      Node.measureCacheHits++
+      this._measureResult.width = m2.rw
+      this._measureResult.height = m2.rh
+      return this._measureResult
     }
-    const m3 = this._m3;
+    const m3 = this._m3
     if (m3 && m3.w === w && m3.wm === wm && m3.h === h && m3.hm === hm) {
-      Node.measureCacheHits++;
-      this._measureResult.width = m3.rw;
-      this._measureResult.height = m3.rh;
-      return this._measureResult;
+      Node.measureCacheHits++
+      this._measureResult.width = m3.rw
+      this._measureResult.height = m3.rh
+      return this._measureResult
     }
 
     // Call actual measure function
-    const result = this._measureFunc(w, wm, h, hm);
+    const result = this._measureFunc(w, wm, h, hm)
 
     // Zero-allocation: rotate entries by copying values, lazily allocate on first use
     // Rotate: m3 <- m2 <- m1 <- m0 <- new values
     if (this._m2) {
-      if (!this._m3) this._m3 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 };
-      this._m3.w = this._m2.w; this._m3.wm = this._m2.wm;
-      this._m3.h = this._m2.h; this._m3.hm = this._m2.hm;
-      this._m3.rw = this._m2.rw; this._m3.rh = this._m2.rh;
+      if (!this._m3) this._m3 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 }
+      this._m3.w = this._m2.w
+      this._m3.wm = this._m2.wm
+      this._m3.h = this._m2.h
+      this._m3.hm = this._m2.hm
+      this._m3.rw = this._m2.rw
+      this._m3.rh = this._m2.rh
     }
     if (this._m1) {
-      if (!this._m2) this._m2 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 };
-      this._m2.w = this._m1.w; this._m2.wm = this._m1.wm;
-      this._m2.h = this._m1.h; this._m2.hm = this._m1.hm;
-      this._m2.rw = this._m1.rw; this._m2.rh = this._m1.rh;
+      if (!this._m2) this._m2 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 }
+      this._m2.w = this._m1.w
+      this._m2.wm = this._m1.wm
+      this._m2.h = this._m1.h
+      this._m2.hm = this._m1.hm
+      this._m2.rw = this._m1.rw
+      this._m2.rh = this._m1.rh
     }
     if (this._m0) {
-      if (!this._m1) this._m1 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 };
-      this._m1.w = this._m0.w; this._m1.wm = this._m0.wm;
-      this._m1.h = this._m0.h; this._m1.hm = this._m0.hm;
-      this._m1.rw = this._m0.rw; this._m1.rh = this._m0.rh;
+      if (!this._m1) this._m1 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 }
+      this._m1.w = this._m0.w
+      this._m1.wm = this._m0.wm
+      this._m1.h = this._m0.h
+      this._m1.hm = this._m0.hm
+      this._m1.rw = this._m0.rw
+      this._m1.rh = this._m0.rh
     }
-    if (!this._m0) this._m0 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 };
-    this._m0.w = w; this._m0.wm = wm;
-    this._m0.h = h; this._m0.hm = hm;
-    this._m0.rw = result.width; this._m0.rh = result.height;
+    if (!this._m0) this._m0 = { w: 0, wm: 0, h: 0, hm: 0, rw: 0, rh: 0 }
+    this._m0.w = w
+    this._m0.wm = wm
+    this._m0.h = h
+    this._m0.hm = hm
+    this._m0.rw = result.width
+    this._m0.rh = result.height
 
     // Return stable result object (same as cache hits)
-    this._measureResult.width = result.width;
-    this._measureResult.height = result.height;
-    return this._measureResult;
+    this._measureResult.width = result.width
+    this._measureResult.height = result.height
+    return this._measureResult
   }
 
   // ============================================================================
@@ -426,51 +444,59 @@ export class Node {
    *
    * NaN dimensions are handled specially via Object.is (NaN === NaN is false, but Object.is(NaN, NaN) is true).
    */
-  getCachedLayout(availW: number, availH: number): { width: number; height: number } | null {
+  getCachedLayout(
+    availW: number,
+    availH: number,
+  ): { width: number; height: number } | null {
     // Never return cached layout for dirty nodes - content may have changed
     if (this._isDirty) {
-      return null;
+      return null
     }
     // Returns stable _layoutResult object to avoid allocation on cache hit
-    const lc0 = this._lc0;
+    const lc0 = this._lc0
     if (lc0 && Object.is(lc0.availW, availW) && Object.is(lc0.availH, availH)) {
-      this._layoutResult.width = lc0.computedW;
-      this._layoutResult.height = lc0.computedH;
-      return this._layoutResult;
+      this._layoutResult.width = lc0.computedW
+      this._layoutResult.height = lc0.computedH
+      return this._layoutResult
     }
-    const lc1 = this._lc1;
+    const lc1 = this._lc1
     if (lc1 && Object.is(lc1.availW, availW) && Object.is(lc1.availH, availH)) {
-      this._layoutResult.width = lc1.computedW;
-      this._layoutResult.height = lc1.computedH;
-      return this._layoutResult;
+      this._layoutResult.width = lc1.computedW
+      this._layoutResult.height = lc1.computedH
+      return this._layoutResult
     }
-    return null;
+    return null
   }
 
   /**
    * Cache a computed layout result for the given available dimensions.
    * Zero-allocation: lazily allocates cache entries once, then reuses.
    */
-  setCachedLayout(availW: number, availH: number, computedW: number, computedH: number): void {
+  setCachedLayout(
+    availW: number,
+    availH: number,
+    computedW: number,
+    computedH: number,
+  ): void {
     // Rotate entries: copy _lc0 values to _lc1, then update _lc0
     if (this._lc0) {
       // Lazily allocate _lc1 on first rotation
       if (!this._lc1) {
-        this._lc1 = { availW: NaN, availH: NaN, computedW: 0, computedH: 0 };
+        this._lc1 = { availW: NaN, availH: NaN, computedW: 0, computedH: 0 }
       }
-      this._lc1.availW = this._lc0.availW;
-      this._lc1.availH = this._lc0.availH;
-      this._lc1.computedW = this._lc0.computedW;
-      this._lc1.computedH = this._lc0.computedH;
+      this._lc1.availW = this._lc0.availW
+      this._lc1.availH = this._lc0.availH
+      this._lc1.computedW = this._lc0.computedW
+      this._lc1.computedH = this._lc0.computedH
     }
     // Lazily allocate _lc0 on first use
     if (!this._lc0) {
-      this._lc0 = { availW: 0, availH: 0, computedW: 0, computedH: 0 };
+      this._lc0 = { availW: 0, availH: 0, computedW: 0, computedH: 0 }
     }
-    this._lc0.availW = availW;
-    this._lc0.availH = availH;
-    this._lc0.computedW = computedW;
-    this._lc0.computedH = computedH;
+    this._lc0.availW = availW
+    this._lc0.availH = availH
+    this._lc0.computedW = computedW
+    this._lc0.computedH = computedH
   }
 
   /**
@@ -480,15 +506,15 @@ export class Node {
    * Uses iterative traversal to avoid stack overflow on deep trees.
    */
   resetLayoutCache(): void {
-    traversalStack.length = 0;
-    traversalStack.push(this);
+    traversalStack.length = 0
+    traversalStack.push(this)
     while (traversalStack.length > 0) {
-      const node = traversalStack.pop() as Node;
+      const node = traversalStack.pop() as Node
       // Invalidate by setting availW to NaN
-      if (node._lc0) node._lc0.availW = NaN;
-      if (node._lc1) node._lc1.availW = NaN;
+      if (node._lc0) node._lc0.availW = NaN
+      if (node._lc1) node._lc1.availW = NaN
       for (const child of node._children) {
-        traversalStack.push(child);
+        traversalStack.push(child)
       }
     }
   }
@@ -503,7 +529,7 @@ export class Node {
    * @returns True if the node is dirty and needs layout
    */
   isDirty(): boolean {
-    return this._isDirty;
+    return this._isDirty
   }
 
   /**
@@ -513,18 +539,18 @@ export class Node {
    * Uses iterative approach to avoid stack overflow on deep trees.
    */
   markDirty(): void {
-    let current: Node | null = this;
+    let current: Node | null = this
     while (current !== null) {
       // Always clear caches - even if already dirty, a child's content change
       // may invalidate cached layout results that used the old child size
-      current._m0 = current._m1 = current._m2 = current._m3 = undefined;
-      current._lc0 = current._lc1 = undefined;
+      current._m0 = current._m1 = current._m2 = current._m3 = undefined
+      current._lc0 = current._lc1 = undefined
       // Skip setting dirty flag if already dirty (but still cleared caches above)
-      if (current._isDirty) break;
-      current._isDirty = true;
+      if (current._isDirty) break
+      current._isDirty = true
       // Invalidate layout fingerprint
-      current._flex.layoutValid = false;
-      current = current._parent;
+      current._flex.layoutValid = false
+      current = current._parent
     }
   }
 
@@ -534,7 +560,7 @@ export class Node {
    * @returns True if layout was recalculated since the last call to markLayoutSeen
    */
   hasNewLayout(): boolean {
-    return this._hasNewLayout;
+    return this._hasNewLayout
   }
 
   /**
@@ -542,7 +568,7 @@ export class Node {
    * Clears the hasNewLayout flag.
    */
   markLayoutSeen(): void {
-    this._hasNewLayout = false;
+    this._hasNewLayout = false
   }
 
   // ============================================================================
@@ -580,36 +606,38 @@ export class Node {
     direction: number = C.DIRECTION_LTR,
   ): void {
     // Treat undefined as unconstrained (NaN signals content-based sizing)
-    const availableWidth = width ?? NaN;
-    const availableHeight = height ?? NaN;
+    const availableWidth = width ?? NaN
+    const availableHeight = height ?? NaN
 
     // Skip if not dirty AND constraints unchanged (use Object.is for NaN equality)
-    if (!this._isDirty &&
-        Object.is(this._lastCalcW, availableWidth) &&
-        Object.is(this._lastCalcH, availableHeight) &&
-        this._lastCalcDir === direction) {
-      log.debug?.("layout skip (not dirty, constraints unchanged)");
-      return;
+    if (
+      !this._isDirty &&
+      Object.is(this._lastCalcW, availableWidth) &&
+      Object.is(this._lastCalcH, availableHeight) &&
+      this._lastCalcDir === direction
+    ) {
+      log.debug?.("layout skip (not dirty, constraints unchanged)")
+      return
     }
 
     // Track constraints for future skip check
-    this._lastCalcW = availableWidth;
-    this._lastCalcH = availableHeight;
-    this._lastCalcDir = direction;
+    this._lastCalcW = availableWidth
+    this._lastCalcH = availableHeight
+    this._lastCalcDir = direction
 
-    const start = Date.now();
-    const nodeCount = countNodes(this);
+    const start = Date.now()
+    const nodeCount = countNodes(this)
 
     // Reset measure statistics for this layout pass
-    Node.resetMeasureStats();
+    Node.resetMeasureStats()
 
     // Run the layout algorithm
-    computeLayout(this, availableWidth, availableHeight, direction);
+    computeLayout(this, availableWidth, availableHeight, direction)
 
     // Mark layout computed
-    this._isDirty = false;
-    this._hasNewLayout = true;
-    markSubtreeLayoutSeen(this);
+    this._isDirty = false
+    this._hasNewLayout = true
+    markSubtreeLayoutSeen(this)
 
     log.debug?.(
       "layout: %dx%d, %d nodes in %dms (measure: calls=%d hits=%d)",
@@ -619,7 +647,7 @@ export class Node {
       Date.now() - start,
       Node.measureCalls,
       Node.measureCacheHits,
-    );
+    )
   }
 
   // ============================================================================
@@ -632,7 +660,7 @@ export class Node {
    * @returns The left position in points
    */
   getComputedLeft(): number {
-    return this._layout.left;
+    return this._layout.left
   }
 
   /**
@@ -641,7 +669,7 @@ export class Node {
    * @returns The top position in points
    */
   getComputedTop(): number {
-    return this._layout.top;
+    return this._layout.top
   }
 
   /**
@@ -650,7 +678,7 @@ export class Node {
    * @returns The width in points
    */
   getComputedWidth(): number {
-    return this._layout.width;
+    return this._layout.width
   }
 
   /**
@@ -659,7 +687,7 @@ export class Node {
    * @returns The height in points
    */
   getComputedHeight(): number {
-    return this._layout.height;
+    return this._layout.height
   }
 
   // ============================================================================
@@ -667,27 +695,27 @@ export class Node {
   // ============================================================================
 
   get children(): readonly Node[] {
-    return this._children;
+    return this._children
   }
 
   get style(): Style {
-    return this._style;
+    return this._style
   }
 
   get layout(): Layout {
-    return this._layout;
+    return this._layout
   }
 
   get measureFunc(): MeasureFunc | null {
-    return this._measureFunc;
+    return this._measureFunc
   }
 
   get baselineFunc(): BaselineFunc | null {
-    return this._baselineFunc;
+    return this._baselineFunc
   }
 
   get flex(): FlexInfo {
-    return this._flex;
+    return this._flex
   }
 
   // ============================================================================
@@ -702,11 +730,11 @@ export class Node {
   setWidth(value: number): void {
     // NaN means "auto" in Yoga API
     if (Number.isNaN(value)) {
-      this._style.width = { value: 0, unit: C.UNIT_AUTO };
+      this._style.width = { value: 0, unit: C.UNIT_AUTO }
     } else {
-      this._style.width = { value, unit: C.UNIT_POINT };
+      this._style.width = { value, unit: C.UNIT_POINT }
     }
-    this.markDirty();
+    this.markDirty()
   }
 
   /**
@@ -715,16 +743,16 @@ export class Node {
    * @param value - Width as a percentage (0-100)
    */
   setWidthPercent(value: number): void {
-    this._style.width = { value, unit: C.UNIT_PERCENT };
-    this.markDirty();
+    this._style.width = { value, unit: C.UNIT_PERCENT }
+    this.markDirty()
   }
 
   /**
    * Set the width to auto (determined by layout algorithm).
    */
   setWidthAuto(): void {
-    this._style.width = { value: 0, unit: C.UNIT_AUTO };
-    this.markDirty();
+    this._style.width = { value: 0, unit: C.UNIT_AUTO }
+    this.markDirty()
   }
 
   // ============================================================================
@@ -739,11 +767,11 @@ export class Node {
   setHeight(value: number): void {
     // NaN means "auto" in Yoga API
     if (Number.isNaN(value)) {
-      this._style.height = { value: 0, unit: C.UNIT_AUTO };
+      this._style.height = { value: 0, unit: C.UNIT_AUTO }
     } else {
-      this._style.height = { value, unit: C.UNIT_POINT };
+      this._style.height = { value, unit: C.UNIT_POINT }
     }
-    this.markDirty();
+    this.markDirty()
   }
 
   /**
@@ -752,16 +780,16 @@ export class Node {
    * @param value - Height as a percentage (0-100)
    */
   setHeightPercent(value: number): void {
-    this._style.height = { value, unit: C.UNIT_PERCENT };
-    this.markDirty();
+    this._style.height = { value, unit: C.UNIT_PERCENT }
+    this.markDirty()
   }
 
   /**
    * Set the height to auto (determined by layout algorithm).
    */
   setHeightAuto(): void {
-    this._style.height = { value: 0, unit: C.UNIT_AUTO };
-    this.markDirty();
+    this._style.height = { value: 0, unit: C.UNIT_AUTO }
+    this.markDirty()
   }
 
   // ============================================================================
@@ -774,8 +802,8 @@ export class Node {
    * @param value - Minimum width in points
    */
   setMinWidth(value: number): void {
-    this._style.minWidth = { value, unit: C.UNIT_POINT };
-    this.markDirty();
+    this._style.minWidth = { value, unit: C.UNIT_POINT }
+    this.markDirty()
   }
 
   /**
@@ -784,8 +812,8 @@ export class Node {
    * @param value - Minimum width as a percentage (0-100)
    */
   setMinWidthPercent(value: number): void {
-    this._style.minWidth = { value, unit: C.UNIT_PERCENT };
-    this.markDirty();
+    this._style.minWidth = { value, unit: C.UNIT_PERCENT }
+    this.markDirty()
   }
 
   /**
@@ -794,8 +822,8 @@ export class Node {
    * @param value - Minimum height in points
    */
   setMinHeight(value: number): void {
-    this._style.minHeight = { value, unit: C.UNIT_POINT };
-    this.markDirty();
+    this._style.minHeight = { value, unit: C.UNIT_POINT }
+    this.markDirty()
   }
 
   /**
@@ -804,8 +832,8 @@ export class Node {
    * @param value - Minimum height as a percentage (0-100)
    */
   setMinHeightPercent(value: number): void {
-    this._style.minHeight = { value, unit: C.UNIT_PERCENT };
-    this.markDirty();
+    this._style.minHeight = { value, unit: C.UNIT_PERCENT }
+    this.markDirty()
   }
 
   /**
@@ -814,8 +842,8 @@ export class Node {
    * @param value - Maximum width in points
    */
   setMaxWidth(value: number): void {
-    this._style.maxWidth = { value, unit: C.UNIT_POINT };
-    this.markDirty();
+    this._style.maxWidth = { value, unit: C.UNIT_POINT }
+    this.markDirty()
   }
 
   /**
@@ -824,8 +852,8 @@ export class Node {
    * @param value - Maximum width as a percentage (0-100)
    */
   setMaxWidthPercent(value: number): void {
-    this._style.maxWidth = { value, unit: C.UNIT_PERCENT };
-    this.markDirty();
+    this._style.maxWidth = { value, unit: C.UNIT_PERCENT }
+    this.markDirty()
   }
 
   /**
@@ -834,8 +862,8 @@ export class Node {
    * @param value - Maximum height in points
    */
   setMaxHeight(value: number): void {
-    this._style.maxHeight = { value, unit: C.UNIT_POINT };
-    this.markDirty();
+    this._style.maxHeight = { value, unit: C.UNIT_POINT }
+    this.markDirty()
   }
 
   /**
@@ -844,8 +872,8 @@ export class Node {
    * @param value - Maximum height as a percentage (0-100)
    */
   setMaxHeightPercent(value: number): void {
-    this._style.maxHeight = { value, unit: C.UNIT_PERCENT };
-    this.markDirty();
+    this._style.maxHeight = { value, unit: C.UNIT_PERCENT }
+    this.markDirty()
   }
 
   /**
@@ -857,8 +885,8 @@ export class Node {
    * @param value - Aspect ratio (width/height). Use NaN to unset.
    */
   setAspectRatio(value: number): void {
-    this._style.aspectRatio = value;
-    this.markDirty();
+    this._style.aspectRatio = value
+    this.markDirty()
   }
 
   // ============================================================================
@@ -877,8 +905,8 @@ export class Node {
    * ```
    */
   setFlexGrow(value: number): void {
-    this._style.flexGrow = value;
-    this.markDirty();
+    this._style.flexGrow = value
+    this.markDirty()
   }
 
   /**
@@ -888,8 +916,8 @@ export class Node {
    * @param value - Flex shrink factor (default is 1)
    */
   setFlexShrink(value: number): void {
-    this._style.flexShrink = value;
-    this.markDirty();
+    this._style.flexShrink = value
+    this.markDirty()
   }
 
   /**
@@ -899,8 +927,8 @@ export class Node {
    * @param value - Flex basis in points
    */
   setFlexBasis(value: number): void {
-    this._style.flexBasis = { value, unit: C.UNIT_POINT };
-    this.markDirty();
+    this._style.flexBasis = { value, unit: C.UNIT_POINT }
+    this.markDirty()
   }
 
   /**
@@ -909,16 +937,16 @@ export class Node {
    * @param value - Flex basis as a percentage (0-100)
    */
   setFlexBasisPercent(value: number): void {
-    this._style.flexBasis = { value, unit: C.UNIT_PERCENT };
-    this.markDirty();
+    this._style.flexBasis = { value, unit: C.UNIT_PERCENT }
+    this.markDirty()
   }
 
   /**
    * Set the flex basis to auto (based on the node's width/height).
    */
   setFlexBasisAuto(): void {
-    this._style.flexBasis = { value: 0, unit: C.UNIT_AUTO };
-    this.markDirty();
+    this._style.flexBasis = { value: 0, unit: C.UNIT_AUTO }
+    this.markDirty()
   }
 
   /**
@@ -932,8 +960,8 @@ export class Node {
    * ```
    */
   setFlexDirection(direction: number): void {
-    this._style.flexDirection = direction;
-    this.markDirty();
+    this._style.flexDirection = direction
+    this.markDirty()
   }
 
   /**
@@ -942,8 +970,8 @@ export class Node {
    * @param wrap - WRAP_NO_WRAP, WRAP_WRAP, or WRAP_WRAP_REVERSE
    */
   setFlexWrap(wrap: number): void {
-    this._style.flexWrap = wrap;
-    this.markDirty();
+    this._style.flexWrap = wrap
+    this.markDirty()
   }
 
   // ============================================================================
@@ -962,8 +990,8 @@ export class Node {
    * ```
    */
   setAlignItems(align: number): void {
-    this._style.alignItems = align;
-    this.markDirty();
+    this._style.alignItems = align
+    this.markDirty()
   }
 
   /**
@@ -973,8 +1001,8 @@ export class Node {
    * @param align - ALIGN_AUTO, ALIGN_FLEX_START, ALIGN_CENTER, ALIGN_FLEX_END, ALIGN_STRETCH, or ALIGN_BASELINE
    */
   setAlignSelf(align: number): void {
-    this._style.alignSelf = align;
-    this.markDirty();
+    this._style.alignSelf = align
+    this.markDirty()
   }
 
   /**
@@ -984,8 +1012,8 @@ export class Node {
    * @param align - ALIGN_FLEX_START, ALIGN_CENTER, ALIGN_FLEX_END, ALIGN_STRETCH, ALIGN_SPACE_BETWEEN, or ALIGN_SPACE_AROUND
    */
   setAlignContent(align: number): void {
-    this._style.alignContent = align;
-    this.markDirty();
+    this._style.alignContent = align
+    this.markDirty()
   }
 
   /**
@@ -999,8 +1027,8 @@ export class Node {
    * ```
    */
   setJustifyContent(justify: number): void {
-    this._style.justifyContent = justify;
-    this.markDirty();
+    this._style.justifyContent = justify
+    this.markDirty()
   }
 
   // ============================================================================
@@ -1019,8 +1047,8 @@ export class Node {
    * ```
    */
   setPadding(edge: number, value: number): void {
-    setEdgeValue(this._style.padding, edge, value, C.UNIT_POINT);
-    this.markDirty();
+    setEdgeValue(this._style.padding, edge, value, C.UNIT_POINT)
+    this.markDirty()
   }
 
   /**
@@ -1031,8 +1059,8 @@ export class Node {
    * @param value - Padding as a percentage (0-100)
    */
   setPaddingPercent(edge: number, value: number): void {
-    setEdgeValue(this._style.padding, edge, value, C.UNIT_PERCENT);
-    this.markDirty();
+    setEdgeValue(this._style.padding, edge, value, C.UNIT_PERCENT)
+    this.markDirty()
   }
 
   /**
@@ -1047,8 +1075,8 @@ export class Node {
    * ```
    */
   setMargin(edge: number, value: number): void {
-    setEdgeValue(this._style.margin, edge, value, C.UNIT_POINT);
-    this.markDirty();
+    setEdgeValue(this._style.margin, edge, value, C.UNIT_POINT)
+    this.markDirty()
   }
 
   /**
@@ -1058,8 +1086,8 @@ export class Node {
    * @param value - Margin as a percentage (0-100)
    */
   setMarginPercent(edge: number, value: number): void {
-    setEdgeValue(this._style.margin, edge, value, C.UNIT_PERCENT);
-    this.markDirty();
+    setEdgeValue(this._style.margin, edge, value, C.UNIT_PERCENT)
+    this.markDirty()
   }
 
   /**
@@ -1068,8 +1096,8 @@ export class Node {
    * @param edge - EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_HORIZONTAL, EDGE_VERTICAL, or EDGE_ALL
    */
   setMarginAuto(edge: number): void {
-    setEdgeValue(this._style.margin, edge, 0, C.UNIT_AUTO);
-    this.markDirty();
+    setEdgeValue(this._style.margin, edge, 0, C.UNIT_AUTO)
+    this.markDirty()
   }
 
   /**
@@ -1079,8 +1107,8 @@ export class Node {
    * @param value - Border width in points
    */
   setBorder(edge: number, value: number): void {
-    setEdgeBorder(this._style.border, edge, value);
-    this.markDirty();
+    setEdgeBorder(this._style.border, edge, value)
+    this.markDirty()
   }
 
   /**
@@ -1096,14 +1124,14 @@ export class Node {
    */
   setGap(gutter: number, value: number): void {
     if (gutter === C.GUTTER_COLUMN) {
-      this._style.gap[0] = value;
+      this._style.gap[0] = value
     } else if (gutter === C.GUTTER_ROW) {
-      this._style.gap[1] = value;
+      this._style.gap[1] = value
     } else if (gutter === C.GUTTER_ALL) {
-      this._style.gap[0] = value;
-      this._style.gap[1] = value;
+      this._style.gap[0] = value
+      this._style.gap[1] = value
     }
-    this.markDirty();
+    this.markDirty()
   }
 
   // ============================================================================
@@ -1122,8 +1150,8 @@ export class Node {
    * ```
    */
   setPositionType(positionType: number): void {
-    this._style.positionType = positionType;
-    this.markDirty();
+    this._style.positionType = positionType
+    this.markDirty()
   }
 
   /**
@@ -1136,11 +1164,11 @@ export class Node {
   setPosition(edge: number, value: number): void {
     // NaN means "auto" (unset) in Yoga API
     if (Number.isNaN(value)) {
-      setEdgeValue(this._style.position, edge, 0, C.UNIT_UNDEFINED);
+      setEdgeValue(this._style.position, edge, 0, C.UNIT_UNDEFINED)
     } else {
-      setEdgeValue(this._style.position, edge, value, C.UNIT_POINT);
+      setEdgeValue(this._style.position, edge, value, C.UNIT_POINT)
     }
-    this.markDirty();
+    this.markDirty()
   }
 
   /**
@@ -1150,8 +1178,8 @@ export class Node {
    * @param value - Position offset as a percentage of parent's corresponding dimension
    */
   setPositionPercent(edge: number, value: number): void {
-    setEdgeValue(this._style.position, edge, value, C.UNIT_PERCENT);
-    this.markDirty();
+    setEdgeValue(this._style.position, edge, value, C.UNIT_PERCENT)
+    this.markDirty()
   }
 
   // ============================================================================
@@ -1164,8 +1192,8 @@ export class Node {
    * @param display - DISPLAY_FLEX or DISPLAY_NONE
    */
   setDisplay(display: number): void {
-    this._style.display = display;
-    this.markDirty();
+    this._style.display = display
+    this.markDirty()
   }
 
   /**
@@ -1174,8 +1202,8 @@ export class Node {
    * @param overflow - OVERFLOW_VISIBLE, OVERFLOW_HIDDEN, or OVERFLOW_SCROLL
    */
   setOverflow(overflow: number): void {
-    this._style.overflow = overflow;
-    this.markDirty();
+    this._style.overflow = overflow
+    this.markDirty()
   }
 
   // ============================================================================
@@ -1188,7 +1216,7 @@ export class Node {
    * @returns Width value with unit (points, percent, or auto)
    */
   getWidth(): Value {
-    return this._style.width;
+    return this._style.width
   }
 
   /**
@@ -1197,7 +1225,7 @@ export class Node {
    * @returns Height value with unit (points, percent, or auto)
    */
   getHeight(): Value {
-    return this._style.height;
+    return this._style.height
   }
 
   /**
@@ -1206,7 +1234,7 @@ export class Node {
    * @returns Minimum width value with unit
    */
   getMinWidth(): Value {
-    return this._style.minWidth;
+    return this._style.minWidth
   }
 
   /**
@@ -1215,7 +1243,7 @@ export class Node {
    * @returns Minimum height value with unit
    */
   getMinHeight(): Value {
-    return this._style.minHeight;
+    return this._style.minHeight
   }
 
   /**
@@ -1224,7 +1252,7 @@ export class Node {
    * @returns Maximum width value with unit
    */
   getMaxWidth(): Value {
-    return this._style.maxWidth;
+    return this._style.maxWidth
   }
 
   /**
@@ -1233,7 +1261,7 @@ export class Node {
    * @returns Maximum height value with unit
    */
   getMaxHeight(): Value {
-    return this._style.maxHeight;
+    return this._style.maxHeight
   }
 
   /**
@@ -1242,7 +1270,7 @@ export class Node {
    * @returns Aspect ratio value (NaN if not set)
    */
   getAspectRatio(): number {
-    return this._style.aspectRatio;
+    return this._style.aspectRatio
   }
 
   /**
@@ -1251,7 +1279,7 @@ export class Node {
    * @returns Flex grow value
    */
   getFlexGrow(): number {
-    return this._style.flexGrow;
+    return this._style.flexGrow
   }
 
   /**
@@ -1260,7 +1288,7 @@ export class Node {
    * @returns Flex shrink value
    */
   getFlexShrink(): number {
-    return this._style.flexShrink;
+    return this._style.flexShrink
   }
 
   /**
@@ -1269,7 +1297,7 @@ export class Node {
    * @returns Flex basis value with unit
    */
   getFlexBasis(): Value {
-    return this._style.flexBasis;
+    return this._style.flexBasis
   }
 
   /**
@@ -1278,7 +1306,7 @@ export class Node {
    * @returns Flex direction constant
    */
   getFlexDirection(): number {
-    return this._style.flexDirection;
+    return this._style.flexDirection
   }
 
   /**
@@ -1287,7 +1315,7 @@ export class Node {
    * @returns Flex wrap constant
    */
   getFlexWrap(): number {
-    return this._style.flexWrap;
+    return this._style.flexWrap
   }
 
   /**
@@ -1296,7 +1324,7 @@ export class Node {
    * @returns Align items constant
    */
   getAlignItems(): number {
-    return this._style.alignItems;
+    return this._style.alignItems
   }
 
   /**
@@ -1305,7 +1333,7 @@ export class Node {
    * @returns Align self constant
    */
   getAlignSelf(): number {
-    return this._style.alignSelf;
+    return this._style.alignSelf
   }
 
   /**
@@ -1314,7 +1342,7 @@ export class Node {
    * @returns Align content constant
    */
   getAlignContent(): number {
-    return this._style.alignContent;
+    return this._style.alignContent
   }
 
   /**
@@ -1323,7 +1351,7 @@ export class Node {
    * @returns Justify content constant
    */
   getJustifyContent(): number {
-    return this._style.justifyContent;
+    return this._style.justifyContent
   }
 
   /**
@@ -1333,7 +1361,7 @@ export class Node {
    * @returns Padding value with unit
    */
   getPadding(edge: number): Value {
-    return getEdgeValue(this._style.padding, edge);
+    return getEdgeValue(this._style.padding, edge)
   }
 
   /**
@@ -1343,7 +1371,7 @@ export class Node {
    * @returns Margin value with unit
    */
   getMargin(edge: number): Value {
-    return getEdgeValue(this._style.margin, edge);
+    return getEdgeValue(this._style.margin, edge)
   }
 
   /**
@@ -1353,7 +1381,7 @@ export class Node {
    * @returns Border width in points
    */
   getBorder(edge: number): number {
-    return getEdgeBorderValue(this._style.border, edge);
+    return getEdgeBorderValue(this._style.border, edge)
   }
 
   /**
@@ -1363,7 +1391,7 @@ export class Node {
    * @returns Position value with unit
    */
   getPosition(edge: number): Value {
-    return getEdgeValue(this._style.position, edge);
+    return getEdgeValue(this._style.position, edge)
   }
 
   /**
@@ -1372,7 +1400,7 @@ export class Node {
    * @returns Position type constant
    */
   getPositionType(): number {
-    return this._style.positionType;
+    return this._style.positionType
   }
 
   /**
@@ -1381,7 +1409,7 @@ export class Node {
    * @returns Display constant
    */
   getDisplay(): number {
-    return this._style.display;
+    return this._style.display
   }
 
   /**
@@ -1390,7 +1418,7 @@ export class Node {
    * @returns Overflow constant
    */
   getOverflow(): number {
-    return this._style.overflow;
+    return this._style.overflow
   }
 
   /**
@@ -1401,10 +1429,10 @@ export class Node {
    */
   getGap(gutter: number): number {
     if (gutter === C.GUTTER_COLUMN) {
-      return this._style.gap[0];
+      return this._style.gap[0]
     } else if (gutter === C.GUTTER_ROW) {
-      return this._style.gap[1];
+      return this._style.gap[1]
     }
-    return this._style.gap[0]; // Default to column gap
+    return this._style.gap[0] // Default to column gap
   }
 }

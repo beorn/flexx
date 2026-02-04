@@ -70,7 +70,7 @@ const ratio = yogaOps / flexxOps
 if (ratio > 1) {
   console.log("  → Yoga is " + ratio.toFixed(1) + "x faster\n")
 } else {
-  console.log("  → Flexx is " + (1/ratio).toFixed(1) + "x faster\n")
+  console.log("  → Flexx is " + (1 / ratio).toFixed(1) + "x faster\n")
 }
 
 console.log("Layout Only (with markDirty):")
@@ -96,5 +96,5 @@ const layoutRatio = yogaLayout / flexxLayout
 if (layoutRatio > 1) {
   console.log("  → Yoga is " + layoutRatio.toFixed(1) + "x faster\n")
 } else {
-  console.log("  → Flexx is " + (1/layoutRatio).toFixed(1) + "x faster\n")
+  console.log("  → Flexx is " + (1 / layoutRatio).toFixed(1) + "x faster\n")
 }

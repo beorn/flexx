@@ -24,7 +24,7 @@ function bench(name: string, fn: () => void, iterations = 1000): number {
 
 function createFlatTree(
   engine: "classic" | "zero",
-  nodeCount: number
+  nodeCount: number,
 ): Classic.Node | Zero.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
   const FLEX_DIRECTION_COLUMN =
@@ -49,7 +49,7 @@ function createFlatTree(
 
 function createDeepTree(
   engine: "classic" | "zero",
-  depth: number
+  depth: number,
 ): Classic.Node | Zero.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
   const EDGE_LEFT = engine === "classic" ? Classic.EDGE_LEFT : Zero.EDGE_LEFT
@@ -72,7 +72,7 @@ function createDeepTree(
 
 function createKanbanTree(
   engine: "classic" | "zero",
-  cardsPerColumn: number
+  cardsPerColumn: number,
 ): Classic.Node | Zero.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
   const FLEX_DIRECTION_ROW =
@@ -128,32 +128,24 @@ for (const n of [100, 500, 1000]) {
   })
   const ratio = zero / classic
   console.log(
-    `  → Zero is ${ratio > 1 ? ratio.toFixed(2) + "x faster" : (1 / ratio).toFixed(2) + "x slower"}\n`
+    `  → Zero is ${ratio > 1 ? ratio.toFixed(2) + "x faster" : (1 / ratio).toFixed(2) + "x slower"}\n`,
   )
 }
 
 // Deep hierarchy
 console.log("\nDeep Hierarchy (nested containers):")
 for (const d of [20, 50, 100]) {
-  const classic = bench(
-    `Classic ${d} deep`,
-    () => {
-      const tree = createDeepTree("classic", d)
-      tree.calculateLayout(1000, 1000, Classic.DIRECTION_LTR)
-    },
-    500
-  )
-  const zero = bench(
-    `Zero ${d} deep`,
-    () => {
-      const tree = createDeepTree("zero", d)
-      tree.calculateLayout(1000, 1000, Zero.DIRECTION_LTR)
-    },
-    500
-  )
+  const classic = bench(`Classic ${d} deep`, () => {
+    const tree = createDeepTree("classic", d)
+    tree.calculateLayout(1000, 1000, Classic.DIRECTION_LTR)
+  }, 500)
+  const zero = bench(`Zero ${d} deep`, () => {
+    const tree = createDeepTree("zero", d)
+    tree.calculateLayout(1000, 1000, Zero.DIRECTION_LTR)
+  }, 500)
   const ratio = zero / classic
   console.log(
-    `  → Zero is ${ratio > 1 ? ratio.toFixed(2) + "x faster" : (1 / ratio).toFixed(2) + "x slower"}\n`
+    `  → Zero is ${ratio > 1 ? ratio.toFixed(2) + "x faster" : (1 / ratio).toFixed(2) + "x slower"}\n`,
   )
 }
 
@@ -170,7 +162,7 @@ for (const cards of [10, 50, 100]) {
   })
   const ratio = zero / classic
   console.log(
-    `  → Zero is ${ratio > 1 ? ratio.toFixed(2) + "x faster" : (1 / ratio).toFixed(2) + "x slower"}\n`
+    `  → Zero is ${ratio > 1 ? ratio.toFixed(2) + "x faster" : (1 / ratio).toFixed(2) + "x slower"}\n`,
   )
 }
 
@@ -189,7 +181,7 @@ const zeroLayout = bench("Zero layout-only", () => {
 })
 const layoutRatio = zeroLayout / classicLayout
 console.log(
-  `  → Zero is ${layoutRatio > 1 ? layoutRatio.toFixed(2) + "x faster" : (1 / layoutRatio).toFixed(2) + "x slower"}\n`
+  `  → Zero is ${layoutRatio > 1 ? layoutRatio.toFixed(2) + "x faster" : (1 / layoutRatio).toFixed(2) + "x slower"}\n`,
 )
 
 console.log("\n=== Summary ===")

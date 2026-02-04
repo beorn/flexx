@@ -18,7 +18,7 @@ import * as Zero from "../src/index.js"
 
 function createFlatTree(
   engine: "classic" | "zero",
-  nodeCount: number
+  nodeCount: number,
 ): Classic.Node | Zero.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
   const FLEX_DIRECTION_COLUMN =
@@ -43,7 +43,7 @@ function createFlatTree(
 
 function createDeepTree(
   engine: "classic" | "zero",
-  depth: number
+  depth: number,
 ): Classic.Node | Zero.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
   const EDGE_LEFT = engine === "classic" ? Classic.EDGE_LEFT : Zero.EDGE_LEFT
@@ -66,7 +66,7 @@ function createDeepTree(
 
 function createKanbanTree(
   engine: "classic" | "zero",
-  cardsPerColumn: number
+  cardsPerColumn: number,
 ): Classic.Node | Zero.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
   const FLEX_DIRECTION_ROW =
@@ -226,7 +226,7 @@ describe("Classic vs Zero - Incremental Update", () => {
 describe("Classic vs Zero - Large Scale TUI", () => {
   function createLargeTUI(
     engine: "classic" | "zero",
-    nodeCount: number
+    nodeCount: number,
   ): Classic.Node | Zero.Node {
     const Node = engine === "classic" ? Classic.Node : Zero.Node
     const FLEX_DIRECTION_ROW =

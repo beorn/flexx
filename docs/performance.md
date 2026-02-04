@@ -22,6 +22,7 @@ JS                          WASM
 ```
 
 Each boundary crossing involves:
+
 - Type conversion (JS numbers ↔ WASM f64/i32)
 - Memory read/write to WASM linear memory
 - Function call overhead
@@ -34,8 +35,8 @@ Flexx runs entirely in JavaScript. Property access is direct object field access
 
 ```typescript
 // Flexx: Direct field access
-node._style.width = { value: 100, unit: UNIT_POINT };
-node._flex.mainSize = 80;
+node._style.width = { value: 100, unit: UNIT_POINT }
+node._flex.mainSize = 80
 ```
 
 Modern JS engines (V8, JSC, SpiderMonkey) heavily optimize this pattern with inline caching and hidden classes.
@@ -58,13 +59,13 @@ All benchmarks on Apple M1 Max, Bun 1.3.7, with 1000-iteration JIT warmup.
 
 ### Flat Layouts
 
-| Nodes | Flexx   | Yoga     | Winner          |
-| ----- | ------- | -------- | --------------- |
-| 100   | 82 µs   | 200 µs   | Flexx 2.5x      |
-| 500   | 427 µs  | 1045 µs  | Flexx 2.4x      |
-| 1000  | 923 µs  | 2191 µs  | Flexx 2.4x      |
-| 2000  | 1707 µs | 4761 µs  | Flexx 2.8x      |
-| 5000  | 4819 µs | 14720 µs | Flexx 3.1x      |
+| Nodes | Flexx   | Yoga     | Winner     |
+| ----- | ------- | -------- | ---------- |
+| 100   | 82 µs   | 200 µs   | Flexx 2.5x |
+| 500   | 427 µs  | 1045 µs  | Flexx 2.4x |
+| 1000  | 923 µs  | 2191 µs  | Flexx 2.4x |
+| 2000  | 1707 µs | 4761 µs  | Flexx 2.8x |
+| 5000  | 4819 µs | 14720 µs | Flexx 3.1x |
 
 The advantage grows with node count because each node means more JS/WASM boundary crossings for Yoga.
 
@@ -83,16 +84,16 @@ Flexx wins at all depths up to 100 levels where they're roughly equal.
 
 ### Feature-Specific Benchmarks
 
-| Feature            | Winner | Margin |
-| ------------------ | ------ | ------ |
-| AbsolutePositioning | Flexx | 3.5x   |
-| FlexShrink         | Flexx  | 2.7x   |
-| AlignContent       | Flexx  | 2.3x   |
-| FlexGrow           | Flexx  | 1.9x   |
-| Gap                | Flexx  | 1.5x   |
-| MeasureFunc        | Flexx  | 1.4x   |
-| FlexWrap           | Flexx  | 1.2x   |
-| PercentValues      | ~Equal | -      |
+| Feature             | Winner | Margin |
+| ------------------- | ------ | ------ |
+| AbsolutePositioning | Flexx  | 3.5x   |
+| FlexShrink          | Flexx  | 2.7x   |
+| AlignContent        | Flexx  | 2.3x   |
+| FlexGrow            | Flexx  | 1.9x   |
+| Gap                 | Flexx  | 1.5x   |
+| MeasureFunc         | Flexx  | 1.4x   |
+| FlexWrap            | Flexx  | 1.2x   |
+| PercentValues       | ~Equal | -      |
 
 ## Benchmark Variance
 
@@ -104,6 +105,7 @@ Cold benchmarks (without JIT warmup) show high variance:
 | Yoga   | ±0.3-1%  | ±0.3-1%  |
 
 **Why?** Two factors affect cold JavaScript performance:
+
 1. **JIT compilation** — JS engines need warmup to optimize hot paths
 2. **GC pauses** — Object allocation triggers garbage collection cycles
 

@@ -16,8 +16,12 @@ function bench(fn: () => void, iterations = 1000): number {
 
 function createKanban(engine: "classic" | "zero", cards: number) {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
-  const DIR_ROW = engine === "classic" ? Classic.FLEX_DIRECTION_ROW : Zero.FLEX_DIRECTION_ROW
-  const DIR_COL = engine === "classic" ? Classic.FLEX_DIRECTION_COLUMN : Zero.FLEX_DIRECTION_COLUMN
+  const DIR_ROW =
+    engine === "classic" ? Classic.FLEX_DIRECTION_ROW : Zero.FLEX_DIRECTION_ROW
+  const DIR_COL =
+    engine === "classic"
+      ? Classic.FLEX_DIRECTION_COLUMN
+      : Zero.FLEX_DIRECTION_COLUMN
   const GAP = engine === "classic" ? Classic.GUTTER_ALL : Zero.GUTTER_ALL
 
   const root = Node.create()
@@ -56,7 +60,9 @@ for (const cards of [10, 30, 50, 100]) {
   }, 500)
   const pct = ((zero / classic - 1) * 100).toFixed(1)
   const winner = zero > classic ? "Zero" : "Classic"
-  console.log(`  ${cards} cards (${totalNodes} nodes): ${winner} ${Math.abs(Number(pct))}% faster`)
+  console.log(
+    `  ${cards} cards (${totalNodes} nodes): ${winner} ${Math.abs(Number(pct))}% faster`,
+  )
 }
 
 console.log("\nLayout Only (pre-created tree):")
@@ -73,8 +79,18 @@ const zeroLayout = bench(() => {
 }, 2000)
 const layoutPct = ((zeroLayout / classicLayout - 1) * 100).toFixed(1)
 const layoutWinner = zeroLayout > classicLayout ? "Zero" : "Classic"
-console.log(`  50 cards: ${layoutWinner} ${Math.abs(Number(layoutPct))}% faster`)
+console.log(
+  `  50 cards: ${layoutWinner} ${Math.abs(Number(layoutPct))}% faster`,
+)
 
 console.log("\nRaw numbers (ops/sec):")
-console.log(`  Create+Layout 50 cards: Classic=${bench(() => { createKanban("classic", 50).calculateLayout(120,40,Classic.DIRECTION_LTR) }, 500).toFixed(0)}, Zero=${bench(() => { createKanban("zero", 50).calculateLayout(120,40,Zero.DIRECTION_LTR) }, 500).toFixed(0)}`)
-console.log(`  Layout-only 50 cards: Classic=${classicLayout.toFixed(0)}, Zero=${zeroLayout.toFixed(0)}`)
+console.log(
+  `  Create+Layout 50 cards: Classic=${bench(() => {
+    createKanban("classic", 50).calculateLayout(120, 40, Classic.DIRECTION_LTR)
+  }, 500).toFixed(0)}, Zero=${bench(() => {
+    createKanban("zero", 50).calculateLayout(120, 40, Zero.DIRECTION_LTR)
+  }, 500).toFixed(0)}`,
+)
+console.log(
+  `  Layout-only 50 cards: Classic=${classicLayout.toFixed(0)}, Zero=${zeroLayout.toFixed(0)}`,
+)

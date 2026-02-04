@@ -17,7 +17,9 @@ const wasmPath = join(__dirname, "../node_modules/yoga-wasm-web/dist/yoga.wasm")
 const nodeCount = parseInt(process.argv[2] || "1500", 10)
 const iterations = parseInt(process.argv[3] || "3", 10)
 
-console.log(`\nComparing Flexx vs Yoga: ${nodeCount} nodes, ${iterations} iterations\n`)
+console.log(
+  `\nComparing Flexx vs Yoga: ${nodeCount} nodes, ${iterations} iterations\n`,
+)
 
 // Initialize Yoga
 const wasmBuffer = readFileSync(wasmPath)
@@ -48,7 +50,10 @@ function createFlexxTree(n: number): Flexx.Node {
       textNode.setMeasureFunc((width, _wm, _h, _hm) => {
         const tw = text.length
         const maxW = Number.isNaN(width) ? Infinity : width
-        return { width: Math.min(tw, maxW), height: Math.ceil(tw / Math.max(1, maxW)) }
+        return {
+          width: Math.min(tw, maxW),
+          height: Math.ceil(tw / Math.max(1, maxW)),
+        }
       })
       itemNode.insertChild(textNode, 0)
       column.insertChild(itemNode, item)
@@ -82,7 +87,10 @@ function createYogaTree(n: number) {
       textNode.setMeasureFunc((width, _wm, _h, _hm) => {
         const tw = text.length
         const maxW = Number.isNaN(width) ? Infinity : width
-        return { width: Math.min(tw, maxW), height: Math.ceil(tw / Math.max(1, maxW)) }
+        return {
+          width: Math.min(tw, maxW),
+          height: Math.ceil(tw / Math.max(1, maxW)),
+        }
       })
       itemNode.insertChild(textNode, 0)
       column.insertChild(itemNode, item)
@@ -116,8 +124,16 @@ const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
 const flexxAvg = avg(flexxTimes)
 const yogaAvg = avg(yogaTimes)
 
-console.log(`Flexx: ${flexxAvg.toFixed(2)}ms avg (${flexxTimes.map(t => t.toFixed(1)).join(', ')})`)
-console.log(`       measure: calls=${Flexx.Node.measureCalls} hits=${Flexx.Node.measureCacheHits}`)
+console.log(
+  `Flexx: ${flexxAvg.toFixed(2)}ms avg (${flexxTimes.map((t) => t.toFixed(1)).join(", ")})`,
+)
+console.log(
+  `       measure: calls=${Flexx.Node.measureCalls} hits=${Flexx.Node.measureCacheHits}`,
+)
 console.log(`       layoutNode: calls=${layoutNodeCalls}`)
-console.log(`Yoga:  ${yogaAvg.toFixed(2)}ms avg (${yogaTimes.map(t => t.toFixed(1)).join(', ')})`)
-console.log(`\nRatio: Flexx is ${(flexxAvg / yogaAvg).toFixed(2)}x ${flexxAvg > yogaAvg ? 'slower' : 'faster'} than Yoga`)
+console.log(
+  `Yoga:  ${yogaAvg.toFixed(2)}ms avg (${yogaTimes.map((t) => t.toFixed(1)).join(", ")})`,
+)
+console.log(
+  `\nRatio: Flexx is ${(flexxAvg / yogaAvg).toFixed(2)}x ${flexxAvg > yogaAvg ? "slower" : "faster"} than Yoga`,
+)

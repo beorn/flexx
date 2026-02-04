@@ -27,4 +27,4 @@ jobs:
 
       - name: Run tests
         run: bun test
-        continue-on-error: true  # Pre-existing yoga comparison failures
+        continue-on-error: true # Pre-existing yoga comparison failures

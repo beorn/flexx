@@ -8,8 +8,8 @@
  * A value with a unit (point, percent, or auto).
  */
 export interface Value {
-  value: number;
-  unit: number; // UNIT_UNDEFINED | UNIT_POINT | UNIT_PERCENT | UNIT_AUTO
+  value: number
+  unit: number // UNIT_UNDEFINED | UNIT_POINT | UNIT_PERCENT | UNIT_AUTO
 }
 
 /**
@@ -21,7 +21,7 @@ export type MeasureFunc = (
   widthMode: number,
   height: number,
   heightMode: number,
-) => { width: number; height: number };
+) => { width: number; height: number }
 
 /**
  * Baseline function signature for baseline alignment.
@@ -32,19 +32,19 @@ export type MeasureFunc = (
  * @param height - The computed height of the node
  * @returns The baseline offset from the top of the node (in points)
  */
-export type BaselineFunc = (width: number, height: number) => number;
+export type BaselineFunc = (width: number, height: number) => number
 
 /**
  * Cache entry for measure results.
  * Stores input constraints (w, wm, h, hm) and output (rw, rh).
  */
 export interface MeasureEntry {
-  w: number;
-  wm: number;
-  h: number;
-  hm: number;
-  rw: number;
-  rh: number;
+  w: number
+  wm: number
+  h: number
+  hm: number
+  rw: number
+  rh: number
 }
 
 /**
@@ -53,10 +53,10 @@ export interface MeasureEntry {
  * Used to avoid redundant recursive layout calls during a single pass.
  */
 export interface LayoutCacheEntry {
-  availW: number; // Available width (may be NaN)
-  availH: number; // Available height (may be NaN)
-  computedW: number; // Computed width
-  computedH: number; // Computed height
+  availW: number // Available width (may be NaN)
+  availH: number // Available height (may be NaN)
+  computedW: number // Computed width
+  computedH: number // Computed height
 }
 
 /**
@@ -78,68 +78,68 @@ export interface LayoutCacheEntry {
  */
 export interface FlexInfo {
   /** Computed main-axis size after flex distribution */
-  mainSize: number;
+  mainSize: number
   /** Original base size before flex distribution (used for weighted shrink) */
-  baseSize: number;
+  baseSize: number
   /** Total main-axis margin (non-auto margins only) */
-  mainMargin: number;
+  mainMargin: number
   /** flex-grow factor from style */
-  flexGrow: number;
+  flexGrow: number
   /** flex-shrink factor from style */
-  flexShrink: number;
+  flexShrink: number
   /** Resolved min-width/height constraint on main axis */
-  minMain: number;
+  minMain: number
   /** Resolved max-width/height constraint on main axis (Infinity if none) */
-  maxMain: number;
+  maxMain: number
   /** Whether main-start margin is auto (absorbs free space) */
-  mainStartMarginAuto: boolean;
+  mainStartMarginAuto: boolean
   /** Whether main-end margin is auto (absorbs free space) */
-  mainEndMarginAuto: boolean;
+  mainEndMarginAuto: boolean
   /** Resolved main-start margin value (0 if auto, computed later) */
-  mainStartMarginValue: number;
+  mainStartMarginValue: number
   /** Resolved main-end margin value (0 if auto, computed later) */
-  mainEndMarginValue: number;
+  mainEndMarginValue: number
   /** Cached resolved margin values [left, top, right, bottom] */
-  marginL: number;
-  marginT: number;
-  marginR: number;
-  marginB: number;
+  marginL: number
+  marginT: number
+  marginR: number
+  marginB: number
   /** Frozen in flex distribution (clamped to min/max constraint) */
-  frozen: boolean;
+  frozen: boolean
   /** Line index for flex-wrap (0-based, which line this child belongs to) */
-  lineIndex: number;
+  lineIndex: number
   /**
    * Relative index for filtered iteration.
    * -1 = absolute positioned or display:none (skip in flex layout)
    * 0+ = index among relative children (participates in flex layout)
    */
-  relativeIndex: number;
+  relativeIndex: number
   /** Computed baseline offset for ALIGN_BASELINE (zero-alloc: avoids per-pass array) */
-  baseline: number;
+  baseline: number
 
   // Constraint fingerprinting for layout caching
   /** Last availableWidth passed to layoutNode */
-  lastAvailW: number;
+  lastAvailW: number
   /** Last availableHeight passed to layoutNode */
-  lastAvailH: number;
+  lastAvailH: number
   /** Last offsetX passed to layoutNode */
-  lastOffsetX: number;
+  lastOffsetX: number
   /** Last offsetY passed to layoutNode */
-  lastOffsetY: number;
+  lastOffsetY: number
   /** Whether cached layout is valid (fingerprint matched, not dirty) */
-  layoutValid: boolean;
+  layoutValid: boolean
   /** Last direction passed to layoutNode */
-  lastDir: number;
+  lastDir: number
 }
 
 /**
  * Computed layout result for a node.
  */
 export interface Layout {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
+  left: number
+  top: number
+  width: number
+  height: number
 }
 
 /**
@@ -147,53 +147,53 @@ export interface Layout {
  */
 export interface Style {
   // Display
-  display: number;
+  display: number
 
   // Position
-  positionType: number;
-  position: [Value, Value, Value, Value, Value, Value]; // [left, top, right, bottom, start, end]
+  positionType: number
+  position: [Value, Value, Value, Value, Value, Value] // [left, top, right, bottom, start, end]
 
   // Flex
-  flexDirection: number;
-  flexWrap: number;
-  flexGrow: number;
-  flexShrink: number;
-  flexBasis: Value;
+  flexDirection: number
+  flexWrap: number
+  flexGrow: number
+  flexShrink: number
+  flexBasis: Value
 
   // Alignment
-  alignItems: number;
-  alignSelf: number;
-  alignContent: number;
-  justifyContent: number;
+  alignItems: number
+  alignSelf: number
+  alignContent: number
+  justifyContent: number
 
   // Size
-  width: Value;
-  height: Value;
-  minWidth: Value;
-  minHeight: Value;
-  maxWidth: Value;
-  maxHeight: Value;
-  aspectRatio: number; // NaN = undefined, otherwise width/height ratio
+  width: Value
+  height: Value
+  minWidth: Value
+  minHeight: Value
+  maxWidth: Value
+  maxHeight: Value
+  aspectRatio: number // NaN = undefined, otherwise width/height ratio
 
   // Spacing (per-edge: left, top, right, bottom, start, end)
   // Physical edges: [0]=left, [1]=top, [2]=right, [3]=bottom
   // Logical edges: [4]=start, [5]=end (resolved based on flex direction)
-  margin: [Value, Value, Value, Value, Value, Value];
-  padding: [Value, Value, Value, Value, Value, Value];
-  border: [number, number, number, number]; // Border widths (always points)
+  margin: [Value, Value, Value, Value, Value, Value]
+  padding: [Value, Value, Value, Value, Value, Value]
+  border: [number, number, number, number] // Border widths (always points)
 
   // Gap
-  gap: [number, number]; // [column, row]
+  gap: [number, number] // [column, row]
 
   // Overflow
-  overflow: number;
+  overflow: number
 }
 
 /**
  * Create a default Value (undefined).
  */
 export function createValue(value = 0, unit = 0): Value {
-  return { value, unit };
+  return { value, unit }
 }
 
 /**
@@ -203,7 +203,14 @@ export function createDefaultStyle(): Style {
   return {
     display: 0, // DISPLAY_FLEX
     positionType: 1, // POSITION_TYPE_RELATIVE
-    position: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
+    position: [
+      createValue(),
+      createValue(),
+      createValue(),
+      createValue(),
+      createValue(),
+      createValue(),
+    ],
     flexDirection: 0, // FLEX_DIRECTION_COLUMN (Yoga default, not CSS!)
     flexWrap: 0, // WRAP_NO_WRAP
     flexGrow: 0,
@@ -220,10 +227,24 @@ export function createDefaultStyle(): Style {
     maxWidth: createValue(),
     maxHeight: createValue(),
     aspectRatio: NaN, // undefined by default
-    margin: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
-    padding: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
+    margin: [
+      createValue(),
+      createValue(),
+      createValue(),
+      createValue(),
+      createValue(),
+      createValue(),
+    ],
+    padding: [
+      createValue(),
+      createValue(),
+      createValue(),
+      createValue(),
+      createValue(),
+      createValue(),
+    ],
     border: [0, 0, 0, 0],
     gap: [0, 0],
     overflow: 0, // OVERFLOW_VISIBLE
-  };
+  }
 }
