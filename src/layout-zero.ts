@@ -1458,11 +1458,23 @@ function layoutNode(
           : flex.marginL + flex.marginR
         const availCross = crossAxisSize - crossMargin
         // Use cached measure to avoid redundant calls within a layout pass
+        // Measure function takes PHYSICAL (width, height), not logical (main, cross).
+        // For row: main=width, cross=height. For column: main=height, cross=width.
+        const measureW = isRow ? mainAxisSize : availCross
+        const measureH = isRow ? availCross : mainAxisSize
+        const measureWMode = isRow
+          ? C.MEASURE_MODE_AT_MOST
+          : Number.isNaN(availCross)
+            ? C.MEASURE_MODE_UNDEFINED
+            : C.MEASURE_MODE_AT_MOST
+        const measureHMode = isRow
+          ? C.MEASURE_MODE_UNDEFINED
+          : C.MEASURE_MODE_AT_MOST
         const measured = child.cachedMeasure(
-          mainAxisSize,
-          C.MEASURE_MODE_AT_MOST,
-          availCross,
-          C.MEASURE_MODE_UNDEFINED,
+          Number.isNaN(measureW) ? Infinity : measureW,
+          measureWMode,
+          Number.isNaN(measureH) ? Infinity : measureH,
+          measureHMode,
         )!
         baseSize = isRow ? measured.width : measured.height
       } else if (child.children.length > 0) {

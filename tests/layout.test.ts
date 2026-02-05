@@ -258,6 +258,38 @@ describe("Flexx Layout Engine", () => {
 
       expectLayout(text, { width: 10, height: 1 })
     })
+
+    it("should constrain measure height to parent column height", () => {
+      // Column parent with height=1 containing a text node with 10 chars.
+      // The text measure function wraps text into available width.
+      // Bug: pre-measure passed mainAxisSize (height=1) as width arg,
+      // causing text to wrap into 1-wide column => height=10, overflowing parent.
+      const root = Node.create()
+      root.setWidth(80)
+      root.setHeight(1)
+      root.setFlexDirection(FLEX_DIRECTION_COLUMN)
+
+      const text = Node.create()
+      text.setMeasureFunc((width, widthMode, _height, _heightMode) => {
+        // Simulate 10-char text that wraps based on available width
+        const totalChars = 10
+        if (widthMode === MEASURE_MODE_EXACTLY) {
+          const lines = Math.ceil(totalChars / Math.max(1, Math.floor(width)))
+          return { width, height: lines }
+        } else if (widthMode === MEASURE_MODE_AT_MOST) {
+          const usedWidth = Math.min(totalChars, width)
+          const lines = Math.ceil(totalChars / Math.max(1, Math.floor(usedWidth)))
+          return { width: usedWidth, height: lines }
+        }
+        return { width: totalChars, height: 1 }
+      })
+      root.insertChild(text, 0)
+
+      root.calculateLayout(80, 1, DIRECTION_LTR)
+
+      // Text should be constrained to parent height=1, not overflow to height=10
+      expectLayout(text, { width: 10, height: 1 })
+    })
   })
 
   describe("Flex Shrink", () => {
