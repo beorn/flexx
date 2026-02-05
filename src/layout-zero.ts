@@ -2172,22 +2172,9 @@ function layoutNode(
       const mainIsAuto =
         mainDim.unit === C.UNIT_AUTO || mainDim.unit === C.UNIT_UNDEFINED
       const hasFlexGrow = flex.flexGrow > 0
-      // Check if parent has definite main-axis size
-      const parentMainDim = isRow ? style.width : style.height
-      const parentHasDefiniteMain =
-        parentMainDim.unit === C.UNIT_POINT ||
-        parentMainDim.unit === C.UNIT_PERCENT
       // Use flex-computed mainSize for all cases - it includes padding/border as minimum
       // The flex algorithm already computed the proper size based on content/padding/border
-      let effectiveMainSize: number
-      if (hasFlexGrow) {
-        effectiveMainSize = childMainSize
-      } else if (mainIsAuto) {
-        // Child is auto: use flex-computed size which includes padding/border minimum
-        effectiveMainSize = childMainSize
-      } else {
-        effectiveMainSize = childMainSize
-      }
+      const effectiveMainSize = childMainSize
 
       let childWidth = isRow ? effectiveMainSize : childCrossSize
       let childHeight = isRow ? childCrossSize : effectiveMainSize
