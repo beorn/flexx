@@ -278,7 +278,9 @@ describe("Flexx Layout Engine", () => {
           return { width, height: lines }
         } else if (widthMode === MEASURE_MODE_AT_MOST) {
           const usedWidth = Math.min(totalChars, width)
-          const lines = Math.ceil(totalChars / Math.max(1, Math.floor(usedWidth)))
+          const lines = Math.ceil(
+            totalChars / Math.max(1, Math.floor(usedWidth)),
+          )
           return { width: usedWidth, height: lines }
         }
         return { width: totalChars, height: 1 }
