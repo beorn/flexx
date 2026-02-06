@@ -1,1 +1,5 @@
-node_modules/.vite
+node_modules/
+dist/
+*.tgz
+coverage/
+.DS_Store

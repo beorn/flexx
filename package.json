@@ -9,8 +9,13 @@
     "tui",
     "yoga"
   ],
+  "homepage": "https://github.com/beorn/flexx#readme",
   "license": "MIT",
   "author": "beorn",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/beorn/flexx.git"
+  },
   "files": [
     "dist",
     "src"

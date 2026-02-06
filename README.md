@@ -104,7 +104,7 @@ Same constants, same method names, same behavior.
 
 Flexx was built primarily for **terminal UIs**, but works anywhere you need flexbox layout:
 
-- **Terminal UIs** — our primary target (used by [inkx](https://github.com/nickvdyck/inkx))
+- **Terminal UIs** — our primary target (used by [inkx](https://github.com/beorn/inkx))
 - **CLI tools** — synchronous init, fast startup
 - **Canvas/game UIs** — calculate layout, render however you want
 - **Edge runtimes** — 7KB bundle, no WASM complexity
@@ -118,11 +118,13 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 
 ## Documentation
 
-| Document                                   | Description                    |
-| ------------------------------------------ | ------------------------------ |
-| [Algorithm](docs/algorithm.md)             | How the layout algorithm works |
-| [Performance](docs/performance.md)         | Benchmarks and methodology     |
-| [Yoga Comparison](docs/yoga-comparison.md) | Feature comparison with Yoga   |
+| Document                                   | Description                     |
+| ------------------------------------------ | ------------------------------- |
+| [Getting Started](docs/getting-started.md) | Quick guide to building layouts |
+| [API Reference](docs/api.md)               | Complete API documentation      |
+| [Algorithm](docs/algorithm.md)             | How the layout algorithm works  |
+| [Performance](docs/performance.md)         | Benchmarks and methodology      |
+| [Yoga Comparison](docs/yoga-comparison.md) | Feature comparison with Yoga    |
 
 ## Related Projects
 
@@ -132,10 +134,10 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 | ---------------------------------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | [Yoga](https://yogalayout.dev/)                                        | C++/WASM   | Facebook's flexbox engine. The industry standard, used by React Native, Ink, and Litho. Mature and battle-tested across millions of apps. |
 | [Taffy](https://github.com/DioxusLabs/taffy)                           | Rust       | High-performance layout library supporting Flexbox and CSS Grid. Used by Dioxus and Bevy. Evolved from Stretch.                           |
-| [yoga-wasm-web](https://github.com/nickvdyck/yoga-wasm-web)            | WASM       | Popular WASM build of Yoga for web/Node.js (~900K weekly npm downloads). Used by Satori and others.                                       |
-| [flexbox.js](https://github.com/nickvdyck/flexbox.js)                  | JavaScript | Pure JS flexbox engine by Planning-nl. Reference implementation that inspired Flexx's algorithm.                                          |
+| [yoga-wasm-web](https://github.com/shuding/yoga-wasm-web)              | WASM       | Popular WASM build of Yoga for web/Node.js (~900K weekly npm downloads). Used by Satori and others.                                       |
+| [flexbox.js](https://github.com/Planning-nl/flexbox.js)                | JavaScript | Pure JS flexbox engine by Planning-nl. Reference implementation that inspired Flexx's algorithm.                                          |
 | [css-layout](https://www.npmjs.com/package/css-layout)                 | JavaScript | Facebook's original pure-JS flexbox, predecessor to Yoga. Deprecated but historically significant.                                        |
-| [stretch](https://github.com/nickvdyck/stretch)                        | Rust       | Visly's flexbox implementation. Deprecated; evolved into Taffy.                                                                           |
+| [stretch](https://github.com/vislyhq/stretch)                          | Rust       | Visly's flexbox implementation. Deprecated; evolved into Taffy.                                                                           |
 | [troika-flex-layout](https://www.npmjs.com/package/troika-flex-layout) | JavaScript | Flexbox for WebGL/3D scenes via Yoga in a web worker. Part of the Troika framework.                                                       |
 
 ### Terminal UI Frameworks
@@ -143,8 +145,15 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 | Project                                                         | Description                                                                             |
 | --------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | [Ink](https://github.com/vadimdemedes/ink)                      | React for CLIs. Uses Yoga for layout. Powers Claude Code, Wrangler, and many CLI tools. |
+| [inkx](https://github.com/beorn/inkx)                           | React for CLIs with layout feedback. Uses Flexx by default. Drop-in Ink replacement.    |
 | [blessed](https://github.com/chjj/blessed)                      | Curses-like terminal library with its own layout system.                                |
 | [react-blessed](https://github.com/Yomguithereal/react-blessed) | React renderer for blessed.                                                             |
+
+### Related Packages
+
+| Project                                   | Description                                                                         |
+| ----------------------------------------- | ----------------------------------------------------------------------------------- |
+| [chalkx](https://github.com/beorn/chalkx) | Terminal primitives with capability detection, extended underlines, and hyperlinks. |
 
 ## Code Structure
 
