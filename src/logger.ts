@@ -31,8 +31,8 @@ function createFallbackLogger(namespace: string): ConditionalLogger {
 
 async function detectLogger(namespace: string): Promise<ConditionalLogger> {
   try {
-    const { createlogger } = await import("@beorn/logger")
-    const logger = createlogger(namespace)
+    const { createLogger } = await import("@beorn/logger")
+    const logger = createLogger(namespace)
     // Wrap @beorn/logger to accept printf-style args
     if (logger.debug) {
       const originalDebug = logger.debug

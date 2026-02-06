@@ -8,9 +8,9 @@
  */
 
 import { describe, expect, it, beforeAll } from "vitest"
-import { createlogger } from "@beorn/logger"
+import { createLogger } from "@beorn/logger"
 
-const log = createlogger("flexx:test:compat")
+const log = createLogger("flexx:test:compat")
 import * as Flexx from "../src/index.js"
 import initYoga, { type Yoga, type Node as YogaNode } from "yoga-wasm-web"
 import { readFileSync } from "node:fs"
