@@ -961,5 +961,71 @@ describe("Flexx Layout Engine", () => {
 
       root.free()
     })
+
+    it("should handle border EDGE_START/END in RTL (row)", () => {
+      const root = Node.create()
+      root.setWidth(100)
+      root.setHeight(50)
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+      root.setBorder(EDGE_START, 5)
+      root.setBorder(EDGE_END, 10)
+
+      const child = createChild(root, 0, { height: 50, flexGrow: 1 })
+
+      // LTR: START=left border (5), END=right border (10)
+      root.calculateLayout(100, 50, DIRECTION_LTR)
+      expectLayout(child, { left: 5, width: 85 })
+
+      // RTL: START=right border (5), END=left border (10)
+      root.markDirty()
+      root.calculateLayout(100, 50, DIRECTION_RTL)
+      expectLayout(child, { left: 10, width: 85 })
+
+      root.free()
+    })
+
+    it("should handle border EDGE_START/END in RTL (column)", () => {
+      const root = Node.create()
+      root.setWidth(100)
+      root.setHeight(50)
+      root.setFlexDirection(FLEX_DIRECTION_COLUMN)
+      root.setBorder(EDGE_START, 5)
+      root.setBorder(EDGE_END, 10)
+
+      const child = createChild(root, 0, { flexGrow: 1 })
+
+      // LTR column: START=left border (5), END=right border (10)
+      root.calculateLayout(100, 50, DIRECTION_LTR)
+      expectLayout(child, { left: 5, width: 85, height: 50 })
+
+      // RTL column: START=right border (5), END=left border (10)
+      root.markDirty()
+      root.calculateLayout(100, 50, DIRECTION_RTL)
+      expectLayout(child, { left: 10, width: 85, height: 50 })
+
+      root.free()
+    })
+
+    it("should handle margin EDGE_START/END in row + RTL", () => {
+      const root = Node.create()
+      root.setWidth(100)
+      root.setHeight(50)
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+
+      const child = createChild(root, 0, { width: 30, height: 50 })
+      child.setMargin(EDGE_START, 10)
+      child.setMargin(EDGE_END, 20)
+
+      // LTR: START=left(10), END=right(20)
+      root.calculateLayout(100, 50, DIRECTION_LTR)
+      expectLayout(child, { left: 10 })
+
+      // RTL: START=right(10), END=left(20). Child placed from right: 100-10-30=60
+      root.markDirty()
+      root.calculateLayout(100, 50, DIRECTION_RTL)
+      expectLayout(child, { left: 60 })
+
+      root.free()
+    })
   })
 })

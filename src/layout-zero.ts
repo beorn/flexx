@@ -47,48 +47,33 @@ export function isReverseDirection(flexDirection: number): boolean {
  * Get the logical edge value (START/END) for a given physical index.
  * Returns undefined if no logical value applies to this physical edge.
  *
- * The mapping depends on flex direction and text direction:
- * - Row LTR: START→left, END→right (swapped if reverse)
- * - Row RTL: START→right, END→left (swapped if reverse)
- * - Column: START→top, END→bottom (swapped if reverse)
+ * EDGE_START/EDGE_END always resolve along the inline (horizontal) axis,
+ * regardless of flex direction. Direction (LTR/RTL) determines the mapping:
+ * - LTR: START→left, END→right
+ * - RTL: START→right, END→left
  */
 function getLogicalEdgeValue(
   arr: [Value, Value, Value, Value, Value, Value],
   physicalIndex: number,
-  flexDirection: number,
+  _flexDirection: number,
   direction: number = C.DIRECTION_LTR,
 ): Value | undefined {
-  const isRow = isRowDirection(flexDirection)
-  const isReverse = isReverseDirection(flexDirection)
   const isRTL = direction === C.DIRECTION_RTL
-  // For row + RTL, the effective reverse is XOR'd
-  const effectiveReverse = isRow ? isRTL !== isReverse : isReverse
 
-  if (isRow) {
-    // Horizontal main axis: START/END apply to left/right
-    if (physicalIndex === 0) {
-      return effectiveReverse ? arr[5] : arr[4] // Left: START or END
-    } else if (physicalIndex === 2) {
-      return effectiveReverse ? arr[4] : arr[5] // Right: END or START
-    }
-  } else {
-    // Vertical main axis: START/END apply to top/bottom
-    if (physicalIndex === 1) {
-      return effectiveReverse ? arr[5] : arr[4] // Top: START or END
-    } else if (physicalIndex === 3) {
-      return effectiveReverse ? arr[4] : arr[5] // Bottom: END or START
-    }
+  // START/END always map to left/right (inline direction)
+  if (physicalIndex === 0) {
+    return isRTL ? arr[5] : arr[4] // Left: START (LTR) or END (RTL)
+  } else if (physicalIndex === 2) {
+    return isRTL ? arr[4] : arr[5] // Right: END (LTR) or START (RTL)
   }
   return undefined
 }
 
 /**
  * Resolve logical (START/END) margins/padding to physical values.
- * In Yoga, START/END are stored separately and resolved based on flex direction:
- * - Row (LTR): START→left, END→right
- * - Row-reverse (LTR): START→right, END→left
- * - Column: START→top, END→bottom
- * - Column-reverse: START→bottom, END→top
+ * EDGE_START/EDGE_END always resolve along the inline (horizontal) axis:
+ * - LTR: START→left, END→right
+ * - RTL: START→right, END→left
  *
  * Physical edges (LEFT/RIGHT/TOP/BOTTOM) are used directly.
  * When both physical and logical are set, logical takes precedence.
@@ -146,26 +131,24 @@ export function isEdgeAuto(
  * Border values are plain numbers (always points), so resolution is simpler
  * than for margin/padding. Uses NaN as the "not set" sentinel for logical slots.
  * When both physical and logical are set, logical takes precedence.
+ *
+ * EDGE_START/EDGE_END always resolve along the inline (horizontal) axis,
+ * regardless of flex direction. Direction (LTR/RTL) determines the mapping:
+ * - LTR: START→left, END→right
+ * - RTL: START→right, END→left
  */
 export function resolveEdgeBorderValue(
   arr: [number, number, number, number, number, number],
   physicalIndex: number, // 0=left, 1=top, 2=right, 3=bottom
-  flexDirection: number,
+  _flexDirection: number,
   direction: number = C.DIRECTION_LTR,
 ): number {
-  const isRow = isRowDirection(flexDirection)
-  const isReverse = isReverseDirection(flexDirection)
   const isRTL = direction === C.DIRECTION_RTL
-  const effectiveReverse = isRow ? isRTL !== isReverse : isReverse
 
+  // START/END always map to left/right (inline direction)
   let logicalSlot: number | undefined
-  if (isRow) {
-    if (physicalIndex === 0) logicalSlot = effectiveReverse ? 5 : 4
-    else if (physicalIndex === 2) logicalSlot = effectiveReverse ? 4 : 5
-  } else {
-    if (physicalIndex === 1) logicalSlot = effectiveReverse ? 5 : 4
-    else if (physicalIndex === 3) logicalSlot = effectiveReverse ? 4 : 5
-  }
+  if (physicalIndex === 0) logicalSlot = isRTL ? 5 : 4
+  else if (physicalIndex === 2) logicalSlot = isRTL ? 4 : 5
 
   // Logical takes precedence if set (NaN = not set)
   if (logicalSlot !== undefined && !Number.isNaN(arr[logicalSlot])) {
