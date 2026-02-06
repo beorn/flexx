@@ -141,6 +141,39 @@ export function isEdgeAuto(
   return arr[physicalIndex]!.unit === C.UNIT_AUTO
 }
 
+/**
+ * Resolve logical (START/END) border widths to physical values.
+ * Border values are plain numbers (always points), so resolution is simpler
+ * than for margin/padding. Uses NaN as the "not set" sentinel for logical slots.
+ * When both physical and logical are set, logical takes precedence.
+ */
+export function resolveEdgeBorderValue(
+  arr: [number, number, number, number, number, number],
+  physicalIndex: number, // 0=left, 1=top, 2=right, 3=bottom
+  flexDirection: number,
+  direction: number = C.DIRECTION_LTR,
+): number {
+  const isRow = isRowDirection(flexDirection)
+  const isReverse = isReverseDirection(flexDirection)
+  const isRTL = direction === C.DIRECTION_RTL
+  const effectiveReverse = isRow ? isRTL !== isReverse : isReverse
+
+  let logicalSlot: number | undefined
+  if (isRow) {
+    if (physicalIndex === 0) logicalSlot = effectiveReverse ? 5 : 4
+    else if (physicalIndex === 2) logicalSlot = effectiveReverse ? 4 : 5
+  } else {
+    if (physicalIndex === 1) logicalSlot = effectiveReverse ? 5 : 4
+    else if (physicalIndex === 3) logicalSlot = effectiveReverse ? 4 : 5
+  }
+
+  // Logical takes precedence if set (NaN = not set)
+  if (logicalSlot !== undefined && !Number.isNaN(arr[logicalSlot])) {
+    return arr[logicalSlot]
+  }
+  return arr[physicalIndex]
+}
+
 // Note: Uses shared traversalStack from utils.ts for iterative tree traversal
 
 /**
@@ -670,10 +703,30 @@ export function measureNode(
     direction,
   )
 
-  const borderLeft = style.border[0]
-  const borderTop = style.border[1]
-  const borderRight = style.border[2]
-  const borderBottom = style.border[3]
+  const borderLeft = resolveEdgeBorderValue(
+    style.border,
+    0,
+    style.flexDirection,
+    direction,
+  )
+  const borderTop = resolveEdgeBorderValue(
+    style.border,
+    1,
+    style.flexDirection,
+    direction,
+  )
+  const borderRight = resolveEdgeBorderValue(
+    style.border,
+    2,
+    style.flexDirection,
+    direction,
+  )
+  const borderBottom = resolveEdgeBorderValue(
+    style.border,
+    3,
+    style.flexDirection,
+    direction,
+  )
 
   // Calculate node dimensions
   let nodeWidth: number
@@ -1120,10 +1173,30 @@ function layoutNode(
     direction,
   )
 
-  const borderLeft = style.border[0]
-  const borderTop = style.border[1]
-  const borderRight = style.border[2]
-  const borderBottom = style.border[3]
+  const borderLeft = resolveEdgeBorderValue(
+    style.border,
+    0,
+    style.flexDirection,
+    direction,
+  )
+  const borderTop = resolveEdgeBorderValue(
+    style.border,
+    1,
+    style.flexDirection,
+    direction,
+  )
+  const borderRight = resolveEdgeBorderValue(
+    style.border,
+    2,
+    style.flexDirection,
+    direction,
+  )
+  const borderBottom = resolveEdgeBorderValue(
+    style.border,
+    3,
+    style.flexDirection,
+    direction,
+  )
 
   // ============================================================================
   // PHASE 3: Calculate Node Dimensions
@@ -1536,8 +1609,30 @@ function layoutNode(
               direction,
             )
         const childBorder = isRow
-          ? childStyle.border[0] + childStyle.border[2]
-          : childStyle.border[1] + childStyle.border[3]
+          ? resolveEdgeBorderValue(
+              childStyle.border,
+              0,
+              childStyle.flexDirection,
+              direction,
+            ) +
+            resolveEdgeBorderValue(
+              childStyle.border,
+              2,
+              childStyle.flexDirection,
+              direction,
+            )
+          : resolveEdgeBorderValue(
+              childStyle.border,
+              1,
+              childStyle.flexDirection,
+              direction,
+            ) +
+            resolveEdgeBorderValue(
+              childStyle.border,
+              3,
+              childStyle.flexDirection,
+              direction,
+            )
         baseSize = childPadding + childBorder
       }
     }
@@ -2350,10 +2445,30 @@ function layoutNode(
         contentWidth,
         direction,
       )
-      const childBorderL = childStyle.border[0]
-      const childBorderT = childStyle.border[1]
-      const childBorderR = childStyle.border[2]
-      const childBorderB = childStyle.border[3]
+      const childBorderL = resolveEdgeBorderValue(
+        childStyle.border,
+        0,
+        childStyle.flexDirection,
+        direction,
+      )
+      const childBorderT = resolveEdgeBorderValue(
+        childStyle.border,
+        1,
+        childStyle.flexDirection,
+        direction,
+      )
+      const childBorderR = resolveEdgeBorderValue(
+        childStyle.border,
+        2,
+        childStyle.flexDirection,
+        direction,
+      )
+      const childBorderB = resolveEdgeBorderValue(
+        childStyle.border,
+        3,
+        childStyle.flexDirection,
+        direction,
+      )
       const childMinW =
         childPaddingL + childPaddingR + childBorderL + childBorderR
       const childMinH =

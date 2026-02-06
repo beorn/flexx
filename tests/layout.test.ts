@@ -678,7 +678,7 @@ describe("Flexx Layout Engine", () => {
         expect(style.padding).toHaveLength(6)
         expect(style.margin).toHaveLength(6)
         expect(style.position).toHaveLength(6)
-        expect(style.border).toEqual([0, 0, 0, 0])
+        expect(style.border).toEqual([0, 0, 0, 0, NaN, NaN])
         expect(style.gap).toEqual([0, 0])
       })
 

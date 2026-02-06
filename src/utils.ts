@@ -73,7 +73,7 @@ export function setEdgeValue(
  * Set a border value on an edge array.
  */
 export function setEdgeBorder(
-  arr: [number, number, number, number],
+  arr: [number, number, number, number, number, number],
   edge: number,
   value: number,
 ): void {
@@ -105,12 +105,12 @@ export function setEdgeBorder(
       arr[3] = value
       break
     case C.EDGE_START:
-      // In LTR mode, START = LEFT
-      arr[0] = value
+      // Store in logical START slot (resolved to physical at layout time)
+      arr[4] = value
       break
     case C.EDGE_END:
-      // In LTR mode, END = RIGHT
-      arr[2] = value
+      // Store in logical END slot (resolved to physical at layout time)
+      arr[5] = value
       break
   }
 }
@@ -144,7 +144,7 @@ export function getEdgeValue(
  * Get a border value from an edge array.
  */
 export function getEdgeBorderValue(
-  arr: [number, number, number, number],
+  arr: [number, number, number, number, number, number],
   edge: number,
 ): number {
   switch (edge) {
@@ -156,6 +156,10 @@ export function getEdgeBorderValue(
       return arr[2]
     case C.EDGE_BOTTOM:
       return arr[3]
+    case C.EDGE_START:
+      return arr[4]
+    case C.EDGE_END:
+      return arr[5]
     default:
       return arr[0] // Default to left
   }

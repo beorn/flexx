@@ -180,7 +180,7 @@ export interface Style {
   // Logical edges: [4]=start, [5]=end (resolved based on flex direction)
   margin: [Value, Value, Value, Value, Value, Value]
   padding: [Value, Value, Value, Value, Value, Value]
-  border: [number, number, number, number] // Border widths (always points)
+  border: [number, number, number, number, number, number] // Border widths (always points, [4,5] = logical start/end)
 
   // Gap
   gap: [number, number] // [column, row]
@@ -243,7 +243,7 @@ export function createDefaultStyle(): Style {
       createValue(),
       createValue(),
     ],
-    border: [0, 0, 0, 0],
+    border: [0, 0, 0, 0, NaN, NaN],
     gap: [0, 0],
     overflow: 0, // OVERFLOW_VISIBLE
   }
