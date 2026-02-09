@@ -1632,7 +1632,14 @@ function layoutNode(
 
     // Store flex factors from style
     flex.flexGrow = childStyle.flexGrow
-    flex.flexShrink = childStyle.flexShrink
+    // CSS spec §4.5: overflow containers have automatic min-size = 0 and can shrink
+    // below content size. Yoga defaults flexShrink to 0, preventing this. For
+    // overflow:hidden/scroll children, ensure flexShrink >= 1 so they participate
+    // in negative free space distribution (matching CSS behavior).
+    flex.flexShrink =
+      childStyle.overflow !== C.OVERFLOW_VISIBLE
+        ? Math.max(childStyle.flexShrink, 1)
+        : childStyle.flexShrink
 
     // Store base and main size (start from base size - distribution happens from here)
     flex.baseSize = baseSize
