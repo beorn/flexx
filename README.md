@@ -33,7 +33,7 @@ console.log(child.getComputedWidth()) // 100
 
 ## Status
 
-**Production-ready. 1255 tests passing including 41/41 Yoga compatibility tests and 1100+ incremental re-layout fuzz tests.**
+**Production-ready. 1357 tests passing including 41/41 Yoga compatibility tests and 1200+ incremental re-layout fuzz tests.**
 
 | Feature                                       | Status      |
 | --------------------------------------------- | ----------- |
@@ -61,12 +61,12 @@ bun add @beorn/flexx
 
 Flexx and Yoga each win in different scenarios:
 
-| Scenario | Winner | Margin |
-|----------|--------|--------|
-| **Initial layout** (create + calculate) | Flexx | 1.5-2.5x |
-| **No-change re-layout** (fingerprint cache) | **Flexx** | **5.5x** |
-| **Incremental re-layout** (single dirty leaf) | Yoga | 2.8-3.4x |
-| **Deep nesting** (15+ levels) | Yoga | increasing |
+| Scenario                                      | Winner    | Margin     |
+| --------------------------------------------- | --------- | ---------- |
+| **Initial layout** (create + calculate)       | Flexx     | 1.5-2.5x   |
+| **No-change re-layout** (fingerprint cache)   | **Flexx** | **5.5x**   |
+| **Incremental re-layout** (single dirty leaf) | Yoga      | 2.8-3.4x   |
+| **Deep nesting** (15+ levels)                 | Yoga      | increasing |
 
 Flexx wins at initial layout because JS node creation avoids WASM boundary crossings (~8x cheaper). Flexx's fingerprint cache makes no-change re-layout essentially free (27ns regardless of tree size). Yoga's WASM layout computation is faster for per-node work during re-layout.
 
@@ -85,11 +85,11 @@ Flexx pursues both maximum performance **and** maximum correctness through aggre
 
 **The problem**: Incremental re-layout (caching unchanged subtrees) is essential for performance but introduces subtle bugs. Chrome's Blink team experienced a "chain of ~10 bugs over a year" in their flexbox implementation. Flexx addresses this with a multi-layered test strategy:
 
-| Layer | Tests | What it verifies |
-|-------|-------|------------------|
-| Yoga compatibility | 41 | Identical output to Yoga for every feature |
-| Feature tests | ~110 | Each flexbox feature in isolation |
-| **Re-layout fuzz** | **1100+** | Incremental re-layout matches fresh layout across random trees |
+| Layer              | Tests     | What it verifies                                               |
+| ------------------ | --------- | -------------------------------------------------------------- |
+| Yoga compatibility | 41        | Identical output to Yoga for every feature                     |
+| Feature tests      | ~110      | Each flexbox feature in isolation                              |
+| **Re-layout fuzz** | **1200+** | Incremental re-layout matches fresh layout across random trees |
 
 The fuzz tests use a **differential oracle**: build a random tree, layout, mark nodes dirty, re-layout, then compare against a fresh layout of the identical tree. This has caught 3 distinct caching bugs that all 524 single-pass tests missed.
 
@@ -138,15 +138,15 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 
 ## Documentation
 
-| Document                                   | Description                     |
-| ------------------------------------------ | ------------------------------- |
-| [Getting Started](docs/getting-started.md) | Quick guide to building layouts |
-| [API Reference](docs/api.md)               | Complete API documentation      |
-| [Algorithm](docs/algorithm.md)             | How the layout algorithm works  |
-| [Performance](docs/performance.md)         | Benchmarks and methodology      |
-| [Yoga Comparison](docs/yoga-comparison.md) | Feature comparison with Yoga    |
-| [Testing](docs/testing.md)                 | Test infrastructure and methodology |
-| [Incremental Layout Bugs](docs/incremental-layout-bugs.md) | Bug taxonomy and debugging guide |
+| Document                                                   | Description                         |
+| ---------------------------------------------------------- | ----------------------------------- |
+| [Getting Started](docs/getting-started.md)                 | Quick guide to building layouts     |
+| [API Reference](docs/api.md)                               | Complete API documentation          |
+| [Algorithm](docs/algorithm.md)                             | How the layout algorithm works      |
+| [Performance](docs/performance.md)                         | Benchmarks and methodology          |
+| [Yoga Comparison](docs/yoga-comparison.md)                 | Feature comparison with Yoga        |
+| [Testing](docs/testing.md)                                 | Test infrastructure and methodology |
+| [Incremental Layout Bugs](docs/incremental-layout-bugs.md) | Bug taxonomy and debugging guide    |
 
 ## Related Projects
 

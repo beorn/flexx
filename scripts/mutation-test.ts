@@ -18,6 +18,7 @@ interface Mutation {
   find: string // Exact string to find (must be unique in file)
   replace: string
   description: string
+  equivalent?: boolean // True = mutation disables redundant defense layer, expected to pass
 }
 
 const mutations: Mutation[] = [
@@ -32,6 +33,7 @@ const mutations: Mutation[] = [
   // root.resetLayoutCache() // MUTATION: skip cache reset`,
     description:
       "Skip clearing layout cache at start of calculateLayout — stale cache entries should cause wrong results",
+    equivalent: true, // markDirty() clears caches for dirty-path nodes; clean nodes' cached entries match constraints → correct
   },
   {
     name: "skip-fingerprint-check",
@@ -59,6 +61,7 @@ const mutations: Mutation[] = [
   ) {`,
     description:
       "Disable fingerprint-based skip — forces full recompute every time (should still produce correct results if caching is correct)",
+    equivalent: true, // Disables optimization, doesn't affect correctness
   },
   {
     name: "always-return-cached-layout",
@@ -82,6 +85,7 @@ const mutations: Mutation[] = [
     }`,
     description:
       "Return cached layout even for dirty nodes — stale results should cause mismatches",
+    equivalent: true, // markDirty() sets _lc0=_lc1=undefined, so getCachedLayout returns null regardless of dirty check
   },
   {
     name: "skip-markDirty-propagation",
@@ -177,26 +181,33 @@ const mutations: Mutation[] = [
   // flex.layoutValid = true`,
     description:
       "Never mark layout as valid — fingerprint check always fails, forcing full recompute (should still be correct if algorithm is sound)",
+    equivalent: true, // Disables optimization, doesn't affect correctness
   },
 ]
 
 async function main() {
   const dir = resolve(import.meta.dir, "..")
   const kmRoot = resolve(dir, "../..")
-  let passed = 0
-  let failed = 0
+  let caught = 0
+  let equivalentConfirmed = 0
+  let unexpectedPass = 0
+  let unexpectedFail = 0
   const gaps: string[] = []
   const skipped: string[] = []
 
   console.log(`Mutation testing for Flexx cache code paths`)
-  console.log(`Running ${mutations.length} mutations against relayout-consistency fuzz suite\n`)
+  console.log(
+    `Running ${mutations.length} mutations against relayout-consistency fuzz suite\n`,
+  )
 
   for (const mutation of mutations) {
     const filepath = resolve(dir, mutation.file)
     const original = readFileSync(filepath, "utf8")
 
     if (!original.includes(mutation.find)) {
-      console.error(`SKIP "${mutation.name}" -- pattern not found in ${mutation.file}`)
+      console.error(
+        `SKIP "${mutation.name}" -- pattern not found in ${mutation.file}`,
+      )
       skipped.push(mutation.name)
       continue
     }
@@ -205,7 +216,9 @@ async function main() {
     const firstIdx = original.indexOf(mutation.find)
     const secondIdx = original.indexOf(mutation.find, firstIdx + 1)
     if (secondIdx !== -1) {
-      console.error(`SKIP "${mutation.name}" -- pattern appears multiple times in ${mutation.file}`)
+      console.error(
+        `SKIP "${mutation.name}" -- pattern appears multiple times in ${mutation.file}`,
+      )
       skipped.push(mutation.name)
       continue
     }
@@ -229,13 +242,23 @@ async function main() {
       const exitCode = await proc.exited
 
       if (exitCode === 0) {
-        console.log(`COVERAGE GAP`)
-        console.error(`    ${mutation.description}`)
-        gaps.push(mutation.name)
-        failed++
+        if (mutation.equivalent) {
+          console.log(`equivalent (expected)`)
+          equivalentConfirmed++
+        } else {
+          console.log(`COVERAGE GAP`)
+          console.error(`    ${mutation.description}`)
+          gaps.push(mutation.name)
+          unexpectedPass++
+        }
       } else {
-        console.log(`caught`)
-        passed++
+        if (mutation.equivalent) {
+          console.log(`UNEXPECTED FAIL (marked equivalent but tests caught it)`)
+          unexpectedFail++
+        } else {
+          console.log(`caught`)
+          caught++
+        }
       }
     } finally {
       // ALWAYS restore
@@ -243,14 +266,19 @@ async function main() {
     }
   }
 
+  const total = caught + equivalentConfirmed + unexpectedPass + unexpectedFail
   console.log(`\n${"=".repeat(60)}`)
-  console.log(`Mutation testing: ${passed}/${passed + failed} mutations caught`)
+  console.log(`Mutation testing: ${caught} caught, ${equivalentConfirmed} equivalent, ${total} total`)
   if (skipped.length > 0) {
     console.log(`Skipped: ${skipped.join(", ")}`)
   }
   if (gaps.length > 0) {
     console.log(`Coverage gaps: ${gaps.join(", ")}`)
   }
+  if (unexpectedFail > 0) {
+    console.log(`Unexpected failures: ${unexpectedFail} mutations marked equivalent were caught by tests`)
+  }
+  // Exit non-zero only for real coverage gaps
   process.exit(gaps.length > 0 ? 1 : 0)
 }
 

@@ -33,6 +33,7 @@ import {
   expectIdempotent,
   expectRelayoutMatchesFresh,
   expectResizeRoundTrip,
+  formatLayout,
   getLayout,
   textMeasure,
   type BuildTreeResult,
@@ -182,10 +183,7 @@ describe("Re-layout Consistency: targeted scenarios", () => {
     const flex = Node.create()
     flex.setFlexGrow(1)
     flex.setMeasureFunc((w, wm, h, hm) => {
-      if (
-        wm === MEASURE_MODE_EXACTLY ||
-        wm === MEASURE_MODE_AT_MOST
-      ) {
+      if (wm === MEASURE_MODE_EXACTLY || wm === MEASURE_MODE_AT_MOST) {
         if (w >= currentTextWidth) return { width: currentTextWidth, height: 1 }
         return {
           width: Math.min(currentTextWidth, w),
@@ -527,15 +525,9 @@ describe("Re-layout Consistency: resize stability", () => {
     const child = Node.create()
     child.setMeasureFunc((_w, wm, _h, hm) => {
       // Return a large height — should be constrained
-      if (
-        wm === MEASURE_MODE_EXACTLY ||
-        wm === MEASURE_MODE_AT_MOST
-      ) {
+      if (wm === MEASURE_MODE_EXACTLY || wm === MEASURE_MODE_AT_MOST) {
         const w = Math.min(40, _w)
-        if (
-          hm === MEASURE_MODE_EXACTLY ||
-          hm === MEASURE_MODE_AT_MOST
-        ) {
+        if (hm === MEASURE_MODE_EXACTLY || hm === MEASURE_MODE_AT_MOST) {
           return { width: w, height: Math.min(20, _h) }
         }
         return { width: w, height: 20 }
@@ -555,104 +547,104 @@ describe("Re-layout Consistency: resize stability", () => {
 // Group 5: Fuzz — Re-layout vs Fresh
 // ============================================================================
 
-function buildRandomTree(
-  rng: () => number,
-): () => BuildTreeResult {
-    // Capture the seed state by building a spec first, then replaying
-    const nodeCount = 3 + Math.floor(rng() * 8)
-    const specs: Array<{
-      width?: number
-      height?: number
-      flexGrow?: number
-      flexShrink?: number
-      hasMeasure: boolean
-      measureWidth: number
-      isBordered: boolean
-      flexDirection: number
-      children: number[] // indices of children
-    }> = []
+function buildRandomTree(rng: () => number): () => BuildTreeResult {
+  // Capture the seed state by building a spec first, then replaying
+  const nodeCount = 3 + Math.floor(rng() * 8)
+  const specs: Array<{
+    width?: number
+    height?: number
+    flexGrow?: number
+    flexShrink?: number
+    hasMeasure: boolean
+    measureWidth: number
+    isBordered: boolean
+    flexDirection: number
+    children: number[] // indices of children
+  }> = []
 
-    // Generate flat-ish spec
-    for (let i = 0; i < nodeCount; i++) {
-      const isLeaf = i >= nodeCount / 2
-      const hasMeasure = isLeaf && rng() < 0.4
-      specs.push({
-        width: !hasMeasure && rng() < 0.5 ? 5 + Math.floor(rng() * 20) : undefined,
-        height: !hasMeasure && rng() < 0.3 ? 1 + Math.floor(rng() * 5) : undefined,
-        flexGrow: rng() < 0.4 ? 1 : undefined,
-        flexShrink: rng() < 0.3 ? 1 : undefined,
-        hasMeasure,
-        measureWidth: 10 + Math.floor(rng() * 60),
-        isBordered: !isLeaf && rng() < 0.2,
-        flexDirection: rng() < 0.5 ? FLEX_DIRECTION_ROW : FLEX_DIRECTION_COLUMN,
-        children: [],
-      })
-    }
+  // Generate flat-ish spec
+  for (let i = 0; i < nodeCount; i++) {
+    const isLeaf = i >= nodeCount / 2
+    const hasMeasure = isLeaf && rng() < 0.4
+    specs.push({
+      width:
+        !hasMeasure && rng() < 0.5 ? 5 + Math.floor(rng() * 20) : undefined,
+      height:
+        !hasMeasure && rng() < 0.3 ? 1 + Math.floor(rng() * 5) : undefined,
+      flexGrow: rng() < 0.4 ? 1 : undefined,
+      flexShrink: rng() < 0.3 ? 1 : undefined,
+      hasMeasure,
+      measureWidth: 10 + Math.floor(rng() * 60),
+      isBordered: !isLeaf && rng() < 0.2,
+      flexDirection: rng() < 0.5 ? FLEX_DIRECTION_ROW : FLEX_DIRECTION_COLUMN,
+      children: [],
+    })
+  }
 
-    // Build parent-child relationships (simple: each non-root attaches to a random earlier node)
-    for (let i = 1; i < nodeCount; i++) {
-      const parentIdx = Math.floor(rng() * i)
-      // Don't attach children to measure nodes
-      if (!specs[parentIdx]!.hasMeasure) {
-        specs[parentIdx]!.children.push(i)
-      } else {
-        // Attach to root instead
-        specs[0]!.children.push(i)
-      }
-    }
-
-    // Pick random dirty targets (1-3 non-root nodes)
-    const dirtyCount = 1 + Math.floor(rng() * 3)
-    const dirtyIndices: number[] = []
-    for (let d = 0; d < dirtyCount && d < nodeCount - 1; d++) {
-      const idx = 1 + Math.floor(rng() * (nodeCount - 1))
-      if (!dirtyIndices.includes(idx)) dirtyIndices.push(idx)
-    }
-
-    return function buildTree(): BuildTreeResult {
-      const nodes: Node[] = []
-      const dirtyTargets: Node[] = []
-
-      for (let i = 0; i < nodeCount; i++) {
-        const spec = specs[i]!
-        const node = Node.create()
-        if (i === 0) {
-          node.setWidth(80)
-          node.setFlexDirection(spec.flexDirection)
-        } else {
-          if (spec.width !== undefined) node.setWidth(spec.width)
-          if (spec.height !== undefined) node.setHeight(spec.height)
-          if (spec.flexGrow !== undefined) node.setFlexGrow(spec.flexGrow)
-          if (spec.flexShrink !== undefined) node.setFlexShrink(spec.flexShrink)
-          node.setFlexDirection(spec.flexDirection)
-        }
-        if (spec.isBordered) {
-          node.setBorder(0, 1)
-          node.setBorder(1, 1)
-          node.setBorder(2, 1)
-          node.setBorder(3, 1)
-        }
-        if (spec.hasMeasure) {
-          node.setMeasureFunc(textMeasure(spec.measureWidth))
-        }
-        nodes.push(node)
-
-        if (dirtyIndices.includes(i)) {
-          dirtyTargets.push(node)
-        }
-      }
-
-      // Wire parent-child
-      for (let i = 0; i < nodeCount; i++) {
-        const spec = specs[i]!
-        for (let c = 0; c < spec.children.length; c++) {
-          nodes[i]!.insertChild(nodes[spec.children[c]!]!, c)
-        }
-      }
-
-      return { root: nodes[0]!, dirtyTargets }
+  // Build parent-child relationships (simple: each non-root attaches to a random earlier node)
+  for (let i = 1; i < nodeCount; i++) {
+    const parentIdx = Math.floor(rng() * i)
+    // Don't attach children to measure nodes
+    if (!specs[parentIdx]!.hasMeasure) {
+      specs[parentIdx]!.children.push(i)
+    } else {
+      // Attach to root instead
+      specs[0]!.children.push(i)
     }
   }
+
+  // Pick random dirty targets (1-3 non-root nodes)
+  const dirtyCount = 1 + Math.floor(rng() * 3)
+  const dirtyIndices: number[] = []
+  for (let d = 0; d < dirtyCount && d < nodeCount - 1; d++) {
+    const idx = 1 + Math.floor(rng() * (nodeCount - 1))
+    if (!dirtyIndices.includes(idx)) dirtyIndices.push(idx)
+  }
+
+  return function buildTree(): BuildTreeResult {
+    const nodes: Node[] = []
+    const dirtyTargets: Node[] = []
+
+    for (let i = 0; i < nodeCount; i++) {
+      const spec = specs[i]!
+      const node = Node.create()
+      if (i === 0) {
+        node.setWidth(80)
+        node.setFlexDirection(spec.flexDirection)
+      } else {
+        if (spec.width !== undefined) node.setWidth(spec.width)
+        if (spec.height !== undefined) node.setHeight(spec.height)
+        if (spec.flexGrow !== undefined) node.setFlexGrow(spec.flexGrow)
+        if (spec.flexShrink !== undefined) node.setFlexShrink(spec.flexShrink)
+        node.setFlexDirection(spec.flexDirection)
+      }
+      if (spec.isBordered) {
+        node.setBorder(0, 1)
+        node.setBorder(1, 1)
+        node.setBorder(2, 1)
+        node.setBorder(3, 1)
+      }
+      if (spec.hasMeasure) {
+        node.setMeasureFunc(textMeasure(spec.measureWidth))
+      }
+      nodes.push(node)
+
+      if (dirtyIndices.includes(i)) {
+        dirtyTargets.push(node)
+      }
+    }
+
+    // Wire parent-child
+    for (let i = 0; i < nodeCount; i++) {
+      const spec = specs[i]!
+      for (let c = 0; c < spec.children.length; c++) {
+        nodes[i]!.insertChild(nodes[spec.children[c]!]!, c)
+      }
+    }
+
+    return { root: nodes[0]!, dirtyTargets }
+  }
+}
 
 describe("Re-layout Consistency: fuzz", () => {
   for (let seed = 0; seed < 500; seed++) {
@@ -801,6 +793,380 @@ describe("Fuzz: multi-step constraint sweep", () => {
         const detail = diffs.map((d) => `  ${d}`).join("\n")
         expect.unreachable(
           `Full lifecycle differs at finalWidth=${finalWidth} (widths: ${widths.join("→")}, ${diffs.length} diffs):\n${detail}`,
+        )
+      }
+    })
+  }
+})
+
+// ============================================================================
+// Group 9: Content change — mutable measure functions
+// ============================================================================
+
+describe("Re-layout Consistency: content change", () => {
+  it("measure function content change: text grows", () => {
+    // Simulates user editing text — measure function returns different values
+    let currentWidth = 30
+
+    const root = Node.create()
+    root.setWidth(40)
+    const row = Node.create()
+    row.setFlexDirection(FLEX_DIRECTION_ROW)
+    root.insertChild(row, 0)
+
+    const text = Node.create()
+    text.setFlexGrow(1)
+    text.setFlexShrink(1)
+    text.setMeasureFunc((w, wm, h, hm) =>
+      textMeasure(currentWidth)(w, wm, h, hm),
+    )
+    row.insertChild(text, 0)
+
+    // Initial: 30 chars at width 40 → fits in 1 line
+    root.calculateLayout(40, NaN, DIRECTION_LTR)
+    expect(text.getComputedHeight()).toBe(1)
+
+    // Content grows to 100 chars → wraps to 3 lines at width 40
+    currentWidth = 100
+    text.markDirty()
+    root.calculateLayout(40, NaN, DIRECTION_LTR)
+    expect(text.getComputedHeight()).toBe(3) // ceil(100/40) = 3
+
+    // Compare against fresh
+    const fresh = Node.create()
+    fresh.setWidth(40)
+    const freshRow = Node.create()
+    freshRow.setFlexDirection(FLEX_DIRECTION_ROW)
+    fresh.insertChild(freshRow, 0)
+    const freshText = Node.create()
+    freshText.setFlexGrow(1)
+    freshText.setFlexShrink(1)
+    freshText.setMeasureFunc(textMeasure(100))
+    freshRow.insertChild(freshText, 0)
+    fresh.calculateLayout(40, NaN, DIRECTION_LTR)
+
+    expect(getLayout(root)).toEqual(getLayout(fresh))
+  })
+
+  it("measure function content change: text shrinks", () => {
+    let currentWidth = 100
+
+    const root = Node.create()
+    root.setWidth(40)
+    const text = Node.create()
+    text.setMeasureFunc((w, wm, h, hm) =>
+      textMeasure(currentWidth)(w, wm, h, hm),
+    )
+    root.insertChild(text, 0)
+
+    root.calculateLayout(40, NaN, DIRECTION_LTR)
+    expect(text.getComputedHeight()).toBe(3) // ceil(100/40)
+
+    // Content shrinks to 20 chars → fits in 1 line
+    currentWidth = 20
+    text.markDirty()
+    root.calculateLayout(40, NaN, DIRECTION_LTR)
+    expect(text.getComputedHeight()).toBe(1)
+  })
+
+  it("content change + resize combined", () => {
+    let currentWidth = 50
+
+    const root = Node.create()
+    root.setWidth(80)
+    root.setFlexDirection(FLEX_DIRECTION_COLUMN)
+
+    const card = Node.create()
+    card.setBorder(0, 1)
+    card.setBorder(1, 1)
+    card.setBorder(2, 1)
+    card.setBorder(3, 1)
+    root.insertChild(card, 0)
+
+    const row = Node.create()
+    row.setFlexDirection(FLEX_DIRECTION_ROW)
+    card.insertChild(row, 0)
+
+    const prefix = Node.create()
+    prefix.setWidth(3)
+    prefix.setFlexShrink(0)
+    row.insertChild(prefix, 0)
+
+    const content = Node.create()
+    content.setFlexGrow(1)
+    content.setFlexShrink(1)
+    content.setMeasureFunc((w, wm, h, hm) =>
+      textMeasure(currentWidth)(w, wm, h, hm),
+    )
+    row.insertChild(content, 1)
+
+    // Initial: 50 chars at ~75 content width → 1 line
+    root.calculateLayout(80, NaN, DIRECTION_LTR)
+
+    // Change content AND resize
+    currentWidth = 200
+    content.markDirty()
+    root.setWidth(40)
+    root.calculateLayout(40, NaN, DIRECTION_LTR)
+    const incremental = getLayout(root)
+
+    // Fresh at same final state
+    const fresh = Node.create()
+    fresh.setWidth(40)
+    fresh.setFlexDirection(FLEX_DIRECTION_COLUMN)
+    const freshCard = Node.create()
+    freshCard.setBorder(0, 1)
+    freshCard.setBorder(1, 1)
+    freshCard.setBorder(2, 1)
+    freshCard.setBorder(3, 1)
+    fresh.insertChild(freshCard, 0)
+    const freshRow = Node.create()
+    freshRow.setFlexDirection(FLEX_DIRECTION_ROW)
+    freshCard.insertChild(freshRow, 0)
+    const freshPrefix = Node.create()
+    freshPrefix.setWidth(3)
+    freshPrefix.setFlexShrink(0)
+    freshRow.insertChild(freshPrefix, 0)
+    const freshContent = Node.create()
+    freshContent.setFlexGrow(1)
+    freshContent.setFlexShrink(1)
+    freshContent.setMeasureFunc(textMeasure(200))
+    freshRow.insertChild(freshContent, 1)
+    fresh.calculateLayout(40, NaN, DIRECTION_LTR)
+    const reference = getLayout(fresh)
+
+    const diffs = diffLayouts(reference, incremental)
+    if (diffs.length > 0) {
+      const detail = diffs.map((d) => `  ${d}`).join("\n")
+      expect.unreachable(
+        `Content change + resize differs:\n${detail}\n\nFresh:\n${formatLayout(reference)}\n\nIncremental:\n${formatLayout(incremental)}`,
+      )
+    }
+  })
+})
+
+// ============================================================================
+// Group 10: Content change fuzz — mutable measure functions
+// ============================================================================
+
+describe("Fuzz: content change", () => {
+  // Verify that changing a measure function's output + markDirty produces
+  // the same layout as a fresh tree with the new content. This tests the
+  // real-world scenario of user editing text in a TUI.
+  for (let seed = 0; seed < 100; seed++) {
+    it(`seed=${seed}: content change matches fresh`, () => {
+      const rng = createRng(seed * 1049 + 113)
+      const nodeCount = 3 + Math.floor(rng() * 6)
+
+      // Track which nodes have mutable measure functions
+      const measureWidths: number[] = []
+      const specs: Array<{
+        width?: number
+        height?: number
+        flexGrow?: number
+        flexShrink?: number
+        hasMeasure: boolean
+        measureIdx: number // index into measureWidths, -1 if no measure
+        isBordered: boolean
+        flexDirection: number
+        children: number[]
+      }> = []
+
+      for (let i = 0; i < nodeCount; i++) {
+        const isLeaf = i >= nodeCount / 2
+        const hasMeasure = isLeaf && rng() < 0.5
+        let measureIdx = -1
+        if (hasMeasure) {
+          measureIdx = measureWidths.length
+          measureWidths.push(10 + Math.floor(rng() * 60))
+        }
+        specs.push({
+          width:
+            !hasMeasure && rng() < 0.5
+              ? 5 + Math.floor(rng() * 20)
+              : undefined,
+          height:
+            !hasMeasure && rng() < 0.3
+              ? 1 + Math.floor(rng() * 5)
+              : undefined,
+          flexGrow: rng() < 0.4 ? 1 : undefined,
+          flexShrink: rng() < 0.3 ? 1 : undefined,
+          hasMeasure,
+          measureIdx,
+          isBordered: !isLeaf && rng() < 0.2,
+          flexDirection:
+            rng() < 0.5 ? FLEX_DIRECTION_ROW : FLEX_DIRECTION_COLUMN,
+          children: [],
+        })
+      }
+
+      // Build parent-child relationships
+      for (let i = 1; i < nodeCount; i++) {
+        const parentIdx = Math.floor(rng() * i)
+        if (!specs[parentIdx]!.hasMeasure) {
+          specs[parentIdx]!.children.push(i)
+        } else {
+          specs[0]!.children.push(i)
+        }
+      }
+
+      // Pick 1-2 measure nodes to change content
+      const measureIndices = specs
+        .map((s, i) => (s.hasMeasure ? i : -1))
+        .filter((i) => i >= 0)
+      if (measureIndices.length === 0) return // skip if no measure nodes
+
+      const changeCount = 1 + Math.floor(rng() * Math.min(2, measureIndices.length))
+      const changingNodes: number[] = []
+      for (let c = 0; c < changeCount; c++) {
+        const idx =
+          measureIndices[Math.floor(rng() * measureIndices.length)]!
+        if (!changingNodes.includes(idx)) changingNodes.push(idx)
+      }
+
+      function buildTree(useNewWidths: boolean): { root: Node; measureNodes: Node[] } {
+        const nodes: Node[] = []
+        const measureNodes: Node[] = []
+        for (let i = 0; i < nodeCount; i++) {
+          const spec = specs[i]!
+          const node = Node.create()
+          if (i === 0) {
+            node.setWidth(80)
+            node.setFlexDirection(spec.flexDirection)
+          } else {
+            if (spec.width !== undefined) node.setWidth(spec.width)
+            if (spec.height !== undefined) node.setHeight(spec.height)
+            if (spec.flexGrow !== undefined) node.setFlexGrow(spec.flexGrow)
+            if (spec.flexShrink !== undefined)
+              node.setFlexShrink(spec.flexShrink)
+            node.setFlexDirection(spec.flexDirection)
+          }
+          if (spec.isBordered) {
+            node.setBorder(0, 1)
+            node.setBorder(1, 1)
+            node.setBorder(2, 1)
+            node.setBorder(3, 1)
+          }
+          if (spec.hasMeasure) {
+            const w = useNewWidths
+              ? measureWidths[spec.measureIdx]!
+              : measureWidths[spec.measureIdx]!
+            node.setMeasureFunc(textMeasure(w))
+            measureNodes.push(node)
+          }
+          nodes.push(node)
+        }
+        for (let i = 0; i < nodeCount; i++) {
+          const spec = specs[i]!
+          for (let c = 0; c < spec.children.length; c++) {
+            nodes[i]!.insertChild(nodes[spec.children[c]!]!, c)
+          }
+        }
+        return { root: nodes[0]!, measureNodes }
+      }
+
+      // New widths for changed nodes
+      const newWidths = [...measureWidths]
+      for (const idx of changingNodes) {
+        const spec = specs[idx]!
+        newWidths[spec.measureIdx] = 10 + Math.floor(rng() * 100)
+      }
+
+      // Build mutable tree with closures referencing measureWidths
+      const mutableNodes: Node[] = []
+      const mutableMeasureNodes: Map<number, Node> = new Map()
+      const allNodes: Node[] = []
+
+      for (let i = 0; i < nodeCount; i++) {
+        const spec = specs[i]!
+        const node = Node.create()
+        if (i === 0) {
+          node.setWidth(80)
+          node.setFlexDirection(spec.flexDirection)
+        } else {
+          if (spec.width !== undefined) node.setWidth(spec.width)
+          if (spec.height !== undefined) node.setHeight(spec.height)
+          if (spec.flexGrow !== undefined) node.setFlexGrow(spec.flexGrow)
+          if (spec.flexShrink !== undefined) node.setFlexShrink(spec.flexShrink)
+          node.setFlexDirection(spec.flexDirection)
+        }
+        if (spec.isBordered) {
+          node.setBorder(0, 1)
+          node.setBorder(1, 1)
+          node.setBorder(2, 1)
+          node.setBorder(3, 1)
+        }
+        if (spec.hasMeasure) {
+          // Use closure that references measureWidths (mutable)
+          const mIdx = spec.measureIdx
+          node.setMeasureFunc((w, wm, h, hm) =>
+            textMeasure(measureWidths[mIdx]!)(w, wm, h, hm),
+          )
+          mutableMeasureNodes.set(i, node)
+        }
+        allNodes.push(node)
+      }
+      for (let i = 0; i < nodeCount; i++) {
+        const spec = specs[i]!
+        for (let c = 0; c < spec.children.length; c++) {
+          allNodes[i]!.insertChild(allNodes[spec.children[c]!]!, c)
+        }
+      }
+
+      const root = allNodes[0]!
+
+      // Phase 1: layout with original content
+      root.calculateLayout(80, NaN, DIRECTION_LTR)
+
+      // Phase 2: change content and mark dirty
+      for (const idx of changingNodes) {
+        const spec = specs[idx]!
+        measureWidths[spec.measureIdx] = newWidths[spec.measureIdx]!
+        mutableMeasureNodes.get(idx)!.markDirty()
+      }
+      root.calculateLayout(80, NaN, DIRECTION_LTR)
+      const incremental = getLayout(root)
+
+      // Fresh reference with new widths
+      const freshNodes: Node[] = []
+      for (let i = 0; i < nodeCount; i++) {
+        const spec = specs[i]!
+        const node = Node.create()
+        if (i === 0) {
+          node.setWidth(80)
+          node.setFlexDirection(spec.flexDirection)
+        } else {
+          if (spec.width !== undefined) node.setWidth(spec.width)
+          if (spec.height !== undefined) node.setHeight(spec.height)
+          if (spec.flexGrow !== undefined) node.setFlexGrow(spec.flexGrow)
+          if (spec.flexShrink !== undefined) node.setFlexShrink(spec.flexShrink)
+          node.setFlexDirection(spec.flexDirection)
+        }
+        if (spec.isBordered) {
+          node.setBorder(0, 1)
+          node.setBorder(1, 1)
+          node.setBorder(2, 1)
+          node.setBorder(3, 1)
+        }
+        if (spec.hasMeasure) {
+          node.setMeasureFunc(textMeasure(measureWidths[spec.measureIdx]!))
+        }
+        freshNodes.push(node)
+      }
+      for (let i = 0; i < nodeCount; i++) {
+        const spec = specs[i]!
+        for (let c = 0; c < spec.children.length; c++) {
+          freshNodes[i]!.insertChild(freshNodes[spec.children[c]!]!, c)
+        }
+      }
+      freshNodes[0]!.calculateLayout(80, NaN, DIRECTION_LTR)
+      const reference = getLayout(freshNodes[0]!)
+
+      const diffs = diffLayouts(reference, incremental)
+      if (diffs.length > 0) {
+        const detail = diffs.map((d) => `  ${d}`).join("\n")
+        expect.unreachable(
+          `Content change differs (changed nodes: ${changingNodes.join(",")}; ${diffs.length} diffs):\n${detail}`,
         )
       }
     })

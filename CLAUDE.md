@@ -89,17 +89,19 @@ Flexx is Yoga-compatible but follows CSS spec where Yoga doesn't:
 ## Testing
 
 ```bash
-bun test                           # All tests (1255)
+bun test                           # All tests (1357)
 bun test tests/yoga-compat/        # Yoga compatibility only (41)
 bun test tests/layout/             # Layout algorithm tests (~110)
-bun test tests/relayout-consistency.test.ts  # Re-layout fuzz (1100+)
+bun test tests/relayout-consistency.test.ts  # Re-layout fuzz (1200+)
 ```
 
 ### Re-layout Consistency Tests
 
-The most important test layer. 1100+ fuzz tests verify that incremental re-layout of partially-dirty trees matches fresh layout. Uses a differential oracle: build tree → layout → dirty → re-layout → compare against fresh. Has caught 3 distinct caching bugs invisible to single-pass tests.
+The most important test layer. 1200+ fuzz tests verify that incremental re-layout of partially-dirty trees matches fresh layout. Uses a differential oracle: build tree → layout → dirty → re-layout → compare against fresh. Has caught 3 distinct caching bugs invisible to single-pass tests.
 
 **When fixing layout bugs**: Run `bun test tests/relayout-consistency.test.ts` — if it passes, the fix is likely correct. If a specific seed fails, use `-t "seed=N"` to isolate.
+
+**Mutation testing**: `bun scripts/mutation-test.ts` verifies the fuzz suite catches 4 deliberate cache mutations (4 others are equivalent/defense-in-depth). Run after modifying cache logic.
 
 **When modifying caching/fingerprint code**: Run the full suite. Any new failures indicate a correctness regression.
 

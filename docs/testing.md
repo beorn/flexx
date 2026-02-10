@@ -20,7 +20,7 @@ Traditional example-based tests for each flexbox feature: grow, shrink, wrap, al
 bun test tests/layout/
 ```
 
-### 3. Re-layout Consistency Tests (~1100 tests)
+### 3. Re-layout Consistency Tests (~1200 tests)
 
 The most sophisticated test layer. These test **incremental re-layout** — the scenario where `calculateLayout()` is called on a tree that was previously laid out, with some nodes marked dirty.
 
@@ -54,17 +54,19 @@ function expectRelayoutMatchesFresh(buildTree, width, height) {
 
 #### Test Groups
 
-| Group | Seeds | What it tests |
-|-------|-------|---------------|
-| Targeted scenarios | 6 | Specific bug reproductions (km-10mat card, bordered card, deep tree, content change, kanban, tree mutation) |
-| measureNode invariant | 1 | layout.width/height unchanged for clean nodes after re-layout |
-| Snapshot regression | 2 | Idempotency and exact geometry for known card structure |
-| Resize stability | 2 | Width sweep round-trip and column measure height constraint |
-| Fuzz: re-layout vs fresh | 500 | Random trees + random dirty marking, compare incremental vs fresh |
-| Fuzz: cache invalidation stress | 100 | Same tree re-laid out at multiple widths (60→80→100→80), then dirty+re-layout |
-| Fuzz: idempotency | 200 | Layout twice with identical constraints — results must match |
-| Fuzz: resize round-trip | 200 | Layout at W1→W2→W1, compare final vs fresh at W1 |
-| Fuzz: multi-step constraint sweep | 100 | Full lifecycle: 3 random widths → dirty → random final width → compare vs fresh |
+| Group                             | Seeds | What it tests                                                                                               |
+| --------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------- |
+| Targeted scenarios                | 6     | Specific bug reproductions (km-10mat card, bordered card, deep tree, content change, kanban, tree mutation) |
+| measureNode invariant             | 1     | layout.width/height unchanged for clean nodes after re-layout                                               |
+| Snapshot regression               | 2     | Idempotency and exact geometry for known card structure                                                     |
+| Resize stability                  | 2     | Width sweep round-trip and column measure height constraint                                                 |
+| Fuzz: re-layout vs fresh          | 500   | Random trees + random dirty marking, compare incremental vs fresh                                           |
+| Fuzz: cache invalidation stress   | 100   | Same tree re-laid out at multiple widths (60→80→100→80), then dirty+re-layout                               |
+| Fuzz: idempotency                 | 200   | Layout twice with identical constraints — results must match                                                |
+| Fuzz: resize round-trip           | 200   | Layout at W1→W2→W1, compare final vs fresh at W1                                                            |
+| Fuzz: multi-step constraint sweep | 100   | Full lifecycle: 3 random widths → dirty → random final width → compare vs fresh                             |
+| Content change (targeted)         | 3     | Mutable measure functions: text grows, text shrinks, content change + resize combined                       |
+| Fuzz: content change              | 100   | Random trees with mutable measure functions — change content + markDirty, compare vs fresh                  |
 
 #### Random Tree Generation
 
@@ -86,6 +88,29 @@ Separate from relayout-consistency, these fuzz tests compare Flexx's zero-alloca
 ```bash
 bun test tests/differential-fuzz.fuzz.ts
 ```
+
+## Public Testing API (`@beorn/flexx/testing`)
+
+Flexx exports diagnostic helpers for downstream consumers (inkx, km-tui):
+
+```typescript
+import {
+  getLayout, formatLayout, diffLayouts, textMeasure,
+  assertLayoutSanity, expectRelayoutMatchesFresh,
+  expectIdempotent, expectResizeRoundTrip,
+} from "@beorn/flexx/testing"
+```
+
+| Export | Description |
+|--------|-------------|
+| `getLayout(node)` | Recursively extract computed layout as plain objects |
+| `formatLayout(layout)` | Pretty-print a layout tree for debugging |
+| `diffLayouts(a, b)` | Node-by-node diff with NaN-safe comparison |
+| `textMeasure(width)` | Factory for wrapping text measure functions |
+| `assertLayoutSanity(node)` | Validate dimensions are finite and non-negative |
+| `expectRelayoutMatchesFresh(buildTree, w, h)` | Differential oracle: incremental must match fresh |
+| `expectIdempotent(buildTree, w, h)` | Two identical layouts must produce same result |
+| `expectResizeRoundTrip(buildTree, widths)` | Resize sequence must match fresh at final width |
 
 ## Diagnostic Helpers
 
@@ -115,17 +140,40 @@ Pretty-prints a layout tree for debugging output:
 ]
 ```
 
+### 5. Mutation Testing (8 mutations)
+
+Verifies that the test suite detects deliberate code changes. Each mutation injects a known-wrong value into cache/invalidation logic, then runs the re-layout fuzz suite.
+
+```bash
+cd vendor/beorn-flexx && bun scripts/mutation-test.ts
+```
+
+**Results**: 4 caught (real bugs), 4 equivalent (defense-in-depth layers that are redundant with other mechanisms):
+
+| Mutation | Status | Why |
+|----------|--------|-----|
+| skip-markDirty-propagation | Caught | Ancestors don't learn children changed |
+| skip-save-restore-measureNode | Caught | layout.width/height corrupted by intrinsic measurements |
+| wrong-cache-sentinel (NaN) | Caught | False cache hits for unconstrained queries |
+| skip-flexDist-guard | Caught | Stale NaN fingerprint matches across flex passes |
+| skip-resetLayoutCache | Equivalent | markDirty() already clears caches for dirty-path nodes |
+| always-return-cached-layout | Equivalent | markDirty() sets _lc0=_lc1=undefined, so no cache to hit |
+| skip-fingerprint-check | Equivalent | Disables optimization, doesn't affect correctness |
+| skip-layoutValid-set | Equivalent | Forces recompute, doesn't affect correctness |
+
+The 4 equivalent mutations confirm the **defense-in-depth** design: multiple cache invalidation layers (markDirty, resetLayoutCache, dirty check) are individually redundant but collectively protect against future code changes breaking any single layer.
+
 ## Properties Tested
 
 The test suite verifies these properties across random trees:
 
-| Property | Description | What it catches |
-|----------|-------------|-----------------|
-| **Differential correctness** | Incremental re-layout = fresh layout | All caching bugs |
-| **Idempotency** | Layout twice with no changes = same result | Non-determinism, state corruption |
-| **Resize stability** | Layout at W1→W2→W1 = fresh at W1 | Stale cache entries across constraints |
-| **Lifecycle correctness** | Multiple resizes + dirty marking = fresh at final state | Combined cache/fingerprint issues |
-| **Structural sanity** | All dimensions finite, non-negative | Uninitialized state, overflow |
+| Property                     | Description                                             | What it catches                        |
+| ---------------------------- | ------------------------------------------------------- | -------------------------------------- |
+| **Differential correctness** | Incremental re-layout = fresh layout                    | All caching bugs                       |
+| **Idempotency**              | Layout twice with no changes = same result              | Non-determinism, state corruption      |
+| **Resize stability**         | Layout at W1→W2→W1 = fresh at W1                        | Stale cache entries across constraints |
+| **Lifecycle correctness**    | Multiple resizes + dirty marking = fresh at final state | Combined cache/fingerprint issues      |
+| **Structural sanity**        | All dimensions finite, non-negative                     | Uninitialized state, overflow          |
 
 ## Running Tests
 
