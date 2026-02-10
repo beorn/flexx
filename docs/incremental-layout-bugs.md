@@ -18,7 +18,7 @@ The Blink team ultimately concluded that the incremental layout model had become
 
 **Lesson**: Incremental layout bugs compound. Each fix can expose new edge cases because the caching logic interacts with every other part of the algorithm. A principled caching model (clear invariants, conservative invalidation) is more maintainable than ad-hoc fixes.
 
-*Source: [developer.chrome.com/docs/chromium/layoutng](https://developer.chrome.com/docs/chromium/layoutng)*
+_Source: [developer.chrome.com/docs/chromium/layoutng](https://developer.chrome.com/docs/chromium/layoutng)_
 
 ### Facebook Yoga (2016-present)
 
@@ -40,7 +40,7 @@ Yoga also invalidates cached measurements whenever a node's style or `configVers
 
 **Lesson**: Conservative invalidation (propagate dirty to root, invalidate on any ambiguous change) is safer than precise invalidation. The performance cost of occasional unnecessary recomputation is low; the correctness cost of a missed invalidation is high.
 
-*Source: [Yoga Node.cpp](https://fossies.org/linux/react-native/packages/react-native/ReactCommon/yoga/yoga/node/Node.cpp)*
+_Source: [Yoga Node.cpp](https://fossies.org/linux/react-native/packages/react-native/ReactCommon/yoga/yoga/node/Node.cpp)_
 
 ### PanGui (2024-2025)
 
@@ -52,7 +52,7 @@ This eliminates all stale-value bugs by construction. For moderate UI sizes on m
 
 **Lesson**: Full recomputation is a valid strategy for smaller UIs. The absence of incremental bugs can be worth more than the performance gain from caching — especially during early development.
 
-*Source: [pangui.io/blog/05-layout-rework-and-benchmarks](https://www.pangui.io/blog/05-layout-rework-and-benchmarks)*
+_Source: [pangui.io/blog/05-layout-rework-and-benchmarks](https://www.pangui.io/blog/05-layout-rework-and-benchmarks)_
 
 ### "How Browsers Work" — Garsiel (2009-2011)
 
@@ -60,7 +60,7 @@ Tali Garsiel's landmark deep dive (originally published ~2009, updated 2011) exp
 
 **Lesson**: "Just recompute the dirty subtree" sounds simple but is deceptively hard. Parent-child interactions in flexbox mean a child's final size depends on sibling sizes, parent constraints, and flex distribution — all of which may change when any node in the tree changes.
 
-*Source: [taligarsiel.com/Projects/howbrowserswork.htm](https://taligarsiel.com/Projects/howbrowserswork.htm)*
+_Source: [taligarsiel.com/Projects/howbrowserswork.htm](https://taligarsiel.com/Projects/howbrowserswork.htm)_
 
 ## Bug Taxonomy
 
@@ -103,6 +103,7 @@ Flexbox is inherently two-pass: measure children (determine flex basis), distrib
 Compare incremental re-layout against a fresh layout of an identical tree. The fresh layout is trivially correct (no caching involved). Any difference is a bug.
 
 This is the gold standard for testing cache correctness. It requires:
+
 - A deterministic tree builder (seeded RNG for fuzz testing)
 - A way to extract full layout results for comparison
 - NaN-safe comparison (`Object.is`, not `===`)
@@ -110,13 +111,14 @@ This is the gold standard for testing cache correctness. It requires:
 ### Property-Based Testing
 
 Define invariants that must hold for every layout:
+
 - **Idempotency**: Layout twice with no changes → same result
 - **Resize stability**: Layout at W1→W2→W1 → matches fresh at W1
 - **Structural sanity**: All dimensions finite and non-negative
 
 Pierre Felgines (2019) describes applying property-based testing to layouts, checking invariants like "no child overlaps a sibling" and "no child overflows parent" for every random input.
 
-*Source: [felginep.github.io/2019-03-20/property-based-testing](https://felginep.github.io/2019-03-20/property-based-testing)*
+_Source: [felginep.github.io/2019-03-20/property-based-testing](https://felginep.github.io/2019-03-20/property-based-testing)_
 
 ### Cache Stress Testing
 
@@ -131,12 +133,14 @@ Deliberately inject known-wrong values into cache logic (flip a `<=` to `<`, swa
 Flexx combines aggressive caching with extensive correctness testing:
 
 **Caching layers:**
+
 - **Per-node fingerprint** — 5-field check (availW, availH, direction, offsetX, offsetY) enables skipping entire subtrees when constraints are unchanged. No other JS layout engine does this.
 - **Two-entry LRU layout cache** — Stores results for two recent constraint sets per node
 - **Four-entry measure cache** — Caches measure function results
 - **Position-only updates** — When fingerprint matches, propagates position deltas without re-computing layout
 
 **Correctness safeguards:**
+
 - **1100+ fuzz tests** using the differential oracle across 5 test dimensions
 - **Conservative dirty propagation** (Yoga-style: walk to root on any `markDirty`)
 - **Domain-safe sentinels** (`-1`, not `NaN`)

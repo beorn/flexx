@@ -6,11 +6,11 @@ Flexx is a pure JavaScript flexbox layout engine with a Yoga-compatible API.
 
 ## Status
 
-|                      | Yoga                                                 | Flexx                                  |
-| -------------------- | ---------------------------------------------------- | -------------------------------------- |
-| **Maturity**         | Production, battle-tested (React Native, Ink, Litho) | Production-ready, fully tested         |
-| **Test coverage**    | Extensive (auto-generated from Chrome)               | 1255 tests, 41/41 Yoga compatibility   |
-| **Real-world usage** | Millions of apps                                     | Used in production                     |
+|                      | Yoga                                                 | Flexx                                |
+| -------------------- | ---------------------------------------------------- | ------------------------------------ |
+| **Maturity**         | Production, battle-tested (React Native, Ink, Litho) | Production-ready, fully tested       |
+| **Test coverage**    | Extensive (auto-generated from Chrome)               | 1255 tests, 41/41 Yoga compatibility |
+| **Real-world usage** | Millions of apps                                     | Used in production                   |
 
 ---
 
@@ -132,17 +132,18 @@ See [performance.md](performance.md) for detailed benchmarks, methodology, and t
 
 **Summary:** Each engine wins in different scenarios. Both handle terminal UIs (<500 nodes) in under 1ms.
 
-| Scenario | Winner | Margin | Why |
-|----------|--------|--------|-----|
-| Initial layout (create + calculate) | Flexx | 1.5-2.5x | JS node creation avoids WASM boundary crossings |
-| **No-change re-layout** | **Flexx** | **5.5x** | Fingerprint cache — 27ns regardless of tree size |
-| Incremental re-layout (dirty leaf) | Yoga | 2.8-3.4x | WASM per-node computation is faster |
-| Full re-layout (constraint change) | Yoga | 2.7x | Same — WASM layout is faster |
-| Deep nesting (15+ levels) | Yoga | increasing | Flexx overhead compounds at depth |
+| Scenario                            | Winner    | Margin     | Why                                              |
+| ----------------------------------- | --------- | ---------- | ------------------------------------------------ |
+| Initial layout (create + calculate) | Flexx     | 1.5-2.5x   | JS node creation avoids WASM boundary crossings  |
+| **No-change re-layout**             | **Flexx** | **5.5x**   | Fingerprint cache — 27ns regardless of tree size |
+| Incremental re-layout (dirty leaf)  | Yoga      | 2.8-3.4x   | WASM per-node computation is faster              |
+| Full re-layout (constraint change)  | Yoga      | 2.7x       | Same — WASM layout is faster                     |
+| Deep nesting (15+ levels)           | Yoga      | increasing | Flexx overhead compounds at depth                |
 
 **Key insight**: Flexx wins at node creation and cache hits. Yoga wins at raw layout computation. For interactive TUIs where most keystrokes don't change layout, Flexx's fingerprint cache is the key advantage.
 
 Run benchmarks:
+
 ```bash
 bun bench bench/yoga-compare-rich.bench.ts    # TUI boards, measure funcs
 bun bench bench/incremental.bench.ts          # No-change, dirty leaf, resize

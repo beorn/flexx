@@ -26,10 +26,7 @@ import { fileURLToPath } from "node:url"
 let yoga: Yoga
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const wasmPath = join(
-  __dirname,
-  "../node_modules/yoga-wasm-web/dist/yoga.wasm",
-)
+const wasmPath = join(__dirname, "../node_modules/yoga-wasm-web/dist/yoga.wasm")
 
 beforeAll(async () => {
   const wasmBuffer = readFileSync(wasmPath)
@@ -185,9 +182,7 @@ function flexxPropertyRichTree(nodeCount: number): Flexx.Node {
           ? Flexx.JUSTIFY_SPACE_BETWEEN
           : Flexx.JUSTIFY_CENTER,
     )
-    row.setAlignItems(
-      r % 2 === 0 ? Flexx.ALIGN_CENTER : Flexx.ALIGN_FLEX_END,
-    )
+    row.setAlignItems(r % 2 === 0 ? Flexx.ALIGN_CENTER : Flexx.ALIGN_FLEX_END)
     row.setFlexWrap(r % 4 === 0 ? Flexx.WRAP_WRAP : Flexx.WRAP_NO_WRAP)
     row.setFlexGrow(1)
 
@@ -195,7 +190,7 @@ function flexxPropertyRichTree(nodeCount: number): Flexx.Node {
       const child = Flexx.Node.create()
       child.setFlexGrow(c % 3 === 0 ? 1 : 0)
       child.setFlexShrink(c % 2 === 0 ? 1 : 0)
-      child.setWidth(20 + (c * 5))
+      child.setWidth(20 + c * 5)
       child.setHeight(5)
       child.setMargin(Flexx.EDGE_ALL, 1)
       if (c % 3 === 2) {
@@ -226,9 +221,7 @@ function yogaPropertyRichTree(nodeCount: number) {
           ? yoga.JUSTIFY_SPACE_BETWEEN
           : yoga.JUSTIFY_CENTER,
     )
-    row.setAlignItems(
-      r % 2 === 0 ? yoga.ALIGN_CENTER : yoga.ALIGN_FLEX_END,
-    )
+    row.setAlignItems(r % 2 === 0 ? yoga.ALIGN_CENTER : yoga.ALIGN_FLEX_END)
     row.setFlexWrap(r % 4 === 0 ? yoga.WRAP_WRAP : yoga.WRAP_NO_WRAP)
     row.setFlexGrow(1)
 
@@ -236,7 +229,7 @@ function yogaPropertyRichTree(nodeCount: number) {
       const child = yoga.Node.create()
       child.setFlexGrow(c % 3 === 0 ? 1 : 0)
       child.setFlexShrink(c % 2 === 0 ? 1 : 0)
-      child.setWidth(20 + (c * 5))
+      child.setWidth(20 + c * 5)
       child.setHeight(5)
       child.setMargin(yoga.EDGE_ALL, 1)
       if (c % 3 === 2) {

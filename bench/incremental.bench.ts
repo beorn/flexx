@@ -24,25 +24,35 @@ function textMeasure(textLen: number) {
 
 function flexxTree(cols: number, cards: number): Flexx.Node {
   const root = Flexx.Node.create()
-  root.setWidth(120); root.setHeight(40)
+  root.setWidth(120)
+  root.setHeight(40)
   root.setFlexDirection(Flexx.FLEX_DIRECTION_ROW)
   root.setGap(Flexx.GUTTER_ALL, 1)
   for (let c = 0; c < cols; c++) {
     const col = Flexx.Node.create()
-    col.setFlexGrow(1); col.setFlexShrink(1)
+    col.setFlexGrow(1)
+    col.setFlexShrink(1)
     col.setFlexDirection(Flexx.FLEX_DIRECTION_COLUMN)
-    const h = Flexx.Node.create(); h.setHeight(1); col.insertChild(h, 0)
+    const h = Flexx.Node.create()
+    h.setHeight(1)
+    col.insertChild(h, 0)
     for (let i = 0; i < cards; i++) {
       const card = Flexx.Node.create()
       card.setFlexDirection(Flexx.FLEX_DIRECTION_COLUMN)
-      card.setBorder(Flexx.EDGE_ALL, 1); card.setPadding(Flexx.EDGE_RIGHT, 1)
-      const row = Flexx.Node.create(); row.setFlexDirection(Flexx.FLEX_DIRECTION_ROW)
-      const icon = Flexx.Node.create(); icon.setWidth(3); row.insertChild(icon, 0)
+      card.setBorder(Flexx.EDGE_ALL, 1)
+      card.setPadding(Flexx.EDGE_RIGHT, 1)
+      const row = Flexx.Node.create()
+      row.setFlexDirection(Flexx.FLEX_DIRECTION_ROW)
+      const icon = Flexx.Node.create()
+      icon.setWidth(3)
+      row.insertChild(icon, 0)
       const text = Flexx.Node.create()
-      text.setFlexGrow(1); text.setFlexShrink(1)
+      text.setFlexGrow(1)
+      text.setFlexShrink(1)
       text.setMeasureFunc(textMeasure(15 + (i % 20)))
       row.insertChild(text, 1)
-      card.insertChild(row, 0); col.insertChild(card, i + 1)
+      card.insertChild(row, 0)
+      col.insertChild(card, i + 1)
     }
     root.insertChild(col, c)
   }
@@ -51,25 +61,35 @@ function flexxTree(cols: number, cards: number): Flexx.Node {
 
 function yogaTree(cols: number, cards: number) {
   const root = yoga.Node.create()
-  root.setWidth(120); root.setHeight(40)
+  root.setWidth(120)
+  root.setHeight(40)
   root.setFlexDirection(yoga.FLEX_DIRECTION_ROW)
   root.setGap(yoga.GUTTER_ALL, 1)
   for (let c = 0; c < cols; c++) {
     const col = yoga.Node.create()
-    col.setFlexGrow(1); col.setFlexShrink(1)
+    col.setFlexGrow(1)
+    col.setFlexShrink(1)
     col.setFlexDirection(yoga.FLEX_DIRECTION_COLUMN)
-    const h = yoga.Node.create(); h.setHeight(1); col.insertChild(h, 0)
+    const h = yoga.Node.create()
+    h.setHeight(1)
+    col.insertChild(h, 0)
     for (let i = 0; i < cards; i++) {
       const card = yoga.Node.create()
       card.setFlexDirection(yoga.FLEX_DIRECTION_COLUMN)
-      card.setBorder(yoga.EDGE_ALL, 1); card.setPadding(yoga.EDGE_RIGHT, 1)
-      const row = yoga.Node.create(); row.setFlexDirection(yoga.FLEX_DIRECTION_ROW)
-      const icon = yoga.Node.create(); icon.setWidth(3); row.insertChild(icon, 0)
+      card.setBorder(yoga.EDGE_ALL, 1)
+      card.setPadding(yoga.EDGE_RIGHT, 1)
+      const row = yoga.Node.create()
+      row.setFlexDirection(yoga.FLEX_DIRECTION_ROW)
+      const icon = yoga.Node.create()
+      icon.setWidth(3)
+      row.insertChild(icon, 0)
       const text = yoga.Node.create()
-      text.setFlexGrow(1); text.setFlexShrink(1)
+      text.setFlexGrow(1)
+      text.setFlexShrink(1)
       text.setMeasureFunc(textMeasure(15 + (i % 20)))
       row.insertChild(text, 1)
-      card.insertChild(row, 0); col.insertChild(card, i + 1)
+      card.insertChild(row, 0)
+      col.insertChild(card, i + 1)
     }
     root.insertChild(col, c)
   }
@@ -78,9 +98,11 @@ function yogaTree(cols: number, cards: number) {
 
 // Pre-created trees (initialized in beforeAll)
 let ft: Flexx.Node, ftLeaf: Flexx.Node
-let yt: ReturnType<typeof yoga.Node.create>, ytLeaf: ReturnType<typeof yoga.Node.create>
+let yt: ReturnType<typeof yoga.Node.create>,
+  ytLeaf: ReturnType<typeof yoga.Node.create>
 let ftBig: Flexx.Node, ftBigLeaf: Flexx.Node
-let ytBig: ReturnType<typeof yoga.Node.create>, ytBigLeaf: ReturnType<typeof yoga.Node.create>
+let ytBig: ReturnType<typeof yoga.Node.create>,
+  ytBigLeaf: ReturnType<typeof yoga.Node.create>
 
 beforeAll(async () => {
   const wasmBuffer = readFileSync(wasmPath)
@@ -114,50 +136,90 @@ beforeAll(async () => {
 const opts = { warmupIterations: 100, iterations: 1000, time: 2000 }
 
 describe("No-change re-layout (fingerprint cache)", () => {
-  bench("Flexx: 5×20 no-change", () => {
-    ft.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
-  }, opts)
-  bench("Yoga: 5×20 no-change", () => {
-    yt.calculateLayout(120, 40, yoga.DIRECTION_LTR)
-  }, opts)
-  bench("Flexx: 8×30 no-change", () => {
-    ftBig.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
-  }, opts)
-  bench("Yoga: 8×30 no-change", () => {
-    ytBig.calculateLayout(120, 40, yoga.DIRECTION_LTR)
-  }, opts)
+  bench(
+    "Flexx: 5×20 no-change",
+    () => {
+      ft.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+    },
+    opts,
+  )
+  bench(
+    "Yoga: 5×20 no-change",
+    () => {
+      yt.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+    },
+    opts,
+  )
+  bench(
+    "Flexx: 8×30 no-change",
+    () => {
+      ftBig.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+    },
+    opts,
+  )
+  bench(
+    "Yoga: 8×30 no-change",
+    () => {
+      ytBig.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+    },
+    opts,
+  )
 })
 
 describe("Single leaf dirty (incremental re-layout)", () => {
-  bench("Flexx: 5×20 leaf dirty", () => {
-    ftLeaf.markDirty()
-    ft.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
-  }, opts)
-  bench("Yoga: 5×20 leaf dirty", () => {
-    ytLeaf.markDirty()
-    yt.calculateLayout(120, 40, yoga.DIRECTION_LTR)
-  }, opts)
-  bench("Flexx: 8×30 leaf dirty", () => {
-    ftBigLeaf.markDirty()
-    ftBig.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
-  }, opts)
-  bench("Yoga: 8×30 leaf dirty", () => {
-    ytBigLeaf.markDirty()
-    ytBig.calculateLayout(120, 40, yoga.DIRECTION_LTR)
-  }, opts)
+  bench(
+    "Flexx: 5×20 leaf dirty",
+    () => {
+      ftLeaf.markDirty()
+      ft.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+    },
+    opts,
+  )
+  bench(
+    "Yoga: 5×20 leaf dirty",
+    () => {
+      ytLeaf.markDirty()
+      yt.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+    },
+    opts,
+  )
+  bench(
+    "Flexx: 8×30 leaf dirty",
+    () => {
+      ftBigLeaf.markDirty()
+      ftBig.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+    },
+    opts,
+  )
+  bench(
+    "Yoga: 8×30 leaf dirty",
+    () => {
+      ytBigLeaf.markDirty()
+      ytBig.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+    },
+    opts,
+  )
 })
 
 describe("Width change cycle (120→80→120)", () => {
-  bench("Flexx: 5×20 resize cycle", () => {
-    ft.setWidth(80)
-    ft.calculateLayout(80, 40, Flexx.DIRECTION_LTR)
-    ft.setWidth(120)
-    ft.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
-  }, opts)
-  bench("Yoga: 5×20 resize cycle", () => {
-    yt.setWidth(80)
-    yt.calculateLayout(80, 40, yoga.DIRECTION_LTR)
-    yt.setWidth(120)
-    yt.calculateLayout(120, 40, yoga.DIRECTION_LTR)
-  }, opts)
+  bench(
+    "Flexx: 5×20 resize cycle",
+    () => {
+      ft.setWidth(80)
+      ft.calculateLayout(80, 40, Flexx.DIRECTION_LTR)
+      ft.setWidth(120)
+      ft.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+    },
+    opts,
+  )
+  bench(
+    "Yoga: 5×20 resize cycle",
+    () => {
+      yt.setWidth(80)
+      yt.calculateLayout(80, 40, yoga.DIRECTION_LTR)
+      yt.setWidth(120)
+      yt.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+    },
+    opts,
+  )
 })

@@ -6,13 +6,13 @@ Flexx and Yoga each win in different scenarios. The right choice depends on your
 
 Flexx's pure JavaScript architecture creates a distinctive performance profile compared to Yoga's WASM:
 
-| Scenario | Winner | Margin | Why |
-|----------|--------|--------|-----|
-| **Initial layout** (create + layout) | Flexx | 1.5-2.5x | JS node creation is cheap; no WASM boundary crossings |
-| **No-change re-layout** | Flexx | **5.5x** | Fingerprint cache catches unchanged trees at the root |
-| **Incremental re-layout** (single dirty leaf) | Yoga | 2.8-3.4x | WASM per-node computation is faster |
-| **Full re-layout** (constraint change on pre-existing tree) | Yoga | 2.7x | Same reason — WASM layout computation is faster |
-| **Deep nesting** (15+ levels) | Yoga | increasing | Flexx's function call overhead compounds at depth |
+| Scenario                                                    | Winner | Margin     | Why                                                   |
+| ----------------------------------------------------------- | ------ | ---------- | ----------------------------------------------------- |
+| **Initial layout** (create + layout)                        | Flexx  | 1.5-2.5x   | JS node creation is cheap; no WASM boundary crossings |
+| **No-change re-layout**                                     | Flexx  | **5.5x**   | Fingerprint cache catches unchanged trees at the root |
+| **Incremental re-layout** (single dirty leaf)               | Yoga   | 2.8-3.4x   | WASM per-node computation is faster                   |
+| **Full re-layout** (constraint change on pre-existing tree) | Yoga   | 2.7x       | Same reason — WASM layout computation is faster       |
+| **Deep nesting** (15+ levels)                               | Yoga   | increasing | Flexx's function call overhead compounds at depth     |
 
 **Key insight**: Flexx wins at node creation and cache hits. Yoga wins at raw layout computation. The "2x faster" initial-layout advantage comes from JS node creation being ~8x cheaper than WASM node creation, which more than compensates for Yoga's faster layout algorithm.
 
@@ -67,45 +67,45 @@ The primary benchmark. Includes tree creation + `calculateLayout()`.
 
 #### Flat Layouts
 
-| Nodes | Flexx | Yoga | Ratio |
-|-------|-------|------|-------|
-| 100 | 74 µs | 157 µs | Flexx 2.1x |
-| 500 | 371 µs | 835 µs | Flexx 2.3x |
-| 1000 | 767 µs | 1797 µs | Flexx 2.3x |
-| 2000 | 1497 µs | 3937 µs | Flexx 2.6x |
-| 5000 | 4929 µs | 12496 µs | Flexx 2.5x |
+| Nodes | Flexx   | Yoga     | Ratio      |
+| ----- | ------- | -------- | ---------- |
+| 100   | 74 µs   | 157 µs   | Flexx 2.1x |
+| 500   | 371 µs  | 835 µs   | Flexx 2.3x |
+| 1000  | 767 µs  | 1797 µs  | Flexx 2.3x |
+| 2000  | 1497 µs | 3937 µs  | Flexx 2.6x |
+| 5000  | 4929 µs | 12496 µs | Flexx 2.5x |
 
 #### TUI Board (columns × bordered cards with measure functions)
 
 This mirrors real terminal UI structure: columns with headers, bordered card containers, icon + text rows, text nodes with measure functions.
 
-| Structure | ~Nodes | Flexx | Yoga | Ratio |
-|-----------|--------|-------|------|-------|
-| 3×5 | 64 | 124 µs | 191 µs | Flexx 1.5x |
-| 5×10 | 206 | 367 µs | 619 µs | Flexx 1.7x |
-| 5×20 | 406 | 605 µs | 1234 µs | Flexx 2.0x |
-| 8×30 | 969 | 1479 µs | 3015 µs | Flexx 2.0x |
+| Structure | ~Nodes | Flexx   | Yoga    | Ratio      |
+| --------- | ------ | ------- | ------- | ---------- |
+| 3×5       | 64     | 124 µs  | 191 µs  | Flexx 1.5x |
+| 5×10      | 206    | 367 µs  | 619 µs  | Flexx 1.7x |
+| 5×20      | 406    | 605 µs  | 1234 µs | Flexx 2.0x |
+| 8×30      | 969    | 1479 µs | 3015 µs | Flexx 2.0x |
 
 #### Property-Rich (shrink, align, justify, wrap)
 
 Trees using diverse flex properties (justifyContent, alignItems, alignSelf, flexWrap, flexShrink, margin).
 
-| Nodes | Flexx | Yoga | Ratio |
-|-------|-------|------|-------|
-| ~100 | 228 µs | 284 µs | Flexx 1.2x |
-| ~300 | 635 µs | 861 µs | Flexx 1.4x |
-| ~600 | 1348 µs | 1762 µs | Flexx 1.3x |
+| Nodes | Flexx   | Yoga    | Ratio      |
+| ----- | ------- | ------- | ---------- |
+| ~100  | 228 µs  | 284 µs  | Flexx 1.2x |
+| ~300  | 635 µs  | 861 µs  | Flexx 1.4x |
+| ~600  | 1348 µs | 1762 µs | Flexx 1.3x |
 
 #### Deep Nesting
 
-| Depth | Flexx | Yoga | Ratio |
-|-------|-------|------|-------|
-| 1 | 1.4 µs | 3.1 µs | Flexx 2.2x |
-| 5 | 7.3 µs | 11 µs | Flexx 1.5x |
-| 10 | 19 µs | 21 µs | Flexx 1.1x |
-| 15 | 39 µs | 31 µs | Yoga 1.3x |
-| 20 | 53 µs | 41 µs | Yoga 1.3x |
-| 50 | 255 µs | 101 µs | Yoga 2.5x |
+| Depth | Flexx  | Yoga   | Ratio      |
+| ----- | ------ | ------ | ---------- |
+| 1     | 1.4 µs | 3.1 µs | Flexx 2.2x |
+| 5     | 7.3 µs | 11 µs  | Flexx 1.5x |
+| 10    | 19 µs  | 21 µs  | Flexx 1.1x |
+| 15    | 39 µs  | 31 µs  | Yoga 1.3x  |
+| 20    | 53 µs  | 41 µs  | Yoga 1.3x  |
+| 50    | 255 µs | 101 µs | Yoga 2.5x  |
 
 Flexx wins at shallow nesting but Yoga overtakes at 15+ levels.
 
@@ -117,8 +117,8 @@ For applications that create the tree once and re-layout repeatedly (React UIs, 
 
 When nothing changed — tests the fingerprint cache (Flexx's key innovation).
 
-| Structure | Flexx | Yoga | Ratio |
-|-----------|-------|------|-------|
+| Structure             | Flexx    | Yoga    | Ratio          |
+| --------------------- | -------- | ------- | -------------- |
 | 5×20 TUI (~406 nodes) | 0.027 µs | 0.15 µs | **Flexx 5.5x** |
 | 8×30 TUI (~969 nodes) | 0.026 µs | 0.14 µs | **Flexx 5.5x** |
 
@@ -128,8 +128,8 @@ Flexx returns in **27 nanoseconds** regardless of tree size — fingerprint chec
 
 One text node marked dirty, full tree re-laid out. The most common update pattern.
 
-| Structure | Flexx | Yoga | Ratio |
-|-----------|-------|------|-------|
+| Structure             | Flexx  | Yoga  | Ratio     |
+| --------------------- | ------ | ----- | --------- |
 | 5×20 TUI (~406 nodes) | 123 µs | 37 µs | Yoga 3.4x |
 | 8×30 TUI (~969 nodes) | 244 µs | 87 µs | Yoga 2.8x |
 
@@ -137,22 +137,22 @@ One text node marked dirty, full tree re-laid out. The most common update patter
 
 Full constraint change requiring complete re-layout.
 
-| Structure | Flexx | Yoga | Ratio |
-|-----------|-------|------|-------|
+| Structure             | Flexx              | Yoga               | Ratio     |
+| --------------------- | ------------------ | ------------------ | --------- |
 | 5×20 TUI (~406 nodes) | 955 µs (2 layouts) | 353 µs (2 layouts) | Yoga 2.7x |
 
 ### Feature-Specific Benchmarks
 
-| Feature | Winner | Margin |
-|---------|--------|--------|
-| AbsolutePositioning | Flexx | 3.5x |
-| FlexShrink | Flexx | 2.7x |
-| AlignContent | Flexx | 2.3x |
-| FlexGrow | Flexx | 1.9x |
-| Gap | Flexx | 1.5x |
-| MeasureFunc | Flexx | 1.4x |
-| FlexWrap | Flexx | 1.2x |
-| PercentValues | ~Equal | - |
+| Feature             | Winner | Margin |
+| ------------------- | ------ | ------ |
+| AbsolutePositioning | Flexx  | 3.5x   |
+| FlexShrink          | Flexx  | 2.7x   |
+| AlignContent        | Flexx  | 2.3x   |
+| FlexGrow            | Flexx  | 1.9x   |
+| Gap                 | Flexx  | 1.5x   |
+| MeasureFunc         | Flexx  | 1.4x   |
+| FlexWrap            | Flexx  | 1.2x   |
+| PercentValues       | ~Equal | -      |
 
 These are initial layout benchmarks (create + layout), where Flexx's node creation advantage dominates.
 
@@ -160,21 +160,21 @@ These are initial layout benchmarks (create + layout), where Flexx's node creati
 
 For a terminal UI app (our primary target), the operation mix is roughly:
 
-| Operation | Frequency | Winner |
-|-----------|-----------|--------|
-| Initial render | Once | Flexx 1.5-2x |
+| Operation                          | Frequency     | Winner         |
+| ---------------------------------- | ------------- | -------------- |
+| Initial render                     | Once          | Flexx 1.5-2x   |
 | Cursor movement (no layout change) | Very frequent | **Flexx 5.5x** |
-| Content edit (single node dirty) | Frequent | Yoga 3x |
-| Window resize | Occasional | Yoga 2.7x |
+| Content edit (single node dirty)   | Frequent      | Yoga 3x        |
+| Window resize                      | Occasional    | Yoga 2.7x      |
 
 The no-change case dominates in interactive TUIs (most keystrokes don't change layout). Flexx's fingerprint cache makes this essentially free.
 
 ## Benchmark Variance
 
 | Engine | Cold RME | Warm RME |
-|--------|----------|----------|
-| Flexx | ±5-12% | ±1-3% |
-| Yoga | ±0.3-1% | ±0.3-1% |
+| ------ | -------- | -------- |
+| Flexx  | ±5-12%   | ±1-3%    |
+| Yoga   | ±0.3-1%  | ±0.3-1%  |
 
 WASM is AOT-compiled with manual memory management, so it's consistent from the first run. JavaScript needs JIT warmup. For sustained rendering, both stabilize.
 
