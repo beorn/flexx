@@ -2554,15 +2554,22 @@ function layoutNode(
       // Override if any of:
       // - Child has explicit main dimension (not auto)
       // - Child has flexGrow > 0 (flex distribution applied)
-      // - Child has measureFunc
-      // - Parent did flex distribution (effectiveMainSize not NaN) - covers flex-shrink case
+      // - Child has measureFunc (leaf text node)
+      // - Flex distribution actually changed the size (grow or shrink)
+      //
+      // IMPORTANT: Don't override auto-sized containers when flex distribution
+      // didn't change their size. The pre-measurement (Phase 5) computes intrinsic
+      // size at unconstrained width, but layoutNode recomputes with actual constraints.
+      // For containers with children that wrap text, layoutNode's result is correct
+      // because it accounts for the actual width after flex distribution of grandchildren.
       const hasMeasure = child.hasMeasureFunc() && child.children.length === 0
-      const parentDidFlexDistribution = !Number.isNaN(effectiveMainSize)
+      const flexDistributionChangedSize =
+        child.flex.mainSize !== child.flex.baseSize
       if (
         !mainIsAuto ||
         hasFlexGrow ||
         hasMeasure ||
-        parentDidFlexDistribution
+        flexDistributionChangedSize
       ) {
         // Use edge-based rounding: size = round(end_edge) - round(start_edge)
         if (isRow) {
@@ -2667,9 +2674,20 @@ function layoutNode(
         }
       }
 
-      // Advance main position using CONSTRAINED size for proper positioning
-      // Use constrainedMainSize (box model minimum applied) instead of flex.mainSize
-      const fractionalMainSize = constrainedMainSize
+      // Position advancement: use the right size depending on Phase 8 behavior.
+      // - Phase 8 overrode (explicit size, flexGrow, measure, or flex distribution changed):
+      //   Use constrainedMainSize (float) for precise gap/position calculations.
+      //   child.layout is edge-rounded (integer), which causes rounding drift in gaps.
+      // - Phase 8 did NOT override (auto-sized container, no grow, no measure):
+      //   Use child.layout (from layoutNode), which reflects actual content size.
+      //   constrainedMainSize is a stale pre-layout estimate from unconstrained measurement.
+      const phaseEightOverrode =
+        !mainIsAuto || hasFlexGrow || hasMeasure || flexDistributionChangedSize
+      const fractionalMainSize = phaseEightOverrode
+        ? constrainedMainSize
+        : isRow
+          ? child.layout.width
+          : child.layout.height
       // Use computed margin values (including auto margins)
       const totalMainMargin =
         flex.mainStartMarginValue + flex.mainEndMarginValue
