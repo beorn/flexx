@@ -938,17 +938,21 @@ export function measureNode(
     const childAvailH = isRow ? crossAxisSize : NaN
 
     // Check cache first
+    let measuredW = 0
+    let measuredH = 0
     const cached = child.getCachedLayout(childAvailW, childAvailH)
     if (cached) {
       layoutCacheHits++
     } else {
+      // Save/restore layout around measureNode — it overwrites node.layout
+      const savedW = child.layout.width
+      const savedH = child.layout.height
       measureNode(child, childAvailW, childAvailH, direction)
-      child.setCachedLayout(
-        childAvailW,
-        childAvailH,
-        child.layout.width,
-        child.layout.height,
-      )
+      measuredW = child.layout.width
+      measuredH = child.layout.height
+      child.layout.width = savedW
+      child.layout.height = savedH
+      child.setCachedLayout(childAvailW, childAvailH, measuredW, measuredH)
     }
 
     const childMainSize = cached
@@ -956,15 +960,15 @@ export function measureNode(
         ? cached.width
         : cached.height
       : isRow
-        ? child.layout.width
-        : child.layout.height
+        ? measuredW
+        : measuredH
     const childCrossSize = cached
       ? isRow
         ? cached.height
         : cached.width
       : isRow
-        ? child.layout.height
-        : child.layout.width
+        ? measuredH
+        : measuredW
 
     totalMainSize += childMainSize + childMarginMain
     maxCrossSize = Math.max(maxCrossSize, childCrossSize + childMarginCross)
@@ -1545,15 +1549,20 @@ function layoutNode(
           baseSize = isRow ? cached.width : cached.height
         } else {
           // Use measureNode for sizing-only pass (faster than full layoutNode)
+          // Save layout before measureNode — it overwrites node.layout.width/height
+          // with intrinsic measurements (unconstrained widths → text doesn't wrap →
+          // shorter height). Without save/restore, layoutNode's fingerprint check
+          // in Phase 9 would skip re-computation and preserve the corrupted values.
+          const savedW = child.layout.width
+          const savedH = child.layout.height
           measureNode(child, sizingW, sizingH)
-          baseSize = isRow ? child.layout.width : child.layout.height
+          const measuredW = child.layout.width
+          const measuredH = child.layout.height
+          child.layout.width = savedW
+          child.layout.height = savedH
+          baseSize = isRow ? measuredW : measuredH
           // Cache the result for potential reuse
-          child.setCachedLayout(
-            sizingW,
-            sizingH,
-            child.layout.width,
-            child.layout.height,
-          )
+          child.setCachedLayout(sizingW, sizingH, measuredW, measuredH)
         }
       } else {
         // For auto-sized LEAF children without measureFunc, use padding + border as minimum
