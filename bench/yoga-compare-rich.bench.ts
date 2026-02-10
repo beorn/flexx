@@ -1,0 +1,442 @@
+/**
+ * Rich Flexx vs Yoga Comparison Benchmarks
+ *
+ * Goes beyond flat/deep to test dimensions that matter for real applications:
+ * - Measure functions (text nodes)
+ * - Kanban/board shapes (wide + shallow depth)
+ * - Incremental re-layout (dirty leaf → full tree)
+ * - Re-layout with constraint change (the caching advantage)
+ * - Property diversity (shrink, align, justify, wrap)
+ * - TUI-realistic structure (columns × bordered cards × text)
+ *
+ * Run: bun bench bench/yoga-compare-rich.bench.ts
+ */
+
+import { bench, describe, beforeAll } from "vitest"
+import * as Flexx from "../src/index.js"
+import initYoga, { type Yoga } from "yoga-wasm-web"
+import { readFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
+
+// ============================================================================
+// Setup
+// ============================================================================
+
+let yoga: Yoga
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const wasmPath = join(
+  __dirname,
+  "../node_modules/yoga-wasm-web/dist/yoga.wasm",
+)
+
+beforeAll(async () => {
+  const wasmBuffer = readFileSync(wasmPath)
+  yoga = await initYoga(wasmBuffer)
+
+  // Warmup JIT
+  console.log("\n[Warmup] Running 500 iterations...")
+  for (let i = 0; i < 500; i++) {
+    const ft = flexxTuiTree(5, 10)
+    ft.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+    const yt = yogaTuiTree(5, 10)
+    yt.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+    yt.freeRecursive()
+  }
+  if (typeof globalThis.gc === "function") globalThis.gc()
+  console.log("[Warmup] Complete\n")
+})
+
+const opts = { warmupIterations: 50, iterations: 500, time: 2000 }
+
+// ============================================================================
+// Shared text measure function (simulates wrapping text)
+// ============================================================================
+
+function textMeasure(textLen: number) {
+  return (
+    width: number,
+    _wm: number,
+    _height: number,
+    _hm: number,
+  ): { width: number; height: number } => {
+    const maxW = Number.isNaN(width) ? Infinity : width
+    const lines = Math.ceil(textLen / Math.max(1, maxW))
+    return { width: Math.min(textLen, maxW), height: lines }
+  }
+}
+
+// ============================================================================
+// Tree: TUI-realistic (columns × bordered cards × icon + text)
+// Mirrors the actual km TUI structure
+// ============================================================================
+
+function flexxTuiTree(cols: number, cardsPerCol: number): Flexx.Node {
+  const root = Flexx.Node.create()
+  root.setWidth(120)
+  root.setHeight(40)
+  root.setFlexDirection(Flexx.FLEX_DIRECTION_ROW)
+  root.setGap(Flexx.GUTTER_ALL, 1)
+
+  for (let c = 0; c < cols; c++) {
+    const col = Flexx.Node.create()
+    col.setFlexGrow(1)
+    col.setFlexShrink(1)
+    col.setFlexDirection(Flexx.FLEX_DIRECTION_COLUMN)
+
+    // Column header
+    const header = Flexx.Node.create()
+    header.setHeight(1)
+    col.insertChild(header, 0)
+
+    for (let i = 0; i < cardsPerCol; i++) {
+      // Card border container
+      const card = Flexx.Node.create()
+      card.setFlexDirection(Flexx.FLEX_DIRECTION_COLUMN)
+      card.setBorder(Flexx.EDGE_ALL, 1)
+      card.setPadding(Flexx.EDGE_RIGHT, 1)
+
+      // Card row: icon + text
+      const row = Flexx.Node.create()
+      row.setFlexDirection(Flexx.FLEX_DIRECTION_ROW)
+
+      const icon = Flexx.Node.create()
+      icon.setWidth(3)
+      row.insertChild(icon, 0)
+
+      const text = Flexx.Node.create()
+      text.setFlexGrow(1)
+      text.setFlexShrink(1)
+      text.setMeasureFunc(textMeasure(15 + (i % 20)))
+      row.insertChild(text, 1)
+
+      card.insertChild(row, 0)
+      col.insertChild(card, i + 1)
+    }
+    root.insertChild(col, c)
+  }
+  return root
+}
+
+function yogaTuiTree(cols: number, cardsPerCol: number) {
+  const root = yoga.Node.create()
+  root.setWidth(120)
+  root.setHeight(40)
+  root.setFlexDirection(yoga.FLEX_DIRECTION_ROW)
+  root.setGap(yoga.GUTTER_ALL, 1)
+
+  for (let c = 0; c < cols; c++) {
+    const col = yoga.Node.create()
+    col.setFlexGrow(1)
+    col.setFlexShrink(1)
+    col.setFlexDirection(yoga.FLEX_DIRECTION_COLUMN)
+
+    const header = yoga.Node.create()
+    header.setHeight(1)
+    col.insertChild(header, 0)
+
+    for (let i = 0; i < cardsPerCol; i++) {
+      const card = yoga.Node.create()
+      card.setFlexDirection(yoga.FLEX_DIRECTION_COLUMN)
+      card.setBorder(yoga.EDGE_ALL, 1)
+      card.setPadding(yoga.EDGE_RIGHT, 1)
+
+      const row = yoga.Node.create()
+      row.setFlexDirection(yoga.FLEX_DIRECTION_ROW)
+
+      const icon = yoga.Node.create()
+      icon.setWidth(3)
+      row.insertChild(icon, 0)
+
+      const text = yoga.Node.create()
+      text.setFlexGrow(1)
+      text.setFlexShrink(1)
+      text.setMeasureFunc(textMeasure(15 + (i % 20)))
+      row.insertChild(text, 1)
+
+      card.insertChild(row, 0)
+      col.insertChild(card, i + 1)
+    }
+    root.insertChild(col, c)
+  }
+  return root
+}
+
+// ============================================================================
+// Tree: Property-rich (uses diverse flex properties)
+// ============================================================================
+
+function flexxPropertyRichTree(nodeCount: number): Flexx.Node {
+  const root = Flexx.Node.create()
+  root.setWidth(200)
+  root.setHeight(100)
+  root.setFlexDirection(Flexx.FLEX_DIRECTION_COLUMN)
+  root.setAlignItems(Flexx.ALIGN_STRETCH)
+
+  const rows = Math.ceil(nodeCount / 5)
+  for (let r = 0; r < rows; r++) {
+    const row = Flexx.Node.create()
+    row.setFlexDirection(Flexx.FLEX_DIRECTION_ROW)
+    row.setJustifyContent(
+      r % 3 === 0
+        ? Flexx.JUSTIFY_FLEX_START
+        : r % 3 === 1
+          ? Flexx.JUSTIFY_SPACE_BETWEEN
+          : Flexx.JUSTIFY_CENTER,
+    )
+    row.setAlignItems(
+      r % 2 === 0 ? Flexx.ALIGN_CENTER : Flexx.ALIGN_FLEX_END,
+    )
+    row.setFlexWrap(r % 4 === 0 ? Flexx.WRAP_WRAP : Flexx.WRAP_NO_WRAP)
+    row.setFlexGrow(1)
+
+    for (let c = 0; c < 5; c++) {
+      const child = Flexx.Node.create()
+      child.setFlexGrow(c % 3 === 0 ? 1 : 0)
+      child.setFlexShrink(c % 2 === 0 ? 1 : 0)
+      child.setWidth(20 + (c * 5))
+      child.setHeight(5)
+      child.setMargin(Flexx.EDGE_ALL, 1)
+      if (c % 3 === 2) {
+        child.setAlignSelf(Flexx.ALIGN_FLEX_START)
+      }
+      row.insertChild(child, c)
+    }
+    root.insertChild(row, r)
+  }
+  return root
+}
+
+function yogaPropertyRichTree(nodeCount: number) {
+  const root = yoga.Node.create()
+  root.setWidth(200)
+  root.setHeight(100)
+  root.setFlexDirection(yoga.FLEX_DIRECTION_COLUMN)
+  root.setAlignItems(yoga.ALIGN_STRETCH)
+
+  const rows = Math.ceil(nodeCount / 5)
+  for (let r = 0; r < rows; r++) {
+    const row = yoga.Node.create()
+    row.setFlexDirection(yoga.FLEX_DIRECTION_ROW)
+    row.setJustifyContent(
+      r % 3 === 0
+        ? yoga.JUSTIFY_FLEX_START
+        : r % 3 === 1
+          ? yoga.JUSTIFY_SPACE_BETWEEN
+          : yoga.JUSTIFY_CENTER,
+    )
+    row.setAlignItems(
+      r % 2 === 0 ? yoga.ALIGN_CENTER : yoga.ALIGN_FLEX_END,
+    )
+    row.setFlexWrap(r % 4 === 0 ? yoga.WRAP_WRAP : yoga.WRAP_NO_WRAP)
+    row.setFlexGrow(1)
+
+    for (let c = 0; c < 5; c++) {
+      const child = yoga.Node.create()
+      child.setFlexGrow(c % 3 === 0 ? 1 : 0)
+      child.setFlexShrink(c % 2 === 0 ? 1 : 0)
+      child.setWidth(20 + (c * 5))
+      child.setHeight(5)
+      child.setMargin(yoga.EDGE_ALL, 1)
+      if (c % 3 === 2) {
+        child.setAlignSelf(yoga.ALIGN_FLEX_START)
+      }
+      row.insertChild(child, c)
+    }
+    root.insertChild(row, r)
+  }
+  return root
+}
+
+// ============================================================================
+// 1. TUI-Realistic: Create + Layout
+// ============================================================================
+
+describe("TUI Board (create + layout)", () => {
+  for (const [cols, cards] of [
+    [3, 5],
+    [5, 10],
+    [5, 20],
+    [8, 30],
+  ] as const) {
+    const total = cols * (1 + cards * 4) + 1 // root + cols*(header + cards*(border+row+icon+text))
+    bench(
+      `Flexx: ${cols}×${cards} (~${total} nodes)`,
+      () => {
+        const tree = flexxTuiTree(cols, cards)
+        tree.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+      },
+      opts,
+    )
+    bench(
+      `Yoga: ${cols}×${cards} (~${total} nodes)`,
+      () => {
+        const tree = yogaTuiTree(cols, cards)
+        tree.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+        tree.freeRecursive()
+      },
+      opts,
+    )
+  }
+})
+
+// ============================================================================
+// 2. Incremental Re-layout (single dirty leaf)
+// ============================================================================
+
+describe("Incremental re-layout (single leaf dirty)", () => {
+  for (const [cols, cards] of [
+    [5, 10],
+    [5, 20],
+    [8, 30],
+  ] as const) {
+    let flexxTree: Flexx.Node
+    let flexxLeaf: Flexx.Node
+    let yogaTree: ReturnType<typeof yoga.Node.create>
+    let yogaLeaf: ReturnType<typeof yoga.Node.create>
+
+    beforeAll(() => {
+      flexxTree = flexxTuiTree(cols, cards)
+      flexxTree.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+      // Get a text leaf node in the middle column
+      const midCol = Math.floor(cols / 2)
+      const midCard = Math.floor(cards / 2)
+      flexxLeaf = flexxTree
+        .getChild(midCol)!
+        .getChild(midCard + 1)!
+        .getChild(0)!
+        .getChild(1)! // text node
+
+      yogaTree = yogaTuiTree(cols, cards)
+      yogaTree.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+      yogaLeaf = yogaTree
+        .getChild(midCol)!
+        .getChild(midCard + 1)!
+        .getChild(0)!
+        .getChild(1)! // text node
+    })
+
+    bench(
+      `Flexx: ${cols}×${cards} leaf dirty`,
+      () => {
+        flexxLeaf.markDirty()
+        flexxTree.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+      },
+      opts,
+    )
+    bench(
+      `Yoga: ${cols}×${cards} leaf dirty`,
+      () => {
+        yogaLeaf.markDirty()
+        yogaTree.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+      },
+      opts,
+    )
+  }
+})
+
+// ============================================================================
+// 3. Re-layout with constraint change (exercises fingerprint cache)
+// ============================================================================
+
+describe("Re-layout with width change", () => {
+  for (const [cols, cards] of [
+    [5, 10],
+    [5, 20],
+  ] as const) {
+    let flexxTree: Flexx.Node
+    let yogaTree: ReturnType<typeof yoga.Node.create>
+
+    beforeAll(() => {
+      flexxTree = flexxTuiTree(cols, cards)
+      flexxTree.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+      yogaTree = yogaTuiTree(cols, cards)
+      yogaTree.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+    })
+
+    bench(
+      `Flexx: ${cols}×${cards} width 120→80`,
+      () => {
+        flexxTree.setWidth(80)
+        flexxTree.calculateLayout(80, 40, Flexx.DIRECTION_LTR)
+        flexxTree.setWidth(120)
+        flexxTree.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+      },
+      opts,
+    )
+    bench(
+      `Yoga: ${cols}×${cards} width 120→80`,
+      () => {
+        yogaTree.setWidth(80)
+        yogaTree.calculateLayout(80, 40, yoga.DIRECTION_LTR)
+        yogaTree.setWidth(120)
+        yogaTree.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+      },
+      opts,
+    )
+  }
+})
+
+// ============================================================================
+// 4. Property diversity
+// ============================================================================
+
+describe("Property-rich trees (shrink, align, justify, wrap)", () => {
+  for (const nodeCount of [100, 300, 600]) {
+    bench(
+      `Flexx: ~${nodeCount} nodes`,
+      () => {
+        const tree = flexxPropertyRichTree(nodeCount)
+        tree.calculateLayout(200, 100, Flexx.DIRECTION_LTR)
+      },
+      opts,
+    )
+    bench(
+      `Yoga: ~${nodeCount} nodes`,
+      () => {
+        const tree = yogaPropertyRichTree(nodeCount)
+        tree.calculateLayout(200, 100, yoga.DIRECTION_LTR)
+        tree.freeRecursive()
+      },
+      opts,
+    )
+  }
+})
+
+// ============================================================================
+// 5. No-change re-layout (best case for Flexx fingerprint cache)
+// ============================================================================
+
+describe("No-change re-layout (fingerprint cache hit)", () => {
+  for (const [cols, cards] of [
+    [5, 10],
+    [5, 20],
+    [8, 30],
+  ] as const) {
+    let flexxTree: Flexx.Node
+    let yogaTree: ReturnType<typeof yoga.Node.create>
+
+    beforeAll(() => {
+      flexxTree = flexxTuiTree(cols, cards)
+      flexxTree.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+      yogaTree = yogaTuiTree(cols, cards)
+      yogaTree.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+    })
+
+    bench(
+      `Flexx: ${cols}×${cards} no-change`,
+      () => {
+        flexxTree.calculateLayout(120, 40, Flexx.DIRECTION_LTR)
+      },
+      opts,
+    )
+    bench(
+      `Yoga: ${cols}×${cards} no-change`,
+      () => {
+        yogaTree.calculateLayout(120, 40, yoga.DIRECTION_LTR)
+      },
+      opts,
+    )
+  }
+})

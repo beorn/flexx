@@ -2,15 +2,15 @@
 
 Flexx is a pure JavaScript flexbox layout engine with a Yoga-compatible API.
 
-**TL;DR:** Flexx is **2-3x faster** for most layouts, **5x smaller** than Yoga, with a synchronous API and zero dependencies. They're roughly equal at 100+ nesting levels.
+**TL;DR:** Flexx is **1.5-2.5x faster for initial layout**, **5.5x faster for no-change re-layout**, and **5x smaller** than Yoga, with a synchronous API and zero dependencies. Yoga is faster at per-node layout computation during incremental re-layout and deep nesting.
 
 ## Status
 
-|                      | Yoga                                                 | Flexx                               |
-| -------------------- | ---------------------------------------------------- | ----------------------------------- |
-| **Maturity**         | Production, battle-tested (React Native, Ink, Litho) | Production-ready, fully tested      |
-| **Test coverage**    | Extensive (auto-generated from Chrome)               | 524 tests, 41/41 Yoga compatibility |
-| **Real-world usage** | Millions of apps                                     | Used in production                  |
+|                      | Yoga                                                 | Flexx                                  |
+| -------------------- | ---------------------------------------------------- | -------------------------------------- |
+| **Maturity**         | Production, battle-tested (React Native, Ink, Litho) | Production-ready, fully tested         |
+| **Test coverage**    | Extensive (auto-generated from Chrome)               | 1255 tests, 41/41 Yoga compatibility   |
+| **Real-world usage** | Millions of apps                                     | Used in production                     |
 
 ---
 
@@ -41,11 +41,12 @@ Flexx is **5-7x smaller** than Yoga, which matters for:
 - You want synchronous initialization (no async `await init()`)
 - You're in an environment where WASM is awkward (older bundlers, edge runtimes)
 - You want smaller bundles and simpler debugging
-- You're building terminal UIs where layouts are typically flat/wide
+- You're building interactive TUIs where no-change re-layout (5.5x faster) dominates
 
 **Use Yoga when:**
 
-- You have extremely deep nesting (100+ levels) as your primary use case
+- Your primary workload is frequent incremental re-layout of large pre-existing trees
+- You have deep nesting (15+ levels) as your primary use case
 - You're already using React Native or another Yoga-based system
 - You need the battle-tested stability of a mature project
 
@@ -129,18 +130,23 @@ Both engines iterate to handle min/max constraints:
 
 See [performance.md](performance.md) for detailed benchmarks, methodology, and technical explanation.
 
-**Summary:** Flexx is 2-3x faster for most layouts after JIT warmup. Both handle terminal UIs (<500 nodes) in under 1ms.
+**Summary:** Each engine wins in different scenarios. Both handle terminal UIs (<500 nodes) in under 1ms.
 
-| Layout Type             | Flexx vs Yoga         |
-| ----------------------- | --------------------- |
-| Flat (100-1000 nodes)   | Flexx 2.4-2.5x faster |
-| Flat (2000-5000 nodes)  | Flexx 2.8-3.1x faster |
-| Nested (1-50 levels)    | Flexx 1.5-2.1x faster |
-| Very deep (100+ levels) | ~Equal                |
+| Scenario | Winner | Margin | Why |
+|----------|--------|--------|-----|
+| Initial layout (create + calculate) | Flexx | 1.5-2.5x | JS node creation avoids WASM boundary crossings |
+| **No-change re-layout** | **Flexx** | **5.5x** | Fingerprint cache — 27ns regardless of tree size |
+| Incremental re-layout (dirty leaf) | Yoga | 2.8-3.4x | WASM per-node computation is faster |
+| Full re-layout (constraint change) | Yoga | 2.7x | Same — WASM layout is faster |
+| Deep nesting (15+ levels) | Yoga | increasing | Flexx overhead compounds at depth |
 
-**Why?** Every Yoga call crosses the JS/WASM boundary (type conversion, memory marshalling). For a 100-node layout, that's 400+ boundary crossings. Flexx stays in JS where property access is direct and JIT-optimized.
+**Key insight**: Flexx wins at node creation and cache hits. Yoga wins at raw layout computation. For interactive TUIs where most keystrokes don't change layout, Flexx's fingerprint cache is the key advantage.
 
-Run benchmarks: `bun bench bench/yoga-compare-warmup.bench.ts`
+Run benchmarks:
+```bash
+bun bench bench/yoga-compare-rich.bench.ts    # TUI boards, measure funcs
+bun bench bench/incremental.bench.ts          # No-change, dirty leaf, resize
+```
 
 ---
 
@@ -179,7 +185,7 @@ root.setFlexDirection(FLEX_DIRECTION_ROW);
 
 ## Test Coverage
 
-Flexx includes 524 tests covering:
+Flexx includes 1255 tests covering:
 
 - ✅ Basic layout (single node, column, row)
 - ✅ Flex grow distribution

@@ -22,7 +22,7 @@ console.log(child.getComputedWidth()) // 100
 
 ## Why Flexx?
 
-**TL;DR:** 2-3x faster than Yoga, 5x smaller, pure JavaScript (no WASM), synchronous initialization.
+**TL;DR:** 1.5-2.5x faster initial layout, 5.5x faster no-change re-layout, 5x smaller, pure JavaScript (no WASM), synchronous initialization.
 
 |                      | Yoga              | Flexx           |
 | -------------------- | ----------------- | --------------- |
@@ -59,21 +59,24 @@ bun add @beorn/flexx
 
 ## Performance
 
-**Flexx is 2-3x faster than Yoga** for most layouts. The advantage grows with more nodes.
+Flexx and Yoga each win in different scenarios:
 
-Every Yoga call crosses the JS/WASM boundary (type conversion, memory marshalling). For a 100-node layout, that's 400+ boundary crossings. Flexx stays in pure JS where property access is direct and JIT-optimized.
+| Scenario | Winner | Margin |
+|----------|--------|--------|
+| **Initial layout** (create + calculate) | Flexx | 1.5-2.5x |
+| **No-change re-layout** (fingerprint cache) | **Flexx** | **5.5x** |
+| **Incremental re-layout** (single dirty leaf) | Yoga | 2.8-3.4x |
+| **Deep nesting** (15+ levels) | Yoga | increasing |
 
-| Layout Type          | Flexx vs Yoga         |
-| -------------------- | --------------------- |
-| Flat 100-1000 nodes  | Flexx 2.4-2.5x faster |
-| Flat 2000-5000 nodes | Flexx 2.8-3.1x faster |
-| Nested 1-50 levels   | Flexx 1.6-2.1x faster |
-| Very deep (100+)     | ~Equal                |
+Flexx wins at initial layout because JS node creation avoids WASM boundary crossings (~8x cheaper). Flexx's fingerprint cache makes no-change re-layout essentially free (27ns regardless of tree size). Yoga's WASM layout computation is faster for per-node work during re-layout.
 
-See [docs/performance.md](docs/performance.md) for detailed benchmarks and methodology.
+For interactive TUIs, the no-change case (cursor movement, selection) dominates — Flexx's 5.5x advantage there is the key differentiator.
+
+See [docs/performance.md](docs/performance.md) for detailed benchmarks including TUI-realistic trees with measure functions.
 
 ```bash
-bun bench bench/yoga-compare-warmup.bench.ts
+bun bench bench/yoga-compare-rich.bench.ts    # TUI boards, measure funcs, property diversity
+bun bench bench/incremental.bench.ts          # No-change, dirty leaf, resize
 ```
 
 ## Correctness
@@ -128,7 +131,8 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 
 **Use Yoga instead when:**
 
-- You have extremely deep nesting (100+ levels) as primary use case
+- Your primary workload is frequent incremental re-layout of large pre-existing trees
+- You have deep nesting (15+ levels) as primary use case
 - You're in the React Native ecosystem
 - You need battle-tested stability across diverse environments
 

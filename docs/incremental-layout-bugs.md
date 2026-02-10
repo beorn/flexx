@@ -128,11 +128,21 @@ Deliberately inject known-wrong values into cache logic (flip a `<=` to `<`, swa
 
 ## Flexx's Approach
 
-Flexx pursues the most aggressive caching strategy (fingerprints, two-entry LRU layout cache, measure cache) for maximum performance, then compensates with the most extensive correctness testing:
+Flexx combines aggressive caching with extensive correctness testing:
 
+**Caching layers:**
+- **Per-node fingerprint** — 5-field check (availW, availH, direction, offsetX, offsetY) enables skipping entire subtrees when constraints are unchanged. No other JS layout engine does this.
+- **Two-entry LRU layout cache** — Stores results for two recent constraint sets per node
+- **Four-entry measure cache** — Caches measure function results
+- **Position-only updates** — When fingerprint matches, propagates position deltas without re-computing layout
+
+**Correctness safeguards:**
 - **1100+ fuzz tests** using the differential oracle across 5 test dimensions
 - **Conservative dirty propagation** (Yoga-style: walk to root on any `markDirty`)
 - **Domain-safe sentinels** (`-1`, not `NaN`)
 - **Side-effect isolation** (save/restore layout state in measurement)
+- **Flex distribution guard** — Detects when flex grow/shrink changed a child's size, preventing stale cache hits
 
-Flexx takes the hardest path: aggressive caching for maximum performance, paired with rigorous empirical verification. Where Chrome's Blink needed a ground-up rewrite (LayoutNG) to escape cascading cache bugs, PanGui chose to skip caching entirely, and Yoga uses conservative invalidation, Flexx pursues the most aggressive caching strategy and compensates with the most extensive correctness testing of any JavaScript layout engine we're aware of.
+**Performance trade-off:** The fingerprint cache makes Flexx **5.5x faster** than Yoga for no-change re-layout (27ns regardless of tree size). However, the per-node caching overhead makes Flexx **2.8-3.4x slower** than Yoga for incremental re-layout when nodes are actually dirty. This is a deliberate trade-off — in interactive TUIs, most keystrokes don't change layout, so the no-change case dominates.
+
+Where Chrome's Blink needed a ground-up rewrite (LayoutNG) to escape cascading cache bugs, PanGui chose to skip caching entirely, and Yoga uses conservative invalidation, Flexx pursues aggressive caching paired with rigorous empirical verification.
