@@ -510,9 +510,10 @@ export class Node {
     traversalStack.push(this)
     while (traversalStack.length > 0) {
       const node = traversalStack.pop() as Node
-      // Invalidate by setting availW to NaN
-      if (node._lc0) node._lc0.availW = NaN
-      if (node._lc1) node._lc1.availW = NaN
+      // Invalidate using -1 sentinel (not NaN — NaN is a legitimate "unconstrained" query
+      // value and Object.is(NaN, NaN) === true would cause false cache hits)
+      if (node._lc0) node._lc0.availW = -1
+      if (node._lc1) node._lc1.availW = -1
       for (const child of node._children) {
         traversalStack.push(child)
       }

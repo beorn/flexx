@@ -1912,14 +1912,21 @@ function layoutNode(
             childHeight = cached.height
           } else {
             // Use measureNode for sizing-only pass (faster than full layoutNode)
+            // Save layout before measureNode — it overwrites node.layout.width/height
+            // with intrinsic measurements. Without save/restore, layoutNode's fingerprint
+            // check in Phase 9 would skip re-computation and preserve corrupted values.
+            const savedW = child.layout.width
+            const savedH = child.layout.height
             measureNode(child, child.flex.mainSize, NaN)
             childWidth = child.layout.width
             childHeight = child.layout.height
+            child.layout.width = savedW
+            child.layout.height = savedH
             child.setCachedLayout(
               child.flex.mainSize,
               NaN,
-              child.layout.width,
-              child.layout.height,
+              childWidth,
+              childHeight,
             )
           }
         }
@@ -2517,8 +2524,14 @@ function layoutNode(
       // IMPORTANT: For percent-sized children, pass parent's content size (not child's computed size)
       // so that grandchildren's percents resolve correctly against the child's actual dimensions.
       // The child will resolve its own percent against this value, getting the same result the parent computed.
+      //
+      // CRITICAL: When flex distribution changed the child's size (shrinkage/growth applied),
+      // pass the actual childWidth instead of NaN. This ensures layoutNode's fingerprint check
+      // detects the change — otherwise NaN===NaN matches across passes with different flex
+      // distributions, preserving stale overridden dimensions from the previous pass.
+      const flexDistChanged = child.flex.mainSize !== child.flex.baseSize
       const passWidthToChild =
-        isRow && mainIsAuto && !hasFlexGrow
+        isRow && mainIsAuto && !hasFlexGrow && !flexDistChanged
           ? NaN
           : !isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross
             ? NaN
@@ -2528,7 +2541,7 @@ function layoutNode(
                 ? crossAxisSize
                 : childWidth
       const passHeightToChild =
-        !isRow && mainIsAuto && !hasFlexGrow
+        !isRow && mainIsAuto && !hasFlexGrow && !flexDistChanged
           ? NaN
           : isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross
             ? NaN

@@ -33,7 +33,7 @@ console.log(child.getComputedWidth()) // 100
 
 ## Status
 
-**Production-ready. 524 tests passing including 41/41 Yoga compatibility tests.**
+**Production-ready. 1255 tests passing including 41/41 Yoga compatibility tests and 1100+ incremental re-layout fuzz tests.**
 
 | Feature                                       | Status      |
 | --------------------------------------------- | ----------- |
@@ -75,6 +75,22 @@ See [docs/performance.md](docs/performance.md) for detailed benchmarks and metho
 ```bash
 bun bench bench/yoga-compare-warmup.bench.ts
 ```
+
+## Correctness
+
+Flexx pursues both maximum performance **and** maximum correctness through aggressive caching with extensive verification.
+
+**The problem**: Incremental re-layout (caching unchanged subtrees) is essential for performance but introduces subtle bugs. Chrome's Blink team experienced a "chain of ~10 bugs over a year" in their flexbox implementation. Flexx addresses this with a multi-layered test strategy:
+
+| Layer | Tests | What it verifies |
+|-------|-------|------------------|
+| Yoga compatibility | 41 | Identical output to Yoga for every feature |
+| Feature tests | ~110 | Each flexbox feature in isolation |
+| **Re-layout fuzz** | **1100+** | Incremental re-layout matches fresh layout across random trees |
+
+The fuzz tests use a **differential oracle**: build a random tree, layout, mark nodes dirty, re-layout, then compare against a fresh layout of the identical tree. This has caught 3 distinct caching bugs that all 524 single-pass tests missed.
+
+See [docs/testing.md](docs/testing.md) for the full testing methodology and [docs/incremental-layout-bugs.md](docs/incremental-layout-bugs.md) for the bug taxonomy.
 
 ## Bundle Size
 
@@ -125,6 +141,8 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 | [Algorithm](docs/algorithm.md)             | How the layout algorithm works  |
 | [Performance](docs/performance.md)         | Benchmarks and methodology      |
 | [Yoga Comparison](docs/yoga-comparison.md) | Feature comparison with Yoga    |
+| [Testing](docs/testing.md)                 | Test infrastructure and methodology |
+| [Incremental Layout Bugs](docs/incremental-layout-bugs.md) | Bug taxonomy and debugging guide |
 
 ## Related Projects
 
