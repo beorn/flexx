@@ -15,10 +15,16 @@ bun run typecheck     # Type check
 Flexx's value proposition is **performance**. Any change that MAY impact performance requires benchmark verification:
 
 ```bash
+# Check for CPU-heavy processes that would skew results
+top -l 1 -n 5 -stats command,cpu | head -10
+
 # BEFORE making changes
 bun bench bench/yoga-compare-warmup.bench.ts > /tmp/bench-before.txt
 
 # Make your changes...
+
+# Check CPU load again (should match pre-change conditions)
+top -l 1 -n 5 -stats command,cpu | head -10
 
 # AFTER making changes
 bun bench bench/yoga-compare-warmup.bench.ts > /tmp/bench-after.txt
@@ -26,6 +32,8 @@ bun bench bench/yoga-compare-warmup.bench.ts > /tmp/bench-after.txt
 # Compare results - look for regressions
 diff /tmp/bench-before.txt /tmp/bench-after.txt
 ```
+
+**Before each benchmark run**, verify no CPU-heavy processes (builds, other test suites, browsers, video encoding) are running. Inconsistent system load invalidates comparisons.
 
 **Changes that require benchmarking:**
 
@@ -72,8 +80,8 @@ src/
 
 Flexx is Yoga-compatible but follows CSS spec where Yoga doesn't:
 
-| Behavior | Yoga | Flexx | CSS Spec |
-|----------|------|-------|----------|
+| Behavior                                  | Yoga                                                     | Flexx                      | CSS Spec                                             |
+| ----------------------------------------- | -------------------------------------------------------- | -------------------------- | ---------------------------------------------------- |
 | `overflow:hidden/scroll` + `flexShrink:0` | Item expands to content size (ignores parent constraint) | Item shrinks to fit parent | §4.5: automatic min-size = 0 for overflow containers |
 
 **Details**: Yoga defaults `flexShrink` to 0 (unlike CSS's default of 1) and doesn't implement CSS §4.5's rule that overflow containers have `min-size: auto = 0`. This means in Yoga, an `overflow:hidden` child with 30 lines of content inside a height-10 parent will compute as height 30 — defeating the purpose of overflow clipping. Flexx ensures overflow containers can always shrink (`flexShrink >= 1`), matching CSS browser behavior. See `tests/yoga-overflow-compare.test.ts` for comparison tests.
