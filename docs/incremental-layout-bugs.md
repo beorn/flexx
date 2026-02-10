@@ -135,4 +135,4 @@ Flexx pursues the most aggressive caching strategy (fingerprints, two-entry LRU 
 - **Domain-safe sentinels** (`-1`, not `NaN`)
 - **Side-effect isolation** (save/restore layout state in measurement)
 
-This positions Flexx as: **fastest incremental layout + provably correct caching** — the combination that other engines haven't achieved (Chrome chose to rewrite, PanGui chose to skip caching, Yoga chose conservative performance).
+Flexx takes the hardest path: aggressive caching for maximum performance, paired with rigorous empirical verification. Where Chrome's Blink needed a ground-up rewrite (LayoutNG) to escape cascading cache bugs, PanGui chose to skip caching entirely, and Yoga uses conservative invalidation, Flexx pursues the most aggressive caching strategy and compensates with the most extensive correctness testing of any JavaScript layout engine we're aware of.
