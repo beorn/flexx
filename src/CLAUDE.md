@@ -150,7 +150,7 @@ let _lineChildren: Node[][] = Array(32)       // Node refs per line
 let _lineJustifyStarts = new Float64Array(32) // Per-line justify start
 let _lineItemSpacings = new Float64Array(32)  // Per-line item spacing
 ```
-These grow dynamically if >32 lines (rare). Total memory: ~768 bytes.
+These grow dynamically if >32 lines (rare). Total memory: ~1,344 bytes (4 Float64Arrays × 256 bytes + 1 Uint16Array × 64 bytes + Array overhead).
 
 **Consequence: Not reentrant.** Layout is single-threaded; concurrent `calculateLayout()` calls corrupt shared state. This is safe because layout is synchronous.
 
@@ -363,10 +363,61 @@ cd vendor/beorn-flexx && bun run build
 
 | Layer | Tests | Command | What it verifies |
 |-------|-------|---------|-----------------|
-| Yoga compat | 41 | `bun test tests/yoga-compat/` | Identical output to Yoga |
+| Yoga compat | 38 | `bun test tests/yoga-comparison.test.ts tests/yoga-overflow-compare.test.ts` | Identical output to Yoga |
 | Feature tests | ~110 | `bun test tests/layout/` | Each flexbox feature in isolation |
 | **Re-layout fuzz** | **1200+** | `bun test tests/relayout-consistency.test.ts` | Incremental matches fresh |
 | Mutation testing | 4+ | `bun scripts/mutation-test.ts` | Fuzz catches cache mutations |
 | All tests | 1357 | `bun test` | Everything |
 
 The fuzz tests are the most important layer. They've caught 3 distinct caching bugs that all single-pass tests missed.
+
+## Lessons from Past Sessions
+
+### Three Caching Bugs (2026-02-10)
+
+All 524 Flexx tests passed. The TUI showed visual corruption (text bleeding past card borders) only during re-layout of partially-dirty trees. Root cause: zero tests exercised `calculateLayout()` twice on the same tree.
+
+**Bug 1: measureNode corruption** — `measureNode()` overwrote `layout.width/height` on clean nodes as a side effect. The fingerprint check then skipped the clean node, preserving corrupted values. Fix: save/restore `layout.width/height` around `measureNode` calls.
+
+**Bug 2: NaN cache sentinel** — `resetLayoutCache()` used `NaN` to invalidate entries. But `NaN` is a legitimate "unconstrained" query value, and `Object.is(NaN, NaN) === true` caused false cache hits. Fix: use `-1` as the invalidation sentinel (non-negative field, so `-1` is outside the legitimate domain).
+
+**Bug 3: Fingerprint mismatch** — Auto-sized children receive `NaN` as availableWidth. When the parent's flex distribution changed between passes (shrinkage at 60px vs no shrinkage at 80px), the `NaN===NaN` fingerprint matched even though the parent would override the child's width differently. Fix: ensure fingerprint captures all inputs that affect output, including parent-side overrides.
+
+All three bugs were found by a **differential oracle**: build tree → layout → mark dirty → re-layout → compare against fresh layout. Fresh layout is trivially correct (no caching involved). Any difference is a bug.
+
+### Performance Optimization (2026-02-10)
+
+Baseline measurements vs Yoga:
+- **Flat trees**: Flexx ~2x faster (node creation dominates — no WASM boundary)
+- **Shallow deep trees**: Flexx ~2.3x faster
+- **No-change re-layout**: Flexx ~5.5x faster (fingerprint cache, ~27ns)
+- **FlexWrap**: Yoga 1.77x faster (Flexx's multi-line allocation is the weak spot)
+- **Incremental dirty leaf**: Yoga 2.8-3.4x faster (WASM per-node computation is faster)
+
+Key takeaway: For TUI use cases, the no-change case dominates (cursor movement, selection, scrolling). Flexx's fingerprint cache makes this essentially free.
+
+## Common Blind Paths
+
+| Blind Path | Why It Doesn't Work | What to Do Instead |
+|-----------|---------------------|-------------------|
+| Allocating in the hot path | GC pauses cause visible jank in interactive TUIs | Use FlexInfo mutation, pre-allocated arrays, `-1` sentinels |
+| Using `NaN` as invalidation sentinel | `Object.is(NaN, NaN)` is `true` — causes false cache hits | Use `-1` for non-negative fields |
+| Rounding relative positions | Creates pixel gaps between adjacent elements | Round absolute edge positions, derive sizes as differences |
+| Single-pass tests for caching code | Zero coverage of re-layout paths; 524 tests can pass with 3 caching bugs | Use differential oracle: fresh layout vs re-layout |
+| Modifying `measureNode` without save/restore | `measureNode` overwrites `layout.width/height` as a side effect | Always save/restore around `measureNode` calls |
+| Assuming dirty propagation stops early | Even if node is already dirty, child changes may invalidate cached results | Always clear caches when `markDirty()` is called, even on already-dirty ancestors |
+| Testing with simple flat trees | Complex bugs appear with nesting, auto-sizing, flex distribution changes | Use fuzz testing with random tree structures and dirty subsets |
+
+## Effective Strategies (Priority Order)
+
+1. **Run the re-layout fuzz suite** — `bun test tests/relayout-consistency.test.ts` (1200+ tests). If it passes, caching logic is correct for known patterns. If a seed fails, use `-t "seed=N"` to isolate.
+
+2. **Differential oracle testing** — Build tree → layout → dirty → re-layout → compare against fresh layout. Don't hardcode expected values. `expectRelayoutMatchesFresh()` in `testing.ts` does this automatically.
+
+3. **Mutation testing** — `bun scripts/mutation-test.ts` verifies the fuzz suite catches deliberate cache mutations. Run after modifying cache/fingerprint logic to ensure test coverage is sufficient.
+
+4. **Benchmark before and after** — Any change to `layout-zero.ts` or `node-zero.ts` requires benchmark comparison. No regressions for refactoring; <5% for features.
+
+5. **Check NaN semantics** — Whenever you see a comparison, ask: "What if this value is NaN?" Use `Object.is()` for equality, `Number.isNaN()` for checks, never `=== NaN`.
+
+6. **Targeted test mirroring real structure** — If fuzz doesn't find it, create a test that mirrors the exact component structure from the TUI (card structure, scroll containers, nested flex).
