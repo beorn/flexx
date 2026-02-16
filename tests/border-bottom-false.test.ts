@@ -34,12 +34,6 @@ test("child with asymmetric border stretches to full parent width", () => {
 
   root.calculateLayout(49, 30, DIRECTION_LTR)
 
-  console.log("Root:", { w: root.getComputedWidth(), h: root.getComputedHeight() })
-  console.log("Inner:", { w: inner.getComputedWidth(), h: inner.getComputedHeight(), l: inner.getComputedLeft(), t: inner.getComputedTop() })
-  console.log("TextA:", { w: textA.getComputedWidth(), h: textA.getComputedHeight(), l: textA.getComputedLeft(), t: textA.getComputedTop() })
-  console.log("TextB:", { w: textB.getComputedWidth(), h: textB.getComputedHeight(), l: textB.getComputedLeft(), t: textB.getComputedTop() })
-  console.log("BottomText:", { w: bottomText.getComputedWidth(), h: bottomText.getComputedHeight(), l: bottomText.getComputedLeft(), t: bottomText.getComputedTop() })
-
   // Inner box should stretch to full parent width
   expect(inner.getComputedWidth()).toBe(49)
   expect(inner.getComputedLeft()).toBe(0)
