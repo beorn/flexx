@@ -80,12 +80,8 @@ for (const { cols, rows } of sizes) {
   const usPerNode = ((elapsed * 1000) / nodeCount).toFixed(1)
   console.log(`${cols}x${rows} (${nodeCount} nodes):`)
   console.log(`  Time: ${elapsed.toFixed(2)}ms (${usPerNode}µs/node)`)
-  console.log(
-    `  layoutNode: ${layout.layoutNodeCalls} (${(layout.layoutNodeCalls / nodeCount).toFixed(1)}x/node)`,
-  )
-  console.log(
-    `  measureNode: ${layout.measureNodeCalls} (${(layout.measureNodeCalls / nodeCount).toFixed(1)}x/node)`,
-  )
+  console.log(`  layoutNode: ${layout.layoutNodeCalls} (${(layout.layoutNodeCalls / nodeCount).toFixed(1)}x/node)`)
+  console.log(`  measureNode: ${layout.measureNodeCalls} (${(layout.measureNodeCalls / nodeCount).toFixed(1)}x/node)`)
   console.log(
     `  sizing: ${layout.layoutSizingCalls}, positioning: ${layout.layoutPositioningCalls}, cache: ${layout.layoutCacheHits}`,
   )

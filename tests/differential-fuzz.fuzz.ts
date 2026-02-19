@@ -17,13 +17,7 @@ import { createLogger } from "@beorn/logger"
 
 const log = createLogger("flexx:test:fuzz")
 import * as Flexx from "../src/index.js"
-import initYoga, {
-  type Yoga,
-  type Node as YogaNode,
-  type FlexDirection,
-  type Justify,
-  type Align,
-} from "yoga-wasm-web"
+import initYoga, { type Yoga, type Node as YogaNode, type FlexDirection, type Justify, type Align } from "yoga-wasm-web"
 import { readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -92,9 +86,7 @@ function getFlexxLayout(node: Flexx.Node): NodeLayout {
     top: node.getComputedTop(),
     width: node.getComputedWidth(),
     height: node.getComputedHeight(),
-    children: Array.from({ length: node.getChildCount() }, (_, i) =>
-      getFlexxLayout(node.getChild(i)!),
-    ),
+    children: Array.from({ length: node.getChildCount() }, (_, i) => getFlexxLayout(node.getChild(i)!)),
   }
 }
 
@@ -104,9 +96,7 @@ function getYogaLayout(node: YogaNode): NodeLayout {
     top: node.getComputedTop(),
     width: node.getComputedWidth(),
     height: node.getComputedHeight(),
-    children: Array.from({ length: node.getChildCount() }, (_, i) =>
-      getYogaLayout(node.getChild(i)),
-    ),
+    children: Array.from({ length: node.getChildCount() }, (_, i) => getYogaLayout(node.getChild(i))),
   }
 }
 
@@ -127,24 +117,16 @@ function layoutsMatch(
   const diffs: string[] = []
 
   if (Math.abs(a.left - b.left) > epsilon) {
-    diffs.push(
-      `${path}.left: flexx=${a.left.toFixed(2)} yoga=${b.left.toFixed(2)}`,
-    )
+    diffs.push(`${path}.left: flexx=${a.left.toFixed(2)} yoga=${b.left.toFixed(2)}`)
   }
   if (Math.abs(a.top - b.top) > epsilon) {
-    diffs.push(
-      `${path}.top: flexx=${a.top.toFixed(2)} yoga=${b.top.toFixed(2)}`,
-    )
+    diffs.push(`${path}.top: flexx=${a.top.toFixed(2)} yoga=${b.top.toFixed(2)}`)
   }
   if (Math.abs(a.width - b.width) > epsilon) {
-    diffs.push(
-      `${path}.width: flexx=${a.width.toFixed(2)} yoga=${b.width.toFixed(2)}`,
-    )
+    diffs.push(`${path}.width: flexx=${a.width.toFixed(2)} yoga=${b.width.toFixed(2)}`)
   }
   if (Math.abs(a.height - b.height) > epsilon) {
-    diffs.push(
-      `${path}.height: flexx=${a.height.toFixed(2)} yoga=${b.height.toFixed(2)}`,
-    )
+    diffs.push(`${path}.height: flexx=${a.height.toFixed(2)} yoga=${b.height.toFixed(2)}`)
   }
 
   if (a.children.length !== b.children.length) {
@@ -155,12 +137,7 @@ function layoutsMatch(
   }
 
   for (let i = 0; i < a.children.length; i++) {
-    const childResult = layoutsMatch(
-      a.children[i]!,
-      b.children[i]!,
-      `${path}.children[${i}]`,
-      epsilon,
-    )
+    const childResult = layoutsMatch(a.children[i]!, b.children[i]!, `${path}.children[${i}]`, epsilon)
     if (!childResult.match && childResult.diff) {
       diffs.push(childResult.diff)
     }
@@ -208,10 +185,7 @@ interface TreeSpec {
 function generateSimpleTree(ctx: RandomContext, childCount: number): TreeSpec {
   const rootWidth = randomInt(ctx, 200, 400)
   const rootHeight = randomInt(ctx, 150, 300)
-  const flexDirection = randomChoice(ctx, [
-    Flexx.FLEX_DIRECTION_ROW,
-    Flexx.FLEX_DIRECTION_COLUMN,
-  ])
+  const flexDirection = randomChoice(ctx, [Flexx.FLEX_DIRECTION_ROW, Flexx.FLEX_DIRECTION_COLUMN])
 
   const children: TreeSpec[] = []
   for (let i = 0; i < childCount; i++) {
@@ -223,19 +197,11 @@ function generateSimpleTree(ctx: RandomContext, childCount: number): TreeSpec {
     } else {
       // Fixed dimensions - ensure they fit within parent
       if (flexDirection === Flexx.FLEX_DIRECTION_ROW) {
-        childStyle.width = randomInt(
-          ctx,
-          20,
-          Math.floor(rootWidth / childCount) - 10,
-        )
+        childStyle.width = randomInt(ctx, 20, Math.floor(rootWidth / childCount) - 10)
         childStyle.height = randomInt(ctx, 20, rootHeight - 20)
       } else {
         childStyle.width = randomInt(ctx, 20, rootWidth - 20)
-        childStyle.height = randomInt(
-          ctx,
-          20,
-          Math.floor(rootHeight / childCount) - 10,
-        )
+        childStyle.height = randomInt(ctx, 20, Math.floor(rootHeight / childCount) - 10)
       }
     }
 
@@ -270,11 +236,7 @@ function generateSimpleTree(ctx: RandomContext, childCount: number): TreeSpec {
     ])
   }
   if (randomBool(ctx, 0.3)) {
-    rootStyle.alignItems = randomChoice(ctx, [
-      Flexx.ALIGN_FLEX_START,
-      Flexx.ALIGN_CENTER,
-      Flexx.ALIGN_STRETCH,
-    ])
+    rootStyle.alignItems = randomChoice(ctx, [Flexx.ALIGN_FLEX_START, Flexx.ALIGN_CENTER, Flexx.ALIGN_STRETCH])
   }
 
   return { style: rootStyle, children }
@@ -283,24 +245,14 @@ function generateSimpleTree(ctx: RandomContext, childCount: number): TreeSpec {
 /**
  * Generates nested layouts (2 levels) that should match.
  */
-function generateNestedTree(
-  ctx: RandomContext,
-  outerChildCount: number,
-  innerChildCount: number,
-): TreeSpec {
+function generateNestedTree(ctx: RandomContext, outerChildCount: number, innerChildCount: number): TreeSpec {
   const rootWidth = randomInt(ctx, 300, 500)
   const rootHeight = randomInt(ctx, 200, 400)
-  const rootDirection = randomChoice(ctx, [
-    Flexx.FLEX_DIRECTION_ROW,
-    Flexx.FLEX_DIRECTION_COLUMN,
-  ])
+  const rootDirection = randomChoice(ctx, [Flexx.FLEX_DIRECTION_ROW, Flexx.FLEX_DIRECTION_COLUMN])
 
   const children: TreeSpec[] = []
   for (let i = 0; i < outerChildCount; i++) {
-    const innerDirection = randomChoice(ctx, [
-      Flexx.FLEX_DIRECTION_ROW,
-      Flexx.FLEX_DIRECTION_COLUMN,
-    ])
+    const innerDirection = randomChoice(ctx, [Flexx.FLEX_DIRECTION_ROW, Flexx.FLEX_DIRECTION_COLUMN])
 
     const innerChildren: TreeSpec[] = []
     for (let j = 0; j < innerChildCount; j++) {
@@ -400,11 +352,7 @@ function buildYogaTree(spec: TreeSpec): YogaNode {
 // Test Runner
 // ============================================================================
 
-function runSimpleTest(
-  seed: number,
-  childCount: number,
-  epsilon = EPSILON,
-): { passed: boolean; diff?: string } {
+function runSimpleTest(seed: number, childCount: number, epsilon = EPSILON): { passed: boolean; diff?: string } {
   const rng = createRng(seed)
   const ctx: RandomContext = { rng }
   const spec = generateSimpleTree(ctx, childCount)
@@ -426,11 +374,7 @@ function runSimpleTest(
   return { passed: result.match, diff: result.diff }
 }
 
-function runNestedTest(
-  seed: number,
-  outer: number,
-  inner: number,
-): { passed: boolean; diff?: string } {
+function runNestedTest(seed: number, outer: number, inner: number): { passed: boolean; diff?: string } {
   const rng = createRng(seed)
   const ctx: RandomContext = { rng }
   const spec = generateNestedTree(ctx, outer, inner)
@@ -530,11 +474,7 @@ describe("Fuzz: Nested Layouts (4x4)", () => {
 
 describe("Fuzz: Kanban Layouts", () => {
   // Simulates a Kanban board: row of columns, each column has cards
-  function generateKanbanTree(
-    ctx: RandomContext,
-    columnCount: number,
-    cardCount: number,
-  ): TreeSpec {
+  function generateKanbanTree(ctx: RandomContext, columnCount: number, cardCount: number): TreeSpec {
     const columns: TreeSpec[] = []
     for (let i = 0; i < columnCount; i++) {
       const cards: TreeSpec[] = []
@@ -571,11 +511,7 @@ describe("Fuzz: Kanban Layouts", () => {
     }
   }
 
-  function runKanbanTest(
-    seed: number,
-    columns: number,
-    cards: number,
-  ): { passed: boolean; diff?: string } {
+  function runKanbanTest(seed: number, columns: number, cards: number): { passed: boolean; diff?: string } {
     const rng = createRng(seed)
     const ctx: RandomContext = { rng }
     const spec = generateKanbanTree(ctx, columns, cards)

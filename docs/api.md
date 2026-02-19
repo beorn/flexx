@@ -74,15 +74,7 @@ node.setAlignContent(ALIGN_CENTER)
 ### Spacing
 
 ```typescript
-import {
-  EDGE_TOP,
-  EDGE_RIGHT,
-  EDGE_BOTTOM,
-  EDGE_LEFT,
-  EDGE_ALL,
-  EDGE_START,
-  EDGE_END,
-} from "@beorn/flexx"
+import { EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_LEFT, EDGE_ALL, EDGE_START, EDGE_END } from "@beorn/flexx"
 
 // Padding
 node.setPadding(EDGE_ALL, 10)

@@ -16,15 +16,9 @@ import * as Zero from "../src/index.js"
 // Tree Generators
 // ============================================================================
 
-function createFlatTree(
-  engine: "classic" | "zero",
-  nodeCount: number,
-): Classic.Node | Zero.Node {
+function createFlatTree(engine: "classic" | "zero", nodeCount: number): Classic.Node | Zero.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
-  const FLEX_DIRECTION_COLUMN =
-    engine === "classic"
-      ? Classic.FLEX_DIRECTION_COLUMN
-      : Zero.FLEX_DIRECTION_COLUMN
+  const FLEX_DIRECTION_COLUMN = engine === "classic" ? Classic.FLEX_DIRECTION_COLUMN : Zero.FLEX_DIRECTION_COLUMN
 
   const root = Node.create()
   root.setWidth(1000)
@@ -41,10 +35,7 @@ function createFlatTree(
   return root
 }
 
-function createDeepTree(
-  engine: "classic" | "zero",
-  depth: number,
-): Classic.Node | Zero.Node {
+function createDeepTree(engine: "classic" | "zero", depth: number): Classic.Node | Zero.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
   const EDGE_LEFT = engine === "classic" ? Classic.EDGE_LEFT : Zero.EDGE_LEFT
 
@@ -64,17 +55,10 @@ function createDeepTree(
   return root
 }
 
-function createKanbanTree(
-  engine: "classic" | "zero",
-  cardsPerColumn: number,
-): Classic.Node | Zero.Node {
+function createKanbanTree(engine: "classic" | "zero", cardsPerColumn: number): Classic.Node | Zero.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
-  const FLEX_DIRECTION_ROW =
-    engine === "classic" ? Classic.FLEX_DIRECTION_ROW : Zero.FLEX_DIRECTION_ROW
-  const FLEX_DIRECTION_COLUMN =
-    engine === "classic"
-      ? Classic.FLEX_DIRECTION_COLUMN
-      : Zero.FLEX_DIRECTION_COLUMN
+  const FLEX_DIRECTION_ROW = engine === "classic" ? Classic.FLEX_DIRECTION_ROW : Zero.FLEX_DIRECTION_ROW
+  const FLEX_DIRECTION_COLUMN = engine === "classic" ? Classic.FLEX_DIRECTION_COLUMN : Zero.FLEX_DIRECTION_COLUMN
   const GUTTER_ALL = engine === "classic" ? Classic.GUTTER_ALL : Zero.GUTTER_ALL
   const EDGE_LEFT = engine === "classic" ? Classic.EDGE_LEFT : Zero.EDGE_LEFT
 
@@ -224,21 +208,11 @@ describe("Classic vs Zero - Incremental Update", () => {
 // ============================================================================
 
 describe("Classic vs Zero - Large Scale TUI", () => {
-  function createLargeTUI(
-    engine: "classic" | "zero",
-    nodeCount: number,
-  ): Classic.Node | Zero.Node {
+  function createLargeTUI(engine: "classic" | "zero", nodeCount: number): Classic.Node | Zero.Node {
     const Node = engine === "classic" ? Classic.Node : Zero.Node
-    const FLEX_DIRECTION_ROW =
-      engine === "classic"
-        ? Classic.FLEX_DIRECTION_ROW
-        : Zero.FLEX_DIRECTION_ROW
-    const FLEX_DIRECTION_COLUMN =
-      engine === "classic"
-        ? Classic.FLEX_DIRECTION_COLUMN
-        : Zero.FLEX_DIRECTION_COLUMN
-    const GUTTER_ALL =
-      engine === "classic" ? Classic.GUTTER_ALL : Zero.GUTTER_ALL
+    const FLEX_DIRECTION_ROW = engine === "classic" ? Classic.FLEX_DIRECTION_ROW : Zero.FLEX_DIRECTION_ROW
+    const FLEX_DIRECTION_COLUMN = engine === "classic" ? Classic.FLEX_DIRECTION_COLUMN : Zero.FLEX_DIRECTION_COLUMN
+    const GUTTER_ALL = engine === "classic" ? Classic.GUTTER_ALL : Zero.GUTTER_ALL
 
     const cols = 8
     const itemsPerCol = Math.floor(nodeCount / cols / 3)

@@ -17,9 +17,7 @@ const wasmPath = join(__dirname, "../node_modules/yoga-wasm-web/dist/yoga.wasm")
 const nodeCount = parseInt(process.argv[2] || "1500", 10)
 const iterations = parseInt(process.argv[3] || "3", 10)
 
-console.log(
-  `\nComparing Flexx vs Yoga: ${nodeCount} nodes, ${iterations} iterations\n`,
-)
+console.log(`\nComparing Flexx vs Yoga: ${nodeCount} nodes, ${iterations} iterations\n`)
 
 // Initialize Yoga
 const wasmBuffer = readFileSync(wasmPath)
@@ -124,16 +122,10 @@ const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
 const flexxAvg = avg(flexxTimes)
 const yogaAvg = avg(yogaTimes)
 
-console.log(
-  `Flexx: ${flexxAvg.toFixed(2)}ms avg (${flexxTimes.map((t) => t.toFixed(1)).join(", ")})`,
-)
-console.log(
-  `       measure: calls=${Flexx.Node.measureCalls} hits=${Flexx.Node.measureCacheHits}`,
-)
+console.log(`Flexx: ${flexxAvg.toFixed(2)}ms avg (${flexxTimes.map((t) => t.toFixed(1)).join(", ")})`)
+console.log(`       measure: calls=${Flexx.Node.measureCalls} hits=${Flexx.Node.measureCacheHits}`)
 console.log(`       layoutNode: calls=${layoutNodeCalls}`)
-console.log(
-  `Yoga:  ${yogaAvg.toFixed(2)}ms avg (${yogaTimes.map((t) => t.toFixed(1)).join(", ")})`,
-)
+console.log(`Yoga:  ${yogaAvg.toFixed(2)}ms avg (${yogaTimes.map((t) => t.toFixed(1)).join(", ")})`)
 console.log(
   `\nRatio: Flexx is ${(flexxAvg / yogaAvg).toFixed(2)}x ${flexxAvg > yogaAvg ? "slower" : "faster"} than Yoga`,
 )

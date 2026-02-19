@@ -98,11 +98,9 @@ function yogaTree(cols: number, cards: number) {
 
 // Pre-created trees (initialized in beforeAll)
 let ft: Flexx.Node, ftLeaf: Flexx.Node
-let yt: ReturnType<typeof yoga.Node.create>,
-  ytLeaf: ReturnType<typeof yoga.Node.create>
+let yt: ReturnType<typeof yoga.Node.create>, ytLeaf: ReturnType<typeof yoga.Node.create>
 let ftBig: Flexx.Node, ftBigLeaf: Flexx.Node
-let ytBig: ReturnType<typeof yoga.Node.create>,
-  ytBigLeaf: ReturnType<typeof yoga.Node.create>
+let ytBig: ReturnType<typeof yoga.Node.create>, ytBigLeaf: ReturnType<typeof yoga.Node.create>
 
 beforeAll(async () => {
   const wasmBuffer = readFileSync(wasmPath)

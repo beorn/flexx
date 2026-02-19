@@ -18,11 +18,7 @@
  * ```
  */
 
-import {
-  DIRECTION_LTR,
-  MEASURE_MODE_AT_MOST,
-  MEASURE_MODE_EXACTLY,
-} from "./constants.js"
+import { DIRECTION_LTR, MEASURE_MODE_AT_MOST, MEASURE_MODE_EXACTLY } from "./constants.js"
 import type { MeasureFunc } from "./types.js"
 import { Node } from "./node-zero.js"
 
@@ -54,9 +50,7 @@ export function getLayout(node: Node): LayoutResult {
     top: node.getComputedTop(),
     width: node.getComputedWidth(),
     height: node.getComputedHeight(),
-    children: Array.from({ length: node.getChildCount() }, (_, i) =>
-      getLayout(node.getChild(i)!),
-    ),
+    children: Array.from({ length: node.getChildCount() }, (_, i) => getLayout(node.getChild(i)!)),
   }
 }
 
@@ -74,25 +68,16 @@ export function formatLayout(layout: LayoutResult, indent = 0): string {
  * Collect node-by-node diffs between two layout trees.
  * Returns empty array if layouts match.
  */
-export function diffLayouts(
-  a: LayoutResult,
-  b: LayoutResult,
-  path = "root",
-): string[] {
+export function diffLayouts(a: LayoutResult, b: LayoutResult, path = "root"): string[] {
   const diffs: string[] = []
   // Use Object.is for NaN-safe comparison (NaN === NaN is false, Object.is(NaN, NaN) is true)
-  if (!Object.is(a.left, b.left))
-    diffs.push(`${path}: left ${a.left} vs ${b.left}`)
+  if (!Object.is(a.left, b.left)) diffs.push(`${path}: left ${a.left} vs ${b.left}`)
   if (!Object.is(a.top, b.top)) diffs.push(`${path}: top ${a.top} vs ${b.top}`)
-  if (!Object.is(a.width, b.width))
-    diffs.push(`${path}: width ${a.width} vs ${b.width}`)
-  if (!Object.is(a.height, b.height))
-    diffs.push(`${path}: height ${a.height} vs ${b.height}`)
+  if (!Object.is(a.width, b.width)) diffs.push(`${path}: width ${a.width} vs ${b.width}`)
+  if (!Object.is(a.height, b.height)) diffs.push(`${path}: height ${a.height} vs ${b.height}`)
   for (let i = 0; i < Math.max(a.children.length, b.children.length); i++) {
     if (a.children[i] && b.children[i]) {
-      diffs.push(
-        ...diffLayouts(a.children[i]!, b.children[i]!, `${path}[${i}]`),
-      )
+      diffs.push(...diffLayouts(a.children[i]!, b.children[i]!, `${path}[${i}]`))
     } else if (a.children[i]) {
       diffs.push(`${path}[${i}]: missing in incremental`)
     } else {
@@ -111,16 +96,8 @@ export function diffLayouts(
  * Simulates text of given width that wraps to multiple lines when constrained.
  */
 export function textMeasure(textWidth: number): MeasureFunc {
-  return (
-    width: number,
-    widthMode: number,
-    _height: number,
-    _heightMode: number,
-  ) => {
-    if (
-      widthMode === MEASURE_MODE_EXACTLY ||
-      widthMode === MEASURE_MODE_AT_MOST
-    ) {
+  return (width: number, widthMode: number, _height: number, _heightMode: number) => {
+    if (widthMode === MEASURE_MODE_EXACTLY || widthMode === MEASURE_MODE_AT_MOST) {
       if (width >= textWidth) return { width: textWidth, height: 1 }
       const lines = Math.ceil(textWidth / width)
       return { width: Math.min(textWidth, width), height: lines }
@@ -145,13 +122,10 @@ export function assertLayoutSanity(node: Node, path = "root"): void {
   const t = node.getComputedTop()
 
   if (w < 0) throw new Error(`${path}: width is negative (${w})`)
-  if (!Number.isFinite(w))
-    throw new Error(`${path}: width is not finite (${w})`)
+  if (!Number.isFinite(w)) throw new Error(`${path}: width is not finite (${w})`)
   if (!Number.isFinite(l)) throw new Error(`${path}: left is not finite (${l})`)
-  if (Number.isFinite(h) && h < 0)
-    throw new Error(`${path}: height is negative (${h})`)
-  if (Number.isFinite(t) && t < 0)
-    throw new Error(`${path}: top is negative (${t})`)
+  if (Number.isFinite(h) && h < 0) throw new Error(`${path}: height is negative (${h})`)
+  if (Number.isFinite(t) && t < 0) throw new Error(`${path}: top is negative (${t})`)
 
   for (let i = 0; i < node.getChildCount(); i++) {
     assertLayoutSanity(node.getChild(i)!, `${path}[${i}]`)
@@ -193,11 +167,7 @@ export function expectRelayoutMatchesFresh(
  * Assert that laying out twice with identical constraints produces identical results.
  * Catches non-determinism or state corruption from a single layout pass.
  */
-export function expectIdempotent(
-  buildTree: () => BuildTreeResult,
-  layoutWidth: number,
-  layoutHeight: number,
-): void {
+export function expectIdempotent(buildTree: () => BuildTreeResult, layoutWidth: number, layoutHeight: number): void {
   const { root } = buildTree()
   root.calculateLayout(layoutWidth, layoutHeight, DIRECTION_LTR)
   const first = getLayout(root)
@@ -207,9 +177,7 @@ export function expectIdempotent(
   const diffs = diffLayouts(first, second)
   if (diffs.length > 0) {
     const detail = diffs.map((d) => `  ${d}`).join("\n")
-    throw new Error(
-      `Layout not idempotent (${diffs.length} diffs after 2nd pass):\n${detail}`,
-    )
+    throw new Error(`Layout not idempotent (${diffs.length} diffs after 2nd pass):\n${detail}`)
   }
 }
 
@@ -218,10 +186,7 @@ export function expectIdempotent(
  * produces the same result as fresh layout at W.
  * Catches stale cache entries that don't update on constraint change.
  */
-export function expectResizeRoundTrip(
-  buildTree: () => BuildTreeResult,
-  widths: number[],
-): void {
+export function expectResizeRoundTrip(buildTree: () => BuildTreeResult, widths: number[]): void {
   const { root } = buildTree()
   for (const w of widths) {
     root.setWidth(w)
@@ -239,8 +204,6 @@ export function expectResizeRoundTrip(
   const diffs = diffLayouts(reference, incremental)
   if (diffs.length > 0) {
     const detail = diffs.map((d) => `  ${d}`).join("\n")
-    throw new Error(
-      `Resize round-trip differs (widths: ${widths.join("→")}, ${diffs.length} diffs):\n${detail}`,
-    )
+    throw new Error(`Resize round-trip differs (widths: ${widths.join("→")}, ${diffs.length} diffs):\n${detail}`)
   }
 }

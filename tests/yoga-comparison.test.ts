@@ -51,9 +51,7 @@ function getFlexxLayout(node: Flexx.Node): NodeLayout {
     top: node.getComputedTop(),
     width: node.getComputedWidth(),
     height: node.getComputedHeight(),
-    children: Array.from({ length: node.getChildCount() }, (_, i) =>
-      getFlexxLayout(node.getChild(i)!),
-    ),
+    children: Array.from({ length: node.getChildCount() }, (_, i) => getFlexxLayout(node.getChild(i)!)),
   }
 }
 
@@ -63,17 +61,11 @@ function getYogaLayout(node: YogaNode): NodeLayout {
     top: node.getComputedTop(),
     width: node.getComputedWidth(),
     height: node.getComputedHeight(),
-    children: Array.from({ length: node.getChildCount() }, (_, i) =>
-      getYogaLayout(node.getChild(i)),
-    ),
+    children: Array.from({ length: node.getChildCount() }, (_, i) => getYogaLayout(node.getChild(i))),
   }
 }
 
-function layoutsMatch(
-  a: NodeLayout,
-  b: NodeLayout,
-  tolerance = 0.001,
-): boolean {
+function layoutsMatch(a: NodeLayout, b: NodeLayout, tolerance = 0.001): boolean {
   if (
     Math.abs(a.left - b.left) > tolerance ||
     Math.abs(a.top - b.top) > tolerance ||
@@ -83,9 +75,7 @@ function layoutsMatch(
     return false
   }
   if (a.children.length !== b.children.length) return false
-  return a.children.every((child, i) =>
-    layoutsMatch(child, b.children[i]!, tolerance),
-  )
+  return a.children.every((child, i) => layoutsMatch(child, b.children[i]!, tolerance))
 }
 
 function formatLayout(layout: NodeLayout, indent = 0): string {
@@ -358,15 +348,7 @@ interface CompareLayoutsOptions {
  * Main comparison helper - creates Flexx and Yoga trees, compares layouts
  */
 function compareLayouts(options: CompareLayoutsOptions): boolean {
-  const {
-    category,
-    name,
-    rootConfig,
-    childConfigs = [],
-    customSetup,
-    layoutWidth = 100,
-    layoutHeight = 100,
-  } = options
+  const { category, name, rootConfig, childConfigs = [], customSetup, layoutWidth = 100, layoutHeight = 100 } = options
 
   // Create Flexx tree
   const fRoot = createFlexxNode(rootConfig)
@@ -441,25 +423,20 @@ describe("Yoga Comparison: FlexWrap", () => {
       childHeight: 20,
       flexWrap: Flexx.WRAP_WRAP_REVERSE,
     },
-  ])(
-    "$name: $description",
-    ({ name, childCount, childWidth, childHeight, flexWrap }) => {
-      const match = compareLayouts({
-        category: "FlexWrap",
-        name,
-        rootConfig: {
-          width: 100,
-          height: 100,
-          flexDirection: Flexx.FLEX_DIRECTION_ROW,
-          flexWrap,
-        },
-        childConfigs: [
-          { width: childWidth, height: childHeight, count: childCount },
-        ],
-      })
-      expect(match).toBe(true)
-    },
-  )
+  ])("$name: $description", ({ name, childCount, childWidth, childHeight, flexWrap }) => {
+    const match = compareLayouts({
+      category: "FlexWrap",
+      name,
+      rootConfig: {
+        width: 100,
+        height: 100,
+        flexDirection: Flexx.FLEX_DIRECTION_ROW,
+        flexWrap,
+      },
+      childConfigs: [{ width: childWidth, height: childHeight, count: childCount }],
+    })
+    expect(match).toBe(true)
+  })
 
   it("wrap-with-gap: wrapping with row and column gap", () => {
     const match = compareLayouts({
@@ -547,24 +524,21 @@ describe("Yoga Comparison: AlignContent", () => {
     },
   ]
 
-  it.each(alignContentCases)(
-    "align-content-$name: $description",
-    ({ name, align }) => {
-      const match = compareLayouts({
-        category: "AlignContent",
-        name: `align-content-${name}`,
-        rootConfig: {
-          width: 100,
-          height: 100,
-          flexDirection: Flexx.FLEX_DIRECTION_ROW,
-          flexWrap: Flexx.WRAP_WRAP,
-          alignContent: align,
-        },
-        childConfigs: [{ width: 40, height: 20, count: 4 }],
-      })
-      expect(match).toBe(true)
-    },
-  )
+  it.each(alignContentCases)("align-content-$name: $description", ({ name, align }) => {
+    const match = compareLayouts({
+      category: "AlignContent",
+      name: `align-content-${name}`,
+      rootConfig: {
+        width: 100,
+        height: 100,
+        flexDirection: Flexx.FLEX_DIRECTION_ROW,
+        flexWrap: Flexx.WRAP_WRAP,
+        alignContent: align,
+      },
+      childConfigs: [{ width: 40, height: 20, count: 4 }],
+    })
+    expect(match).toBe(true)
+  })
 })
 
 // ============================================================================
@@ -900,35 +874,22 @@ describe("Yoga Comparison: Gap", () => {
       childWidth: 20,
       childHeight: 30,
     },
-  ])(
-    "$name: $description",
-    ({
+  ])("$name: $description", ({ name, gapRow, gapColumn, flexWrap, childCount, childWidth, childHeight }) => {
+    const match = compareLayouts({
+      category: "Gap",
       name,
-      gapRow,
-      gapColumn,
-      flexWrap,
-      childCount,
-      childWidth,
-      childHeight,
-    }) => {
-      const match = compareLayouts({
-        category: "Gap",
-        name,
-        rootConfig: {
-          width: 100,
-          height: 100,
-          flexDirection: Flexx.FLEX_DIRECTION_ROW,
-          flexWrap,
-          gapRow,
-          gapColumn,
-        },
-        childConfigs: [
-          { width: childWidth, height: childHeight, count: childCount },
-        ],
-      })
-      expect(match).toBe(true)
-    },
-  )
+      rootConfig: {
+        width: 100,
+        height: 100,
+        flexDirection: Flexx.FLEX_DIRECTION_ROW,
+        flexWrap,
+        gapRow,
+        gapColumn,
+      },
+      childConfigs: [{ width: childWidth, height: childHeight, count: childCount }],
+    })
+    expect(match).toBe(true)
+  })
 
   it("gap-with-flexgrow: gap interacting with flex grow", () => {
     const match = compareLayouts({
@@ -1554,16 +1515,10 @@ describe("Yoga Comparison: IntentionalDifferences", () => {
     })
     // This test documents the difference - we expect it MAY differ
     // Just recording the result, not asserting
-    log.debug?.(
-      `shrink-weighted-by-basis: ${match ? "MATCHES" : "DIFFERS (expected)"}`,
-    )
+    log.debug?.(`shrink-weighted-by-basis: ${match ? "MATCHES" : "DIFFERS (expected)"}`)
     if (!match) {
-      log.debug?.(
-        `  Yoga (CSS spec weighted shrink): ${JSON.stringify(yogaLayout.children.map((c) => c.width))}`,
-      )
-      log.debug?.(
-        `  Flexx (proportional shrink): ${JSON.stringify(flexxLayout.children.map((c) => c.width))}`,
-      )
+      log.debug?.(`  Yoga (CSS spec weighted shrink): ${JSON.stringify(yogaLayout.children.map((c) => c.width))}`)
+      log.debug?.(`  Flexx (proportional shrink): ${JSON.stringify(flexxLayout.children.map((c) => c.width))}`)
     }
   })
 })

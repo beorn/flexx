@@ -22,15 +22,9 @@ function bench(name: string, fn: () => void, iterations = 1000): number {
   return opsPerSec
 }
 
-function createFlatTree(
-  engine: "classic" | "zero",
-  nodeCount: number,
-): Classic.Node | Zero.Node {
+function createFlatTree(engine: "classic" | "zero", nodeCount: number): Classic.Node | Zero.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
-  const FLEX_DIRECTION_COLUMN =
-    engine === "classic"
-      ? Classic.FLEX_DIRECTION_COLUMN
-      : Zero.FLEX_DIRECTION_COLUMN
+  const FLEX_DIRECTION_COLUMN = engine === "classic" ? Classic.FLEX_DIRECTION_COLUMN : Zero.FLEX_DIRECTION_COLUMN
 
   const root = Node.create()
   root.setWidth(1000)
@@ -47,10 +41,7 @@ function createFlatTree(
   return root
 }
 
-function createDeepTree(
-  engine: "classic" | "zero",
-  depth: number,
-): Classic.Node | Zero.Node {
+function createDeepTree(engine: "classic" | "zero", depth: number): Classic.Node | Zero.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
   const EDGE_LEFT = engine === "classic" ? Classic.EDGE_LEFT : Zero.EDGE_LEFT
 
@@ -70,17 +61,10 @@ function createDeepTree(
   return root
 }
 
-function createKanbanTree(
-  engine: "classic" | "zero",
-  cardsPerColumn: number,
-): Classic.Node | Zero.Node {
+function createKanbanTree(engine: "classic" | "zero", cardsPerColumn: number): Classic.Node | Zero.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
-  const FLEX_DIRECTION_ROW =
-    engine === "classic" ? Classic.FLEX_DIRECTION_ROW : Zero.FLEX_DIRECTION_ROW
-  const FLEX_DIRECTION_COLUMN =
-    engine === "classic"
-      ? Classic.FLEX_DIRECTION_COLUMN
-      : Zero.FLEX_DIRECTION_COLUMN
+  const FLEX_DIRECTION_ROW = engine === "classic" ? Classic.FLEX_DIRECTION_ROW : Zero.FLEX_DIRECTION_ROW
+  const FLEX_DIRECTION_COLUMN = engine === "classic" ? Classic.FLEX_DIRECTION_COLUMN : Zero.FLEX_DIRECTION_COLUMN
   const GUTTER_ALL = engine === "classic" ? Classic.GUTTER_ALL : Zero.GUTTER_ALL
   const EDGE_LEFT = engine === "classic" ? Classic.EDGE_LEFT : Zero.EDGE_LEFT
 
@@ -127,9 +111,7 @@ for (const n of [100, 500, 1000]) {
     tree.calculateLayout(1000, 1000, Zero.DIRECTION_LTR)
   })
   const ratio = zero / classic
-  console.log(
-    `  → Zero is ${ratio > 1 ? ratio.toFixed(2) + "x faster" : (1 / ratio).toFixed(2) + "x slower"}\n`,
-  )
+  console.log(`  → Zero is ${ratio > 1 ? ratio.toFixed(2) + "x faster" : (1 / ratio).toFixed(2) + "x slower"}\n`)
 }
 
 // Deep hierarchy
@@ -144,9 +126,7 @@ for (const d of [20, 50, 100]) {
     tree.calculateLayout(1000, 1000, Zero.DIRECTION_LTR)
   }, 500)
   const ratio = zero / classic
-  console.log(
-    `  → Zero is ${ratio > 1 ? ratio.toFixed(2) + "x faster" : (1 / ratio).toFixed(2) + "x slower"}\n`,
-  )
+  console.log(`  → Zero is ${ratio > 1 ? ratio.toFixed(2) + "x faster" : (1 / ratio).toFixed(2) + "x slower"}\n`)
 }
 
 // TUI patterns (most relevant for km)
@@ -161,9 +141,7 @@ for (const cards of [10, 50, 100]) {
     tree.calculateLayout(120, 40, Zero.DIRECTION_LTR)
   })
   const ratio = zero / classic
-  console.log(
-    `  → Zero is ${ratio > 1 ? ratio.toFixed(2) + "x faster" : (1 / ratio).toFixed(2) + "x slower"}\n`,
-  )
+  console.log(`  → Zero is ${ratio > 1 ? ratio.toFixed(2) + "x faster" : (1 / ratio).toFixed(2) + "x slower"}\n`)
 }
 
 // Layout-only (pre-created trees, no allocation)

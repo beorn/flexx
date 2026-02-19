@@ -52,12 +52,7 @@ const opts = { warmupIterations: 50, iterations: 500, time: 2000 }
 // ============================================================================
 
 function textMeasure(textLen: number) {
-  return (
-    width: number,
-    _wm: number,
-    _height: number,
-    _hm: number,
-  ): { width: number; height: number } => {
+  return (width: number, _wm: number, _height: number, _hm: number): { width: number; height: number } => {
     const maxW = Number.isNaN(width) ? Infinity : width
     const lines = Math.ceil(textLen / Math.max(1, maxW))
     return { width: Math.min(textLen, maxW), height: lines }
@@ -176,11 +171,7 @@ function flexxPropertyRichTree(nodeCount: number): Flexx.Node {
     const row = Flexx.Node.create()
     row.setFlexDirection(Flexx.FLEX_DIRECTION_ROW)
     row.setJustifyContent(
-      r % 3 === 0
-        ? Flexx.JUSTIFY_FLEX_START
-        : r % 3 === 1
-          ? Flexx.JUSTIFY_SPACE_BETWEEN
-          : Flexx.JUSTIFY_CENTER,
+      r % 3 === 0 ? Flexx.JUSTIFY_FLEX_START : r % 3 === 1 ? Flexx.JUSTIFY_SPACE_BETWEEN : Flexx.JUSTIFY_CENTER,
     )
     row.setAlignItems(r % 2 === 0 ? Flexx.ALIGN_CENTER : Flexx.ALIGN_FLEX_END)
     row.setFlexWrap(r % 4 === 0 ? Flexx.WRAP_WRAP : Flexx.WRAP_NO_WRAP)
@@ -215,11 +206,7 @@ function yogaPropertyRichTree(nodeCount: number) {
     const row = yoga.Node.create()
     row.setFlexDirection(yoga.FLEX_DIRECTION_ROW)
     row.setJustifyContent(
-      r % 3 === 0
-        ? yoga.JUSTIFY_FLEX_START
-        : r % 3 === 1
-          ? yoga.JUSTIFY_SPACE_BETWEEN
-          : yoga.JUSTIFY_CENTER,
+      r % 3 === 0 ? yoga.JUSTIFY_FLEX_START : r % 3 === 1 ? yoga.JUSTIFY_SPACE_BETWEEN : yoga.JUSTIFY_CENTER,
     )
     row.setAlignItems(r % 2 === 0 ? yoga.ALIGN_CENTER : yoga.ALIGN_FLEX_END)
     row.setFlexWrap(r % 4 === 0 ? yoga.WRAP_WRAP : yoga.WRAP_NO_WRAP)

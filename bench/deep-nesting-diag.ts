@@ -61,8 +61,7 @@ for (const depth of [5, 10, 20, 50, 100, 200]) {
   const usPerNode = (msPerLayout * 1000) / nodeCount
 
   if (depth === 5) baseTimePerNode = usPerNode
-  const scaling =
-    baseTimePerNode > 0 ? (usPerNode / baseTimePerNode).toFixed(1) : "N/A"
+  const scaling = baseTimePerNode > 0 ? (usPerNode / baseTimePerNode).toFixed(1) : "N/A"
 
   console.log(
     `${depth.toString().padStart(5)} | ${nodeCount.toString().padStart(5)} | ${layoutNodeCalls.toString().padStart(5)} | ${msPerLayout.toFixed(4).padStart(9)} | ${usPerNode.toFixed(2).padStart(7)} | ${String(scaling).padStart(6)}x`,

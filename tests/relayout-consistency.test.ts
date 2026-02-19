@@ -567,10 +567,8 @@ function buildRandomTree(rng: () => number): () => BuildTreeResult {
     const isLeaf = i >= nodeCount / 2
     const hasMeasure = isLeaf && rng() < 0.4
     specs.push({
-      width:
-        !hasMeasure && rng() < 0.5 ? 5 + Math.floor(rng() * 20) : undefined,
-      height:
-        !hasMeasure && rng() < 0.3 ? 1 + Math.floor(rng() * 5) : undefined,
+      width: !hasMeasure && rng() < 0.5 ? 5 + Math.floor(rng() * 20) : undefined,
+      height: !hasMeasure && rng() < 0.3 ? 1 + Math.floor(rng() * 5) : undefined,
       flexGrow: rng() < 0.4 ? 1 : undefined,
       flexShrink: rng() < 0.3 ? 1 : undefined,
       hasMeasure,
@@ -763,11 +761,7 @@ describe("Fuzz: multi-step constraint sweep", () => {
       const buildTree = buildRandomTree(rng)
 
       const { root, dirtyTargets } = buildTree()
-      const widths = [
-        40 + Math.floor(rng() * 80),
-        40 + Math.floor(rng() * 80),
-        40 + Math.floor(rng() * 80),
-      ]
+      const widths = [40 + Math.floor(rng() * 80), 40 + Math.floor(rng() * 80), 40 + Math.floor(rng() * 80)]
 
       // Phase 1: layout at varying widths
       for (const w of widths) {
@@ -817,9 +811,7 @@ describe("Re-layout Consistency: content change", () => {
     const text = Node.create()
     text.setFlexGrow(1)
     text.setFlexShrink(1)
-    text.setMeasureFunc((w, wm, h, hm) =>
-      textMeasure(currentWidth)(w, wm, h, hm),
-    )
+    text.setMeasureFunc((w, wm, h, hm) => textMeasure(currentWidth)(w, wm, h, hm))
     row.insertChild(text, 0)
 
     // Initial: 30 chars at width 40 → fits in 1 line
@@ -854,9 +846,7 @@ describe("Re-layout Consistency: content change", () => {
     const root = Node.create()
     root.setWidth(40)
     const text = Node.create()
-    text.setMeasureFunc((w, wm, h, hm) =>
-      textMeasure(currentWidth)(w, wm, h, hm),
-    )
+    text.setMeasureFunc((w, wm, h, hm) => textMeasure(currentWidth)(w, wm, h, hm))
     root.insertChild(text, 0)
 
     root.calculateLayout(40, NaN, DIRECTION_LTR)
@@ -895,9 +885,7 @@ describe("Re-layout Consistency: content change", () => {
     const content = Node.create()
     content.setFlexGrow(1)
     content.setFlexShrink(1)
-    content.setMeasureFunc((w, wm, h, hm) =>
-      textMeasure(currentWidth)(w, wm, h, hm),
-    )
+    content.setMeasureFunc((w, wm, h, hm) => textMeasure(currentWidth)(w, wm, h, hm))
     row.insertChild(content, 1)
 
     // Initial: 50 chars at ~75 content width → 1 line
@@ -981,21 +969,14 @@ describe("Fuzz: content change", () => {
           measureWidths.push(10 + Math.floor(rng() * 60))
         }
         specs.push({
-          width:
-            !hasMeasure && rng() < 0.5
-              ? 5 + Math.floor(rng() * 20)
-              : undefined,
-          height:
-            !hasMeasure && rng() < 0.3
-              ? 1 + Math.floor(rng() * 5)
-              : undefined,
+          width: !hasMeasure && rng() < 0.5 ? 5 + Math.floor(rng() * 20) : undefined,
+          height: !hasMeasure && rng() < 0.3 ? 1 + Math.floor(rng() * 5) : undefined,
           flexGrow: rng() < 0.4 ? 1 : undefined,
           flexShrink: rng() < 0.3 ? 1 : undefined,
           hasMeasure,
           measureIdx,
           isBordered: !isLeaf && rng() < 0.2,
-          flexDirection:
-            rng() < 0.5 ? FLEX_DIRECTION_ROW : FLEX_DIRECTION_COLUMN,
+          flexDirection: rng() < 0.5 ? FLEX_DIRECTION_ROW : FLEX_DIRECTION_COLUMN,
           children: [],
         })
       }
@@ -1011,16 +992,13 @@ describe("Fuzz: content change", () => {
       }
 
       // Pick 1-2 measure nodes to change content
-      const measureIndices = specs
-        .map((s, i) => (s.hasMeasure ? i : -1))
-        .filter((i) => i >= 0)
+      const measureIndices = specs.map((s, i) => (s.hasMeasure ? i : -1)).filter((i) => i >= 0)
       if (measureIndices.length === 0) return // skip if no measure nodes
 
       const changeCount = 1 + Math.floor(rng() * Math.min(2, measureIndices.length))
       const changingNodes: number[] = []
       for (let c = 0; c < changeCount; c++) {
-        const idx =
-          measureIndices[Math.floor(rng() * measureIndices.length)]!
+        const idx = measureIndices[Math.floor(rng() * measureIndices.length)]!
         if (!changingNodes.includes(idx)) changingNodes.push(idx)
       }
 
@@ -1037,8 +1015,7 @@ describe("Fuzz: content change", () => {
             if (spec.width !== undefined) node.setWidth(spec.width)
             if (spec.height !== undefined) node.setHeight(spec.height)
             if (spec.flexGrow !== undefined) node.setFlexGrow(spec.flexGrow)
-            if (spec.flexShrink !== undefined)
-              node.setFlexShrink(spec.flexShrink)
+            if (spec.flexShrink !== undefined) node.setFlexShrink(spec.flexShrink)
             node.setFlexDirection(spec.flexDirection)
           }
           if (spec.isBordered) {
@@ -1048,9 +1025,7 @@ describe("Fuzz: content change", () => {
             node.setBorder(3, 1)
           }
           if (spec.hasMeasure) {
-            const w = useNewWidths
-              ? measureWidths[spec.measureIdx]!
-              : measureWidths[spec.measureIdx]!
+            const w = useNewWidths ? measureWidths[spec.measureIdx]! : measureWidths[spec.measureIdx]!
             node.setMeasureFunc(textMeasure(w))
             measureNodes.push(node)
           }
@@ -1099,9 +1074,7 @@ describe("Fuzz: content change", () => {
         if (spec.hasMeasure) {
           // Use closure that references measureWidths (mutable)
           const mIdx = spec.measureIdx
-          node.setMeasureFunc((w, wm, h, hm) =>
-            textMeasure(measureWidths[mIdx]!)(w, wm, h, hm),
-          )
+          node.setMeasureFunc((w, wm, h, hm) => textMeasure(measureWidths[mIdx]!)(w, wm, h, hm))
           mutableMeasureNodes.set(i, node)
         }
         allNodes.push(node)

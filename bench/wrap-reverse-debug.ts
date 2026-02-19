@@ -80,12 +80,6 @@ for (let i = 0; i < 3; i++) {
 yRoot.freeRecursive()
 
 console.log("\n=== Difference ===")
-console.log(
-  "wrap-reverse means lines wrap from bottom to top (cross-axis reversed)",
-)
-console.log(
-  "- Children 0,1 (40+40=80) fit on first line → should be at BOTTOM (high top value)",
-)
-console.log(
-  "- Child 2 wraps to second line → should be ABOVE first line (lower top value)",
-)
+console.log("wrap-reverse means lines wrap from bottom to top (cross-axis reversed)")
+console.log("- Children 0,1 (40+40=80) fit on first line → should be at BOTTOM (high top value)")
+console.log("- Child 2 wraps to second line → should be ABOVE first line (lower top value)")

@@ -7,11 +7,7 @@ import { DIRECTION_LTR, Node, type Direction } from "../src/index.js"
 /**
  * Creates a root node, configures it, and calculates layout
  */
-export function createAndLayoutRoot(
-  width: number,
-  height: number,
-  direction: Direction = DIRECTION_LTR,
-): Node {
+export function createAndLayoutRoot(width: number, height: number, direction: Direction = DIRECTION_LTR): Node {
   const root = Node.create()
   root.setWidth(width)
   root.setHeight(height)

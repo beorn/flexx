@@ -14,12 +14,7 @@ import {
   type Value,
   createDefaultStyle,
 } from "../types.js"
-import {
-  setEdgeValue,
-  setEdgeBorder,
-  getEdgeValue,
-  getEdgeBorderValue,
-} from "../utils.js"
+import { setEdgeValue, setEdgeBorder, getEdgeValue, getEdgeBorderValue } from "../utils.js"
 import { log } from "../logger.js"
 
 /**
@@ -318,11 +313,7 @@ export class Node {
    * console.log(child.getComputedWidth());
    * ```
    */
-  calculateLayout(
-    width?: number,
-    height?: number,
-    _direction: number = C.DIRECTION_LTR,
-  ): void {
+  calculateLayout(width?: number, height?: number, _direction: number = C.DIRECTION_LTR): void {
     if (!this._isDirty) {
       log.debug?.("layout skip (not dirty)")
       return
@@ -343,13 +334,7 @@ export class Node {
     this._hasNewLayout = true
     markSubtreeLayoutSeen(this)
 
-    log.debug?.(
-      "layout: %dx%d, %d nodes in %dms",
-      width,
-      height,
-      nodeCount,
-      Date.now() - start,
-    )
+    log.debug?.("layout: %dx%d, %d nodes in %dms", width, height, nodeCount, Date.now() - start)
   }
 
   // ============================================================================

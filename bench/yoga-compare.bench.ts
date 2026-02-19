@@ -462,9 +462,7 @@ describe("Flexx vs Yoga - Large Scale TUI", () => {
     })
 
     bench(`Yoga: Large TUI ~${nodeCount} nodes`, () => {
-      const tree = createLargeTUI("yoga", nodeCount) as ReturnType<
-        typeof yoga.Node.create
-      >
+      const tree = createLargeTUI("yoga", nodeCount) as ReturnType<typeof yoga.Node.create>
       tree.calculateLayout(250, 120, yoga.DIRECTION_LTR)
       tree.freeRecursive()
     })

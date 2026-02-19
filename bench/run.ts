@@ -32,11 +32,7 @@ interface BenchResult {
   opsPerSec: number
 }
 
-function benchmark(
-  name: string,
-  fn: () => void,
-  options: { iterations?: number; warmup?: number } = {},
-): BenchResult {
+function benchmark(name: string, fn: () => void, options: { iterations?: number; warmup?: number } = {}): BenchResult {
   const { iterations = 1000, warmup = 100 } = options
 
   // Warmup
@@ -305,9 +301,5 @@ console.log(formatResult(results.at(-1)!))
 console.log("")
 console.log("## Summary")
 console.log("")
-console.log(
-  "For terminal UIs (typically <500 nodes), Flexx handles layout in <1ms.",
-)
-console.log(
-  "This is more than fast enough for 60fps rendering (16.67ms per frame).",
-)
+console.log("For terminal UIs (typically <500 nodes), Flexx handles layout in <1ms.")
+console.log("This is more than fast enough for 60fps rendering (16.67ms per frame).")

@@ -5,11 +5,7 @@
  */
 
 import * as C from "./constants.js"
-import {
-  computeLayout,
-  countNodes,
-  markSubtreeLayoutSeen,
-} from "./layout-zero.js"
+import { computeLayout, countNodes, markSubtreeLayoutSeen } from "./layout-zero.js"
 import {
   type BaselineFunc,
   type FlexInfo,
@@ -21,13 +17,7 @@ import {
   type Value,
   createDefaultStyle,
 } from "./types.js"
-import {
-  setEdgeValue,
-  setEdgeBorder,
-  getEdgeValue,
-  getEdgeBorderValue,
-  traversalStack,
-} from "./utils.js"
+import { setEdgeValue, setEdgeBorder, getEdgeValue, getEdgeBorderValue, traversalStack } from "./utils.js"
 import { log } from "./logger.js"
 
 /**
@@ -347,12 +337,7 @@ export class Node {
    *
    * @returns Measured dimensions or null if no measure function
    */
-  cachedMeasure(
-    w: number,
-    wm: number,
-    h: number,
-    hm: number,
-  ): { width: number; height: number } | null {
+  cachedMeasure(w: number, wm: number, h: number, hm: number): { width: number; height: number } | null {
     if (!this._measureFunc) return null
 
     Node.measureCalls++
@@ -444,10 +429,7 @@ export class Node {
    *
    * NaN dimensions are handled specially via Object.is (NaN === NaN is false, but Object.is(NaN, NaN) is true).
    */
-  getCachedLayout(
-    availW: number,
-    availH: number,
-  ): { width: number; height: number } | null {
+  getCachedLayout(availW: number, availH: number): { width: number; height: number } | null {
     // Never return cached layout for dirty nodes - content may have changed
     if (this._isDirty) {
       return null
@@ -472,12 +454,7 @@ export class Node {
    * Cache a computed layout result for the given available dimensions.
    * Zero-allocation: lazily allocates cache entries once, then reuses.
    */
-  setCachedLayout(
-    availW: number,
-    availH: number,
-    computedW: number,
-    computedH: number,
-  ): void {
+  setCachedLayout(availW: number, availH: number, computedW: number, computedH: number): void {
     // Rotate entries: copy _lc0 values to _lc1, then update _lc0
     if (this._lc0) {
       // Lazily allocate _lc1 on first rotation
@@ -601,11 +578,7 @@ export class Node {
    * console.log(child.getComputedWidth());
    * ```
    */
-  calculateLayout(
-    width?: number,
-    height?: number,
-    direction: number = C.DIRECTION_LTR,
-  ): void {
+  calculateLayout(width?: number, height?: number, direction: number = C.DIRECTION_LTR): void {
     // Treat undefined as unconstrained (NaN signals content-based sizing)
     const availableWidth = width ?? NaN
     const availableHeight = height ?? NaN

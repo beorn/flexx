@@ -94,13 +94,7 @@ export {
 } from "./constants.js"
 
 // Types
-export type {
-  BaselineFunc,
-  Layout,
-  MeasureFunc,
-  Style,
-  Value,
-} from "./types.js"
+export type { BaselineFunc, Layout, MeasureFunc, Style, Value } from "./types.js"
 
 // Utility functions
 export { createDefaultStyle, createValue } from "./types.js"

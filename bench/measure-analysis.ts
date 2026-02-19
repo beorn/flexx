@@ -70,9 +70,7 @@ function countTextNodes(n: Node): void {
 countTextNodes(root)
 
 console.log(`Text nodes: ${textNodeCount}`)
-console.log(
-  `Total measure calls: ${totalCalls} (${(totalCalls / textNodeCount).toFixed(1)} per text node)`,
-)
+console.log(`Total measure calls: ${totalCalls} (${(totalCalls / textNodeCount).toFixed(1)} per text node)`)
 console.log(`Unique parameter combinations: ${measureParams.size}`)
 console.log(`Cache entries: 4 (current)`)
 console.log()

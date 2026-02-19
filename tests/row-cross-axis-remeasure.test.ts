@@ -53,10 +53,7 @@ describe("row cross-axis remeasure after flex distribution", () => {
       // At unconstrained width: 50 chars x 1 line
       // At width <= 32: wraps to 2 lines
       const textWidth = 50
-      if (
-        widthMode === MEASURE_MODE_EXACTLY ||
-        widthMode === MEASURE_MODE_AT_MOST
-      ) {
+      if (widthMode === MEASURE_MODE_EXACTLY || widthMode === MEASURE_MODE_AT_MOST) {
         const maxW = _width
         if (maxW >= textWidth) {
           return { width: textWidth, height: 1 }
@@ -101,10 +98,7 @@ describe("row cross-axis remeasure after flex distribution", () => {
     flexChild.setFlexGrow(1)
     flexChild.setMeasureFunc((_width, widthMode, _height, _heightMode) => {
       const textWidth = 50
-      if (
-        widthMode === MEASURE_MODE_EXACTLY ||
-        widthMode === MEASURE_MODE_AT_MOST
-      ) {
+      if (widthMode === MEASURE_MODE_EXACTLY || widthMode === MEASURE_MODE_AT_MOST) {
         const maxW = _width
         if (maxW >= textWidth) {
           return { width: textWidth, height: 1 }
@@ -154,10 +148,7 @@ describe("row cross-axis remeasure after flex distribution", () => {
     flexChild.setFlexGrow(1)
     flexChild.setMeasureFunc((_width, widthMode) => {
       const textWidth = 50
-      if (
-        widthMode === MEASURE_MODE_EXACTLY ||
-        widthMode === MEASURE_MODE_AT_MOST
-      ) {
+      if (widthMode === MEASURE_MODE_EXACTLY || widthMode === MEASURE_MODE_AT_MOST) {
         const maxW = _width
         if (maxW >= textWidth) {
           return { width: textWidth, height: 1 }

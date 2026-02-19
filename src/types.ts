@@ -203,14 +203,7 @@ export function createDefaultStyle(): Style {
   return {
     display: 0, // DISPLAY_FLEX
     positionType: 1, // POSITION_TYPE_RELATIVE
-    position: [
-      createValue(),
-      createValue(),
-      createValue(),
-      createValue(),
-      createValue(),
-      createValue(),
-    ],
+    position: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
     flexDirection: 0, // FLEX_DIRECTION_COLUMN (Yoga default, not CSS!)
     flexWrap: 0, // WRAP_NO_WRAP
     flexGrow: 0,
@@ -227,22 +220,8 @@ export function createDefaultStyle(): Style {
     maxWidth: createValue(),
     maxHeight: createValue(),
     aspectRatio: NaN, // undefined by default
-    margin: [
-      createValue(),
-      createValue(),
-      createValue(),
-      createValue(),
-      createValue(),
-      createValue(),
-    ],
-    padding: [
-      createValue(),
-      createValue(),
-      createValue(),
-      createValue(),
-      createValue(),
-      createValue(),
-    ],
+    margin: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
+    padding: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
     border: [0, 0, 0, 0, NaN, NaN],
     gap: [0, 0],
     overflow: 0, // OVERFLOW_VISIBLE

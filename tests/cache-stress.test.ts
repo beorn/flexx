@@ -41,17 +41,11 @@ function getLayout(node: Node): LayoutResult {
     top: node.getComputedTop(),
     width: node.getComputedWidth(),
     height: node.getComputedHeight(),
-    children: Array.from({ length: node.getChildCount() }, (_, i) =>
-      getLayout(node.getChild(i)!),
-    ),
+    children: Array.from({ length: node.getChildCount() }, (_, i) => getLayout(node.getChild(i)!)),
   }
 }
 
-function layoutsEqual(
-  a: LayoutResult,
-  b: LayoutResult,
-  tolerance = 0.001,
-): boolean {
+function layoutsEqual(a: LayoutResult, b: LayoutResult, tolerance = 0.001): boolean {
   if (
     Math.abs(a.left - b.left) > tolerance ||
     Math.abs(a.top - b.top) > tolerance ||
@@ -61,9 +55,7 @@ function layoutsEqual(
     return false
   }
   if (a.children.length !== b.children.length) return false
-  return a.children.every((child, i) =>
-    layoutsEqual(child, b.children[i]!, tolerance),
-  )
+  return a.children.every((child, i) => layoutsEqual(child, b.children[i]!, tolerance))
 }
 
 function formatLayout(layout: LayoutResult, indent = 0): string {
@@ -79,12 +71,7 @@ function formatLayout(layout: LayoutResult, indent = 0): string {
  * Verifies cache consistency: markDirty + recalculate should match previous layout.
  * This is the core assertion pattern for cache stress tests.
  */
-function expectCachingConsistency(
-  root: Node,
-  expectedLayout: LayoutResult,
-  width: number,
-  height: number,
-): void {
+function expectCachingConsistency(root: Node, expectedLayout: LayoutResult, width: number, height: number): void {
   root.markDirty()
   root.calculateLayout(width, height, DIRECTION_LTR)
   expect(layoutsEqual(expectedLayout, getLayout(root))).toBe(true)

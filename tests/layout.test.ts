@@ -125,12 +125,8 @@ describe("Flexx Layout Engine", () => {
 
       expect(col1.getComputedLeft()).toBe(0)
       // Verify gaps are applied correctly
-      const gap1 =
-        col2.getComputedLeft() -
-        (col1.getComputedLeft() + col1.getComputedWidth())
-      const gap2 =
-        col3.getComputedLeft() -
-        (col2.getComputedLeft() + col2.getComputedWidth())
+      const gap1 = col2.getComputedLeft() - (col1.getComputedLeft() + col1.getComputedWidth())
+      const gap2 = col3.getComputedLeft() - (col2.getComputedLeft() + col2.getComputedWidth())
       expect(gap1).toBe(2)
       expect(gap2).toBe(2)
     })
@@ -278,9 +274,7 @@ describe("Flexx Layout Engine", () => {
           return { width, height: lines }
         } else if (widthMode === MEASURE_MODE_AT_MOST) {
           const usedWidth = Math.min(totalChars, width)
-          const lines = Math.ceil(
-            totalChars / Math.max(1, Math.floor(usedWidth)),
-          )
+          const lines = Math.ceil(totalChars / Math.max(1, Math.floor(usedWidth)))
           return { width: usedWidth, height: lines }
         }
         return { width: totalChars, height: 1 }
@@ -441,14 +435,11 @@ describe("Flexx Layout Engine", () => {
           value: 200,
           expected: { value: 200, unit: UNIT_POINT },
         },
-      ] as const)(
-        "should get $getter after $method($value)",
-        ({ method, getter, value, expected }) => {
-          const node = Node.create()
-          ;(node[method] as (v: number) => void)(value)
-          expect(node[getter]()).toEqual(expected)
-        },
-      )
+      ] as const)("should get $getter after $method($value)", ({ method, getter, value, expected }) => {
+        const node = Node.create()
+        ;(node[method] as (v: number) => void)(value)
+        expect(node[getter]()).toEqual(expected)
+      })
 
       it("should get width auto after setting", () => {
         const node = Node.create()
@@ -487,14 +478,11 @@ describe("Flexx Layout Engine", () => {
           getter: "getPositionType",
           value: POSITION_TYPE_ABSOLUTE,
         },
-      ] as const)(
-        "should get $getter after $method",
-        ({ method, getter, value }) => {
-          const node = Node.create()
-          ;(node[method] as (v: number) => void)(value)
-          expect(node[getter]()).toBe(value)
-        },
-      )
+      ] as const)("should get $getter after $method", ({ method, getter, value }) => {
+        const node = Node.create()
+        ;(node[method] as (v: number) => void)(value)
+        expect(node[getter]()).toBe(value)
+      })
     })
 
     describe("edge property getters", () => {
@@ -550,18 +538,15 @@ describe("Flexx Layout Engine", () => {
         expectedH: 100,
         name: "width from height",
       },
-    ])(
-      "should compute $name when aspectRatio is set",
-      ({ width, height, ratio, expectedW, expectedH }) => {
-        const root = Node.create()
-        if (width !== undefined) root.setWidth(width)
-        if (height !== undefined) root.setHeight(height)
-        root.setAspectRatio(ratio)
-        root.calculateLayout(200, 200)
+    ])("should compute $name when aspectRatio is set", ({ width, height, ratio, expectedW, expectedH }) => {
+      const root = Node.create()
+      if (width !== undefined) root.setWidth(width)
+      if (height !== undefined) root.setHeight(height)
+      root.setAspectRatio(ratio)
+      root.calculateLayout(200, 200)
 
-        expectLayout(root, { width: expectedW, height: expectedH })
-      },
-    )
+      expectLayout(root, { width: expectedW, height: expectedH })
+    })
 
     it("should respect explicit dimensions over aspectRatio", () => {
       const root = Node.create()

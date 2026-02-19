@@ -32,11 +32,7 @@ interface BenchResult {
   opsPerSec: number
 }
 
-function benchmark(
-  name: string,
-  fn: () => void,
-  options: { iterations?: number; warmup?: number } = {},
-): BenchResult {
+function benchmark(name: string, fn: () => void, options: { iterations?: number; warmup?: number } = {}): BenchResult {
   const { iterations = 1000, warmup = 100 } = options
 
   // Warmup
@@ -256,12 +252,8 @@ async function main() {
   console.log("Yoga initialized.")
   console.log("")
 
-  console.log(
-    "**Note:** These benchmarks measure tree creation + layout together.",
-  )
-  console.log(
-    "This is the fair comparison since both engines need to allocate nodes.",
-  )
+  console.log("**Note:** These benchmarks measure tree creation + layout together.")
+  console.log("This is the fair comparison since both engines need to allocate nodes.")
   console.log("")
 
   const results: Array<{
@@ -276,21 +268,13 @@ async function main() {
   console.log("Running flat hierarchy benchmarks...")
 
   for (const nodeCount of [100, 500, 1000]) {
-    const flexxResult = benchmark(
-      `Flexx flat ${nodeCount}`,
-      benchFlexxFlat(nodeCount),
-      {
-        iterations: 500,
-      },
-    )
+    const flexxResult = benchmark(`Flexx flat ${nodeCount}`, benchFlexxFlat(nodeCount), {
+      iterations: 500,
+    })
 
-    const yogaResult = benchmark(
-      `Yoga flat ${nodeCount}`,
-      benchYogaFlat(yoga, nodeCount),
-      {
-        iterations: 500,
-      },
-    )
+    const yogaResult = benchmark(`Yoga flat ${nodeCount}`, benchYogaFlat(yoga, nodeCount), {
+      iterations: 500,
+    })
 
     results.push({
       benchmark: `Flat ${nodeCount} nodes`,
@@ -305,21 +289,13 @@ async function main() {
   console.log("Running deep hierarchy benchmarks...")
 
   for (const depth of [20, 50, 100]) {
-    const flexxResult = benchmark(
-      `Flexx deep ${depth}`,
-      benchFlexxDeep(depth),
-      {
-        iterations: 500,
-      },
-    )
+    const flexxResult = benchmark(`Flexx deep ${depth}`, benchFlexxDeep(depth), {
+      iterations: 500,
+    })
 
-    const yogaResult = benchmark(
-      `Yoga deep ${depth}`,
-      benchYogaDeep(yoga, depth),
-      {
-        iterations: 500,
-      },
-    )
+    const yogaResult = benchmark(`Yoga deep ${depth}`, benchYogaDeep(yoga, depth), {
+      iterations: 500,
+    })
 
     results.push({
       benchmark: `Deep ${depth} levels`,
@@ -335,19 +311,13 @@ async function main() {
 
   for (const cardsPerCol of [10, 50, 100]) {
     const totalNodes = 3 + 3 * (1 + cardsPerCol)
-    const flexxResult = benchmark(
-      `Flexx kanban 3x${cardsPerCol}`,
-      benchFlexxKanban(cardsPerCol),
-      {
-        iterations: 500,
-      },
-    )
+    const flexxResult = benchmark(`Flexx kanban 3x${cardsPerCol}`, benchFlexxKanban(cardsPerCol), {
+      iterations: 500,
+    })
 
-    const yogaResult = benchmark(
-      `Yoga kanban 3x${cardsPerCol}`,
-      benchYogaKanban(yoga, cardsPerCol),
-      { iterations: 500 },
-    )
+    const yogaResult = benchmark(`Yoga kanban 3x${cardsPerCol}`, benchYogaKanban(yoga, cardsPerCol), {
+      iterations: 500,
+    })
 
     results.push({
       benchmark: `Kanban 3×${cardsPerCol} (~${totalNodes} nodes)`,
@@ -367,21 +337,15 @@ async function main() {
 
   for (const { benchmark: name, flexx, yoga: yogaResult } of results) {
     const cmp = formatComparison(flexx, yogaResult)
-    console.log(
-      `| ${name.padEnd(28)} | ${cmp.flexxStr.padStart(10)} | ${cmp.yogaStr.padStart(10)} | ${cmp.ratio} |`,
-    )
+    console.log(`| ${name.padEnd(28)} | ${cmp.flexxStr.padStart(10)} | ${cmp.yogaStr.padStart(10)} | ${cmp.ratio} |`)
   }
 
   console.log("")
   console.log("## Summary")
   console.log("")
 
-  const flexxWins = results.filter(
-    (r) => r.flexx.avgUs < r.yoga.avgUs * 0.95,
-  ).length
-  const yogaWins = results.filter(
-    (r) => r.yoga.avgUs < r.flexx.avgUs * 0.95,
-  ).length
+  const flexxWins = results.filter((r) => r.flexx.avgUs < r.yoga.avgUs * 0.95).length
+  const yogaWins = results.filter((r) => r.yoga.avgUs < r.flexx.avgUs * 0.95).length
   const ties = results.length - flexxWins - yogaWins
 
   console.log(`- Flexx faster: ${flexxWins} benchmarks`)
@@ -390,18 +354,12 @@ async function main() {
   console.log("")
 
   // Calculate average ratio
-  const avgRatio =
-    results.reduce((sum, r) => sum + r.flexx.avgUs / r.yoga.avgUs, 0) /
-    results.length
+  const avgRatio = results.reduce((sum, r) => sum + r.flexx.avgUs / r.yoga.avgUs, 0) / results.length
 
   if (avgRatio < 0.9) {
-    console.log(
-      `**Overall: Flexx is ~${(1 / avgRatio).toFixed(1)}x faster on average**`,
-    )
+    console.log(`**Overall: Flexx is ~${(1 / avgRatio).toFixed(1)}x faster on average**`)
   } else if (avgRatio > 1.1) {
-    console.log(
-      `**Overall: Yoga is ~${avgRatio.toFixed(1)}x faster on average**`,
-    )
+    console.log(`**Overall: Yoga is ~${avgRatio.toFixed(1)}x faster on average**`)
   } else {
     console.log("**Overall: Performance is roughly equivalent**")
   }

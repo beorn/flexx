@@ -66,25 +66,18 @@ const mutations: Mutation[] = [
   {
     name: "always-return-cached-layout",
     file: "src/node-zero.ts",
-    find: `  getCachedLayout(
-    availW: number,
-    availH: number,
-  ): { width: number; height: number } | null {
+    find: `  getCachedLayout(availW: number, availH: number): { width: number; height: number } | null {
     // Never return cached layout for dirty nodes - content may have changed
     if (this._isDirty) {
       return null
     }`,
-    replace: `  getCachedLayout(
-    availW: number,
-    availH: number,
-  ): { width: number; height: number } | null {
+    replace: `  getCachedLayout(availW: number, availH: number): { width: number; height: number } | null {
     // Never return cached layout for dirty nodes - content may have changed
     // MUTATION: removed dirty check — return stale cache for dirty nodes
     if (false) {
       return null
     }`,
-    description:
-      "Return cached layout even for dirty nodes — stale results should cause mismatches",
+    description: "Return cached layout even for dirty nodes — stale results should cause mismatches",
     equivalent: true, // markDirty() sets _lc0=_lc1=undefined, so getCachedLayout returns null regardless of dirty check
   },
   {
@@ -115,8 +108,7 @@ const mutations: Mutation[] = [
       current._flex.layoutValid = false
     }
   }`,
-    description:
-      "Only mark the node itself dirty, skip ancestor propagation — parents won't know children changed",
+    description: "Only mark the node itself dirty, skip ancestor propagation — parents won't know children changed",
   },
   {
     name: "skip-save-restore-measureNode-phase5",
@@ -196,18 +188,14 @@ async function main() {
   const skipped: string[] = []
 
   console.log(`Mutation testing for Flexx cache code paths`)
-  console.log(
-    `Running ${mutations.length} mutations against relayout-consistency fuzz suite\n`,
-  )
+  console.log(`Running ${mutations.length} mutations against relayout-consistency fuzz suite\n`)
 
   for (const mutation of mutations) {
     const filepath = resolve(dir, mutation.file)
     const original = readFileSync(filepath, "utf8")
 
     if (!original.includes(mutation.find)) {
-      console.error(
-        `SKIP "${mutation.name}" -- pattern not found in ${mutation.file}`,
-      )
+      console.error(`SKIP "${mutation.name}" -- pattern not found in ${mutation.file}`)
       skipped.push(mutation.name)
       continue
     }
@@ -216,9 +204,7 @@ async function main() {
     const firstIdx = original.indexOf(mutation.find)
     const secondIdx = original.indexOf(mutation.find, firstIdx + 1)
     if (secondIdx !== -1) {
-      console.error(
-        `SKIP "${mutation.name}" -- pattern appears multiple times in ${mutation.file}`,
-      )
+      console.error(`SKIP "${mutation.name}" -- pattern appears multiple times in ${mutation.file}`)
       skipped.push(mutation.name)
       continue
     }
@@ -230,13 +216,7 @@ async function main() {
       process.stdout.write(`  "${mutation.name}" ... `)
 
       const proc = Bun.spawn(
-        [
-          "bun",
-          "vitest",
-          "run",
-          "vendor/beorn-flexx/tests/relayout-consistency.test.ts",
-          "--reporter=dot",
-        ],
+        ["bun", "vitest", "run", "vendor/beorn-flexx/tests/relayout-consistency.test.ts", "--reporter=dot"],
         { cwd: kmRoot, stdout: "pipe", stderr: "pipe" },
       )
       const exitCode = await proc.exited

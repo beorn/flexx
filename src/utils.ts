@@ -118,10 +118,7 @@ export function setEdgeBorder(
 /**
  * Get a value from an edge array.
  */
-export function getEdgeValue(
-  arr: [Value, Value, Value, Value, Value, Value],
-  edge: number,
-): Value {
+export function getEdgeValue(arr: [Value, Value, Value, Value, Value, Value], edge: number): Value {
   switch (edge) {
     case C.EDGE_LEFT:
       return arr[0]
@@ -143,10 +140,7 @@ export function getEdgeValue(
 /**
  * Get a border value from an edge array.
  */
-export function getEdgeBorderValue(
-  arr: [number, number, number, number, number, number],
-  edge: number,
-): number {
+export function getEdgeBorderValue(arr: [number, number, number, number, number, number], edge: number): number {
   switch (edge) {
     case C.EDGE_LEFT:
       return arr[0]
@@ -190,12 +184,7 @@ export function resolveValue(value: Value, availableSize: number): number {
  * This handles the case where a parent has minWidth/maxWidth but no explicit width -
  * children need to resolve percentages against the constrained size.
  */
-export function applyMinMax(
-  size: number,
-  min: Value,
-  max: Value,
-  available: number,
-): number {
+export function applyMinMax(size: number, min: Value, max: Value, available: number): number {
   let result = size
 
   if (min.unit !== C.UNIT_UNDEFINED) {

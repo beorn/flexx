@@ -95,22 +95,27 @@ Flexx exports diagnostic helpers for downstream consumers (inkx, km-tui):
 
 ```typescript
 import {
-  getLayout, formatLayout, diffLayouts, textMeasure,
-  assertLayoutSanity, expectRelayoutMatchesFresh,
-  expectIdempotent, expectResizeRoundTrip,
+  getLayout,
+  formatLayout,
+  diffLayouts,
+  textMeasure,
+  assertLayoutSanity,
+  expectRelayoutMatchesFresh,
+  expectIdempotent,
+  expectResizeRoundTrip,
 } from "@beorn/flexx/testing"
 ```
 
-| Export | Description |
-|--------|-------------|
-| `getLayout(node)` | Recursively extract computed layout as plain objects |
-| `formatLayout(layout)` | Pretty-print a layout tree for debugging |
-| `diffLayouts(a, b)` | Node-by-node diff with NaN-safe comparison |
-| `textMeasure(width)` | Factory for wrapping text measure functions |
-| `assertLayoutSanity(node)` | Validate dimensions are finite and non-negative |
-| `expectRelayoutMatchesFresh(buildTree, w, h)` | Differential oracle: incremental must match fresh |
-| `expectIdempotent(buildTree, w, h)` | Two identical layouts must produce same result |
-| `expectResizeRoundTrip(buildTree, widths)` | Resize sequence must match fresh at final width |
+| Export                                        | Description                                          |
+| --------------------------------------------- | ---------------------------------------------------- |
+| `getLayout(node)`                             | Recursively extract computed layout as plain objects |
+| `formatLayout(layout)`                        | Pretty-print a layout tree for debugging             |
+| `diffLayouts(a, b)`                           | Node-by-node diff with NaN-safe comparison           |
+| `textMeasure(width)`                          | Factory for wrapping text measure functions          |
+| `assertLayoutSanity(node)`                    | Validate dimensions are finite and non-negative      |
+| `expectRelayoutMatchesFresh(buildTree, w, h)` | Differential oracle: incremental must match fresh    |
+| `expectIdempotent(buildTree, w, h)`           | Two identical layouts must produce same result       |
+| `expectResizeRoundTrip(buildTree, widths)`    | Resize sequence must match fresh at final width      |
 
 ## Diagnostic Helpers
 
@@ -150,16 +155,16 @@ cd vendor/beorn-flexx && bun scripts/mutation-test.ts
 
 **Results**: 4 caught (real bugs), 4 equivalent (defense-in-depth layers that are redundant with other mechanisms):
 
-| Mutation | Status | Why |
-|----------|--------|-----|
-| skip-markDirty-propagation | Caught | Ancestors don't learn children changed |
-| skip-save-restore-measureNode | Caught | layout.width/height corrupted by intrinsic measurements |
-| wrong-cache-sentinel (NaN) | Caught | False cache hits for unconstrained queries |
-| skip-flexDist-guard | Caught | Stale NaN fingerprint matches across flex passes |
-| skip-resetLayoutCache | Equivalent | markDirty() already clears caches for dirty-path nodes |
-| always-return-cached-layout | Equivalent | markDirty() sets _lc0=_lc1=undefined, so no cache to hit |
-| skip-fingerprint-check | Equivalent | Disables optimization, doesn't affect correctness |
-| skip-layoutValid-set | Equivalent | Forces recompute, doesn't affect correctness |
+| Mutation                      | Status     | Why                                                        |
+| ----------------------------- | ---------- | ---------------------------------------------------------- |
+| skip-markDirty-propagation    | Caught     | Ancestors don't learn children changed                     |
+| skip-save-restore-measureNode | Caught     | layout.width/height corrupted by intrinsic measurements    |
+| wrong-cache-sentinel (NaN)    | Caught     | False cache hits for unconstrained queries                 |
+| skip-flexDist-guard           | Caught     | Stale NaN fingerprint matches across flex passes           |
+| skip-resetLayoutCache         | Equivalent | markDirty() already clears caches for dirty-path nodes     |
+| always-return-cached-layout   | Equivalent | markDirty() sets \_lc0=\_lc1=undefined, so no cache to hit |
+| skip-fingerprint-check        | Equivalent | Disables optimization, doesn't affect correctness          |
+| skip-layoutValid-set          | Equivalent | Forces recompute, doesn't affect correctness               |
 
 The 4 equivalent mutations confirm the **defense-in-depth** design: multiple cache invalidation layers (markDirty, resetLayoutCache, dirty check) are individually redundant but collectively protect against future code changes breaking any single layer.
 
