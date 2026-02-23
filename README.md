@@ -33,7 +33,7 @@ console.log(child.getComputedWidth()) // 100
 
 ## Status
 
-**Production-ready. 1357 tests passing including 41/41 Yoga compatibility tests and 1200+ incremental re-layout fuzz tests.**
+**Production-ready. 1368 tests passing including 41/41 Yoga compatibility tests and 1200+ incremental re-layout fuzz tests.**
 
 | Feature                                       | Status      |
 | --------------------------------------------- | ----------- |

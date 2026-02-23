@@ -21,7 +21,7 @@ Flexx provides two layout algorithm implementations:
 
 Both implement identical Yoga-compatible behavior. The zero-alloc version uses pre-allocated arrays and node-attached FlexInfo structs to eliminate temporary allocations during layout.
 
-## Grow Algorithm (from SizeGrower.ts)
+## Grow Algorithm
 
 ```
 Input: amount (extra space to distribute)
@@ -45,7 +45,7 @@ Input: amount (extra space to distribute)
 
 **Key insight**: The algorithm iterates multiple times to handle items that hit their max size.
 
-## Shrink Algorithm (from SizeShrinker.ts)
+## Shrink Algorithm
 
 ```
 Input: amount (space to remove)
@@ -70,7 +70,7 @@ Input: amount (space to remove)
 **Key insight**: Shrink is proportional to `flex-shrink × flex-basis` (CSS spec compliant).
 Items with larger basis values shrink more, matching browser behavior.
 
-## Line Layout Flow (from LineLayout.ts)
+## Line Layout Flow
 
 ```
 1. _setItemSizes():
@@ -113,7 +113,7 @@ The `resolveEdgeValue()` function maps logical edges to physical edges:
 Baseline alignment is supported via `setBaselineFunc()`:
 
 ```typescript
-node.setBaselineFunc((node, width, height) => {
+node.setBaselineFunc((width, height) => {
   // Return the baseline offset from the top
   return height * 0.8 // Example: 80% down
 })
@@ -126,26 +126,13 @@ The baseline is used when `ALIGN_BASELINE` is set on the container's `alignItems
 1. **No order property**: Items laid out in insertion order
 2. **No writing modes**: Horizontal-tb only
 
-## Implementation Notes for Flexx
-
-To port this to Flexx's Yoga-compatible API:
-
-1. Node.calculateLayout(width, height):
-   - Set up container size
-   - Call layout algorithm
-   - Store results in computed layout
-
-2. Grow/shrink iterate until space is distributed (handles max/min constraints)
-
-3. Keep it simple - terminal UIs don't need full CSS spec compliance
-
 ## Files
 
 | File                    | Description                             |
 | ----------------------- | --------------------------------------- |
-| `src/layout-zero.ts`    | Layout algorithm (default, ~2200 lines) |
+| `src/layout-zero.ts`    | Layout algorithm (default, ~2500 lines) |
 | `src/node-zero.ts`      | Node class with FlexInfo                |
 | `src/index.ts`          | Default export                          |
-| `src/classic/layout.ts` | Classic layout algorithm (~1600 lines)  |
+| `src/classic/layout.ts` | Classic layout algorithm (~1800 lines)  |
 | `src/classic/node.ts`   | Classic Node class                      |
 | `src/index-classic.ts`  | Classic export                          |

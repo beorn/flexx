@@ -59,7 +59,7 @@ See [zero-allocation.md](zero-allocation.md) for implementation details.
 
 ## Benchmark Results
 
-All benchmarks on Apple M-series, Bun, with JIT warmup. Times are mean per operation.
+All benchmarks on Apple M-series, Bun 1.2, macOS (February 2026), with JIT warmup. Times are mean per operation.
 
 ### Initial Layout (Create + Layout)
 

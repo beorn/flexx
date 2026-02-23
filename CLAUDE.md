@@ -68,7 +68,7 @@ src/
 | `src/layout-zero.ts`                 | Core layout algorithm - **most performance-critical** |
 | `src/node-zero.ts`                   | Node class - **second most performance-critical**     |
 | `bench/yoga-compare-warmup.bench.ts` | Main benchmark comparing Flexx vs Yoga                |
-| `tests/yoga-compat/`                 | Yoga compatibility tests (41 tests)                   |
+| `tests/yoga-comparison.test.ts`      | Yoga compatibility tests (41 tests)                   |
 
 ## Architecture
 
@@ -89,9 +89,9 @@ Flexx is Yoga-compatible but follows CSS spec where Yoga doesn't:
 ## Testing
 
 ```bash
-bun test                           # All tests (1357)
-bun test tests/yoga-compat/        # Yoga compatibility only (41)
-bun test tests/layout/             # Layout algorithm tests (~110)
+bun test                                              # All tests (1368)
+bun test tests/yoga-comparison.test.ts tests/yoga-overflow-compare.test.ts  # Yoga compatibility (41)
+bun test tests/layout.test.ts                         # Layout algorithm tests
 bun test tests/relayout-consistency.test.ts  # Re-layout fuzz (1200+)
 ```
 

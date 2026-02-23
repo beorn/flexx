@@ -9,7 +9,7 @@ Flexx is a pure JavaScript flexbox layout engine with a Yoga-compatible API.
 |                      | Yoga                                                 | Flexx                                |
 | -------------------- | ---------------------------------------------------- | ------------------------------------ |
 | **Maturity**         | Production, battle-tested (React Native, Ink, Litho) | Production-ready, fully tested       |
-| **Test coverage**    | Extensive (auto-generated from Chrome)               | 1255 tests, 41/41 Yoga compatibility |
+| **Test coverage**    | Extensive (auto-generated from Chrome)               | 1368 tests, 41/41 Yoga compatibility |
 | **Real-world usage** | Millions of apps                                     | Used in production                   |
 
 ---
@@ -186,7 +186,7 @@ root.setFlexDirection(FLEX_DIRECTION_ROW);
 
 ## Test Coverage
 
-Flexx includes 1255 tests covering:
+Flexx includes 1368 tests covering:
 
 - ✅ Basic layout (single node, column, row)
 - ✅ Flex grow distribution

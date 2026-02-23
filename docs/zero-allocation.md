@@ -16,25 +16,39 @@ These allocations trigger frequent garbage collection, causing frame drops and l
 
 ### FlexInfo on Nodes
 
-Each Node stores a 14-field `FlexInfo` struct that is mutated (not reallocated) each layout pass:
+Each Node stores a 25-field `FlexInfo` struct that is mutated (not reallocated) each layout pass. See `src/types.ts` for the full interface. Key field groups:
 
 ```typescript
 interface FlexInfo {
-  mainSize: number // Current main-axis size
-  baseSize: number // Original base size (for weighted shrink)
-  mainMargin: number // Total main-axis margin (non-auto only)
-  flexGrow: number // Cached flex-grow value
-  flexShrink: number // Cached flex-shrink value
-  minMain: number // Min main-axis constraint
-  maxMain: number // Max main-axis constraint
-  frozen: boolean // Frozen during flex distribution
-  lineIndex: number // Which flex line this child belongs to
+  // Flex distribution state (Phase 5-6)
+  mainSize: number      // Current main-axis size
+  baseSize: number      // Original base size (for weighted shrink)
+  mainMargin: number    // Total main-axis margin (non-auto only)
+  flexGrow: number      // Cached flex-grow value
+  flexShrink: number    // Cached flex-shrink value
+  minMain: number       // Min main-axis constraint
+  maxMain: number       // Max main-axis constraint
+  frozen: boolean       // Frozen during flex distribution
+  lineIndex: number     // Which flex line this child belongs to
   relativeIndex: number // Position among relative children (-1 if absolute/hidden)
+  baseline: number      // Computed baseline offset for ALIGN_BASELINE
   // Auto margin tracking
   mainStartMarginAuto: boolean
   mainEndMarginAuto: boolean
   mainStartMarginValue: number
   mainEndMarginValue: number
+  // Cached resolved margins
+  marginL: number
+  marginT: number
+  marginR: number
+  marginB: number
+  // Constraint fingerprinting (layout caching)
+  lastAvailW: number
+  lastAvailH: number
+  lastOffsetX: number
+  lastOffsetY: number
+  lastDir: number
+  layoutValid: boolean
 }
 ```
 
@@ -43,13 +57,15 @@ interface FlexInfo {
 Module-level typed arrays store per-line metrics:
 
 ```typescript
-let _lineCrossSizes = new Float64Array(32);   // Cross size per line
-let _lineCrossOffsets = new Float64Array(32); // Cross offset per line
-let _lineLengths = new Uint16Array(32);       // Children count per line
-let _lineChildren: Node[][] = [...];          // Children per line (grows if needed)
+let _lineCrossSizes = new Float64Array(32);    // Cross size per line
+let _lineCrossOffsets = new Float64Array(32);  // Cross offset per line
+let _lineLengths = new Uint16Array(32);        // Children count per line
+let _lineChildren: Node[][] = [...];           // Children per line (grows if needed)
+let _lineJustifyStarts = new Float64Array(32); // Per-line justify start offset
+let _lineItemSpacings = new Float64Array(32);  // Per-line item spacing
 ```
 
-Memory usage: ~768 bytes total (covers 32 flex lines - virtually all real layouts).
+Memory usage: ~1,344 bytes total (4 Float64Arrays × 256 bytes + 1 Uint16Array × 64 bytes + array overhead; covers 32 flex lines — virtually all real layouts).
 
 ### Filtered Iteration
 

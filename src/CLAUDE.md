@@ -16,7 +16,7 @@ Flexx is a pure-JavaScript flexbox layout engine with a Yoga-compatible API. The
                 │                               │
          ┌──────┴──────┐                 ┌──────┴──────┐
          │ node-zero.ts│                 │layout-zero.ts│
-         │  (1412 LOC) │                 │  (2485 LOC)  │
+         │  (1412 LOC) │                 │  (2501 LOC)  │
          │  Node class │                 │  Algorithm   │
          └──────┬──────┘                 └──────┬───────┘
                 │                               │
@@ -42,14 +42,14 @@ Flexx is a pure-JavaScript flexbox layout engine with a Yoga-compatible API. The
 
 | File             | LOC  | Role                                                                | Hot path?                      |
 | ---------------- | ---- | ------------------------------------------------------------------- | ------------------------------ |
-| `layout-zero.ts` | 2485 | Core layout algorithm                                               | **Yes** - most critical        |
+| `layout-zero.ts` | 2501 | Core layout algorithm                                               | **Yes** - most critical        |
 | `node-zero.ts`   | 1412 | Node class, tree ops, caching                                       | **Yes** - second most critical |
 | `types.ts`       | 229  | `FlexInfo`, `Style`, `Layout`, `Value` interfaces                   | No (types only)                |
 | `utils.ts`       | 217  | `resolveValue`, `applyMinMax`, edge helpers, shared traversal stack | Yes (called frequently)        |
 | `constants.ts`   | 81   | Yoga-compatible numeric constants                                   | No                             |
 | `logger.ts`      | 67   | Conditional debug logger (`log.debug?.()`)                          | No (conditional)               |
 | `testing.ts`     | 209  | `getLayout`, `diffLayouts`, `expectRelayoutMatchesFresh`            | No (test only)                 |
-| `classic/`       | ~800 | Allocating reference algorithm                                      | No (debugging only)            |
+| `classic/`       | ~2900 | Allocating reference algorithm                                     | No (debugging only)            |
 
 ## Layout Algorithm Phases
 
@@ -441,10 +441,10 @@ cd vendor/beorn-flexx && bun run build
 | Layer              | Tests     | Command                                                                      | What it verifies                  |
 | ------------------ | --------- | ---------------------------------------------------------------------------- | --------------------------------- |
 | Yoga compat        | 38        | `bun test tests/yoga-comparison.test.ts tests/yoga-overflow-compare.test.ts` | Identical output to Yoga          |
-| Feature tests      | ~110      | `bun test tests/layout/`                                                     | Each flexbox feature in isolation |
+| Feature tests      | ~110      | `bun test tests/layout.test.ts`                                              | Each flexbox feature in isolation |
 | **Re-layout fuzz** | **1200+** | `bun test tests/relayout-consistency.test.ts`                                | Incremental matches fresh         |
 | Mutation testing   | 4+        | `bun scripts/mutation-test.ts`                                               | Fuzz catches cache mutations      |
-| All tests          | 1357      | `bun test`                                                                   | Everything                        |
+| All tests          | 1368      | `bun test`                                                                   | Everything                        |
 
 The fuzz tests are the most important layer. They've caught 3 distinct caching bugs that all single-pass tests missed.
 

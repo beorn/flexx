@@ -45,8 +45,8 @@ import {
   FLEX_DIRECTION_COLUMN,
   FLEX_DIRECTION_ROW_REVERSE,
   FLEX_DIRECTION_COLUMN_REVERSE,
-  FLEX_WRAP_WRAP,
-  FLEX_WRAP_NO_WRAP,
+  WRAP_WRAP,
+  WRAP_NO_WRAP,
   JUSTIFY_CENTER,
   JUSTIFY_FLEX_START,
   JUSTIFY_FLEX_END,
@@ -61,7 +61,7 @@ import {
 } from "@beorn/flexx"
 
 node.setFlexDirection(FLEX_DIRECTION_ROW)
-node.setFlexWrap(FLEX_WRAP_WRAP)
+node.setFlexWrap(WRAP_WRAP)
 node.setFlexGrow(1)
 node.setFlexShrink(0)
 node.setFlexBasis(100)
@@ -74,7 +74,7 @@ node.setAlignContent(ALIGN_CENTER)
 ### Spacing
 
 ```typescript
-import { EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_LEFT, EDGE_ALL, EDGE_START, EDGE_END } from "@beorn/flexx"
+import { EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_LEFT, EDGE_ALL, EDGE_START, EDGE_END, GUTTER_ALL, GUTTER_ROW, GUTTER_COLUMN } from "@beorn/flexx"
 
 // Padding
 node.setPadding(EDGE_ALL, 10)
@@ -88,9 +88,9 @@ node.setMarginAuto(EDGE_LEFT)
 node.setBorder(EDGE_ALL, 1)
 
 // Gap
-node.setGap(GAP_ALL, 10)
-node.setGap(GAP_ROW, 5)
-node.setGap(GAP_COLUMN, 5)
+node.setGap(GUTTER_ALL, 10)
+node.setGap(GUTTER_ROW, 5)
+node.setGap(GUTTER_COLUMN, 5)
 ```
 
 ### Positioning
@@ -176,9 +176,10 @@ All constants are Yoga-compatible. Import from `@beorn/flexx`:
 | Flex Direction | `FLEX_DIRECTION_ROW`, `FLEX_DIRECTION_COLUMN`, `FLEX_DIRECTION_ROW_REVERSE`, `FLEX_DIRECTION_COLUMN_REVERSE`                                       |
 | Justify        | `JUSTIFY_FLEX_START`, `JUSTIFY_CENTER`, `JUSTIFY_FLEX_END`, `JUSTIFY_SPACE_BETWEEN`, `JUSTIFY_SPACE_AROUND`, `JUSTIFY_SPACE_EVENLY`                |
 | Align          | `ALIGN_FLEX_START`, `ALIGN_CENTER`, `ALIGN_FLEX_END`, `ALIGN_STRETCH`, `ALIGN_BASELINE`, `ALIGN_AUTO`, `ALIGN_SPACE_BETWEEN`, `ALIGN_SPACE_AROUND` |
-| Wrap           | `FLEX_WRAP_NO_WRAP`, `FLEX_WRAP_WRAP`, `FLEX_WRAP_WRAP_REVERSE`                                                                                    |
-| Position       | `POSITION_TYPE_RELATIVE`, `POSITION_TYPE_ABSOLUTE`                                                                                                 |
-| Edge           | `EDGE_LEFT`, `EDGE_TOP`, `EDGE_RIGHT`, `EDGE_BOTTOM`, `EDGE_START`, `EDGE_END`, `EDGE_ALL`                                                         |
+| Wrap           | `WRAP_NO_WRAP`, `WRAP_WRAP`, `WRAP_WRAP_REVERSE`                                                                                                   |
+| Position       | `POSITION_TYPE_STATIC`, `POSITION_TYPE_RELATIVE`, `POSITION_TYPE_ABSOLUTE`                                                                         |
+| Edge           | `EDGE_LEFT`, `EDGE_TOP`, `EDGE_RIGHT`, `EDGE_BOTTOM`, `EDGE_START`, `EDGE_END`, `EDGE_HORIZONTAL`, `EDGE_VERTICAL`, `EDGE_ALL`                    |
+| Gap            | `GUTTER_COLUMN`, `GUTTER_ROW`, `GUTTER_ALL`                                                                                                       |
 | Measure Mode   | `MEASURE_MODE_EXACTLY`, `MEASURE_MODE_AT_MOST`, `MEASURE_MODE_UNDEFINED`                                                                           |
 | Overflow       | `OVERFLOW_VISIBLE`, `OVERFLOW_HIDDEN`, `OVERFLOW_SCROLL`                                                                                           |
 | Display        | `DISPLAY_FLEX`, `DISPLAY_NONE`                                                                                                                     |
