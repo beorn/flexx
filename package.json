@@ -5,16 +5,26 @@
   "keywords": [
     "flexbox",
     "layout",
+    "yoga",
+    "css",
     "terminal",
     "tui",
-    "yoga"
+    "pure-javascript",
+    "zero-dependency"
   ],
   "homepage": "https://github.com/beorn/flexx#readme",
   "license": "MIT",
   "author": "beorn",
+  "engines": {
+    "node": ">=18",
+    "bun": ">=1.0"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/beorn/flexx.git"
+  },
+  "bugs": {
+    "url": "https://github.com/beorn/flexx/issues"
   },
   "files": [
     "dist",
