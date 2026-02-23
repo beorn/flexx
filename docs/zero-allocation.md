@@ -21,17 +21,17 @@ Each Node stores a 25-field `FlexInfo` struct that is mutated (not reallocated) 
 ```typescript
 interface FlexInfo {
   // Flex distribution state (Phase 5-6)
-  mainSize: number      // Current main-axis size
-  baseSize: number      // Original base size (for weighted shrink)
-  mainMargin: number    // Total main-axis margin (non-auto only)
-  flexGrow: number      // Cached flex-grow value
-  flexShrink: number    // Cached flex-shrink value
-  minMain: number       // Min main-axis constraint
-  maxMain: number       // Max main-axis constraint
-  frozen: boolean       // Frozen during flex distribution
-  lineIndex: number     // Which flex line this child belongs to
+  mainSize: number // Current main-axis size
+  baseSize: number // Original base size (for weighted shrink)
+  mainMargin: number // Total main-axis margin (non-auto only)
+  flexGrow: number // Cached flex-grow value
+  flexShrink: number // Cached flex-shrink value
+  minMain: number // Min main-axis constraint
+  maxMain: number // Max main-axis constraint
+  frozen: boolean // Frozen during flex distribution
+  lineIndex: number // Which flex line this child belongs to
   relativeIndex: number // Position among relative children (-1 if absolute/hidden)
-  baseline: number      // Computed baseline offset for ALIGN_BASELINE
+  baseline: number // Computed baseline offset for ALIGN_BASELINE
   // Auto margin tracking
   mainStartMarginAuto: boolean
   mainEndMarginAuto: boolean

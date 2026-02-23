@@ -74,7 +74,18 @@ node.setAlignContent(ALIGN_CENTER)
 ### Spacing
 
 ```typescript
-import { EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_LEFT, EDGE_ALL, EDGE_START, EDGE_END, GUTTER_ALL, GUTTER_ROW, GUTTER_COLUMN } from "@beorn/flexx"
+import {
+  EDGE_TOP,
+  EDGE_RIGHT,
+  EDGE_BOTTOM,
+  EDGE_LEFT,
+  EDGE_ALL,
+  EDGE_START,
+  EDGE_END,
+  GUTTER_ALL,
+  GUTTER_ROW,
+  GUTTER_COLUMN,
+} from "@beorn/flexx"
 
 // Padding
 node.setPadding(EDGE_ALL, 10)
@@ -178,8 +189,8 @@ All constants are Yoga-compatible. Import from `@beorn/flexx`:
 | Align          | `ALIGN_FLEX_START`, `ALIGN_CENTER`, `ALIGN_FLEX_END`, `ALIGN_STRETCH`, `ALIGN_BASELINE`, `ALIGN_AUTO`, `ALIGN_SPACE_BETWEEN`, `ALIGN_SPACE_AROUND` |
 | Wrap           | `WRAP_NO_WRAP`, `WRAP_WRAP`, `WRAP_WRAP_REVERSE`                                                                                                   |
 | Position       | `POSITION_TYPE_STATIC`, `POSITION_TYPE_RELATIVE`, `POSITION_TYPE_ABSOLUTE`                                                                         |
-| Edge           | `EDGE_LEFT`, `EDGE_TOP`, `EDGE_RIGHT`, `EDGE_BOTTOM`, `EDGE_START`, `EDGE_END`, `EDGE_HORIZONTAL`, `EDGE_VERTICAL`, `EDGE_ALL`                    |
-| Gap            | `GUTTER_COLUMN`, `GUTTER_ROW`, `GUTTER_ALL`                                                                                                       |
+| Edge           | `EDGE_LEFT`, `EDGE_TOP`, `EDGE_RIGHT`, `EDGE_BOTTOM`, `EDGE_START`, `EDGE_END`, `EDGE_HORIZONTAL`, `EDGE_VERTICAL`, `EDGE_ALL`                     |
+| Gap            | `GUTTER_COLUMN`, `GUTTER_ROW`, `GUTTER_ALL`                                                                                                        |
 | Measure Mode   | `MEASURE_MODE_EXACTLY`, `MEASURE_MODE_AT_MOST`, `MEASURE_MODE_UNDEFINED`                                                                           |
 | Overflow       | `OVERFLOW_VISIBLE`, `OVERFLOW_HIDDEN`, `OVERFLOW_SCROLL`                                                                                           |
 | Display        | `DISPLAY_FLEX`, `DISPLAY_NONE`                                                                                                                     |

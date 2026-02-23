@@ -22,14 +22,16 @@ console.log(child.getComputedWidth()) // 100
 
 ## Why Flexx?
 
-**TL;DR:** 1.5-2.5x faster initial layout, 5.5x faster no-change re-layout, 5x smaller, pure JavaScript (no WASM), synchronous initialization.
+**TL;DR:** 1.5-2.5x faster initial layout, 5.5x faster no-change re-layout, 2.5-3.5x smaller, pure JavaScript (no WASM), synchronous initialization.
 
-|                      | Yoga              | Flexx           |
-| -------------------- | ----------------- | --------------- |
-| **Runtime**          | WebAssembly       | Pure JavaScript |
-| **Bundle (gzipped)** | 38 KB             | ~8 KB           |
-| **Initialization**   | Async (WASM load) | Synchronous     |
-| **Dependencies**     | WASM runtime      | Zero            |
+|                      | Yoga              | Flexx             |
+| -------------------- | ----------------- | ----------------- |
+| **Runtime**          | WebAssembly       | Pure JavaScript   |
+| **Bundle (gzipped)** | 39 KB             | 16 KB (11 KB[^1]) |
+| **Initialization**   | Async (WASM load) | Synchronous       |
+| **Dependencies**     | WASM runtime      | `debug` (optional)|
+
+[^1]: 11 KB when bundlers tree-shake the optional `debug` dependency.
 
 ## Status
 
@@ -97,10 +99,14 @@ See [docs/testing.md](docs/testing.md) for the full testing methodology and [doc
 
 ## Bundle Size
 
-|         | Yoga   | Flexx | Savings        |
-| ------- | ------ | ----- | -------------- |
-| Raw     | 272 KB | 38 KB | **7x smaller** |
-| Gzipped | 38 KB  | 7 KB  | **5x smaller** |
+|           | Yoga   | Flexx             | Savings            |
+| --------- | ------ | ----------------- | ------------------ |
+| Minified  | 117 KB | 47 KB (35 KB[^1]) | **2.5-3.4x smaller** |
+| Gzipped   | 39 KB  | 16 KB (11 KB[^1]) | **2.5-3.6x smaller** |
+
+The `debug` dependency (used by `logger.ts`) adds ~12 KB minified / ~5 KB gzipped. Bundlers that tree-shake dynamic `require()` calls will exclude it automatically.
+
+Measure with `bun scripts/measure-bundle.ts`.
 
 ## API Compatibility
 
@@ -126,7 +132,7 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 - **Terminal UIs** — our primary target (used by [inkx](https://github.com/beorn/inkx))
 - **CLI tools** — synchronous init, fast startup
 - **Canvas/game UIs** — calculate layout, render however you want
-- **Edge runtimes** — 7KB bundle, no WASM complexity
+- **Edge runtimes** — 16KB gzipped, no WASM complexity
 - **PDF/document generation** — layout before rendering
 
 **Use Yoga instead when:**

@@ -40,16 +40,16 @@ Flexx is a pure-JavaScript flexbox layout engine with a Yoga-compatible API. The
 
 ## Source Files
 
-| File             | LOC  | Role                                                                | Hot path?                      |
-| ---------------- | ---- | ------------------------------------------------------------------- | ------------------------------ |
-| `layout-zero.ts` | 2501 | Core layout algorithm                                               | **Yes** - most critical        |
-| `node-zero.ts`   | 1412 | Node class, tree ops, caching                                       | **Yes** - second most critical |
-| `types.ts`       | 229  | `FlexInfo`, `Style`, `Layout`, `Value` interfaces                   | No (types only)                |
-| `utils.ts`       | 217  | `resolveValue`, `applyMinMax`, edge helpers, shared traversal stack | Yes (called frequently)        |
-| `constants.ts`   | 81   | Yoga-compatible numeric constants                                   | No                             |
-| `logger.ts`      | 67   | Conditional debug logger (`log.debug?.()`)                          | No (conditional)               |
-| `testing.ts`     | 209  | `getLayout`, `diffLayouts`, `expectRelayoutMatchesFresh`            | No (test only)                 |
-| `classic/`       | ~2900 | Allocating reference algorithm                                     | No (debugging only)            |
+| File             | LOC   | Role                                                                | Hot path?                      |
+| ---------------- | ----- | ------------------------------------------------------------------- | ------------------------------ |
+| `layout-zero.ts` | 2501  | Core layout algorithm                                               | **Yes** - most critical        |
+| `node-zero.ts`   | 1412  | Node class, tree ops, caching                                       | **Yes** - second most critical |
+| `types.ts`       | 229   | `FlexInfo`, `Style`, `Layout`, `Value` interfaces                   | No (types only)                |
+| `utils.ts`       | 217   | `resolveValue`, `applyMinMax`, edge helpers, shared traversal stack | Yes (called frequently)        |
+| `constants.ts`   | 81    | Yoga-compatible numeric constants                                   | No                             |
+| `logger.ts`      | 67    | Conditional debug logger (`log.debug?.()`)                          | No (conditional)               |
+| `testing.ts`     | 209   | `getLayout`, `diffLayouts`, `expectRelayoutMatchesFresh`            | No (test only)                 |
+| `classic/`       | ~2900 | Allocating reference algorithm                                      | No (debugging only)            |
 
 ## Layout Algorithm Phases
 
