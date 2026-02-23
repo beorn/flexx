@@ -77,16 +77,27 @@ npm install @beorn/flexx
 
 Flexx and Yoga each win in different scenarios:
 
-| Scenario                | Winner    | Margin     |
-| ----------------------- | --------- | ---------- |
-| **Initial layout**      | Flexx     | 1.5-2.5x   |
-| **No-change re-layout** | **Flexx** | **5.5x**   |
-| **Single dirty leaf**   | Yoga      | 2.8-3.4x   |
-| **Deep nesting (15+)**  | Yoga      | increasing |
+| Scenario                | Winner    | Margin   | Tree Size          |
+| ----------------------- | --------- | -------- | ------------------ |
+| **Initial layout**      | Flexx     | 1.5-2.5x | 64-969 nodes       |
+| **No-change re-layout** | **Flexx** | **5.5x** | 406-969 nodes      |
+| **Single dirty leaf**   | Yoga      | 2.8-3.4x | 406-969 nodes      |
+| **Deep nesting (15+)**  | Yoga      | increasing | 1 node per level |
 
-**Where Yoga wins — and why it matters less in practice.** Yoga is 2.8-3.4x faster in the single-dirty-leaf scenario: one node changes in an existing tree. WASM's per-node layout computation is genuinely faster than JS. But in interactive TUIs, most renders are no-change frames (cursor moved, selection changed) where Flexx is 5.5x faster. Initial layout (new screen, tab switch) also favors Flexx at 1.5-2.5x. The single-dirty-leaf case is a minority of frames in practice.
+Benchmarks use TUI-realistic trees: columns × bordered cards with measure functions (e.g., 5 columns × 20 cards = ~406 nodes, 8×30 = ~969 nodes). Typical depth is 3-5 levels (column → card → content → text). See [docs/performance.md](docs/performance.md) for full methodology.
 
-Flexx's fingerprint cache makes no-change re-layout essentially free (27ns regardless of tree size). Initial layout wins come from JS node creation avoiding WASM boundary crossings (~8x cheaper per node).
+**Where Yoga wins — and why it matters less in practice.** Yoga is 2.8-3.4x faster in the single-dirty-leaf scenario: one node changes in a ~400-1000 node tree. WASM's per-node layout computation is genuinely faster than JS. But in interactive TUIs, most renders are no-change frames (cursor moved, selection changed) where Flexx is 5.5x faster. Initial layout (new screen, tab switch) also favors Flexx at 1.5-2.5x. The single-dirty-leaf case is a minority of frames in practice.
+
+**Typical interactive TUI operation mix:**
+
+| Operation              | Frequency     | Winner       | Why                                   |
+| ---------------------- | ------------- | ------------ | ------------------------------------- |
+| Cursor/selection move  | Very frequent | Flexx 5.5x   | No layout change → fingerprint cache  |
+| Content edit           | Frequent      | Yoga 3x      | Single dirty leaf in existing tree    |
+| Initial render         | Once          | Flexx 1.5-2x | JS node creation avoids WASM boundary |
+| Window resize          | Occasional    | Yoga 2.7x    | Full re-layout of existing tree       |
+
+Flexx's fingerprint cache makes no-change re-layout essentially free (27ns regardless of tree size). Initial layout wins come from JS node creation avoiding WASM boundary crossings (~8x cheaper per node). Most TUI apps have shallow nesting (3-5 levels) — well below the 15-level crossover where Yoga overtakes Flexx.
 
 **Use Yoga instead when** your primary workload is frequent incremental re-layout of large pre-existing trees, you have deep nesting (15+ levels), or you're in the React Native ecosystem.
 
