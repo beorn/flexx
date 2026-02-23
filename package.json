@@ -3,28 +3,24 @@
   "version": "0.1.0",
   "description": "Pure JavaScript flexbox layout engine with Yoga-compatible API",
   "keywords": [
+    "css",
     "flexbox",
     "layout",
-    "yoga",
-    "css",
+    "pure-javascript",
     "terminal",
     "tui",
-    "pure-javascript",
+    "yoga",
     "zero-dependency"
   ],
   "homepage": "https://github.com/beorn/flexx#readme",
+  "bugs": {
+    "url": "https://github.com/beorn/flexx/issues"
+  },
   "license": "MIT",
   "author": "beorn",
-  "engines": {
-    "node": ">=18",
-    "bun": ">=1.0"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/beorn/flexx.git"
-  },
-  "bugs": {
-    "url": "https://github.com/beorn/flexx/issues"
   },
   "files": [
     "dist",
@@ -60,5 +56,9 @@
     "@types/debug": "^4.1.12",
     "typescript": "^5.7.3",
     "yoga-wasm-web": "^0.3.3"
+  },
+  "engines": {
+    "bun": ">=1.0",
+    "node": ">=18"
   }
 }

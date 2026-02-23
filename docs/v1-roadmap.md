@@ -77,12 +77,12 @@ These are out of scope for the initial stable release:
 
 After 1.0:
 
-| Change | Version Bump |
-|--------|-------------|
-| Breaking API change (renamed method, removed export, changed default behavior) | **Major** (2.0, 3.0) |
-| New feature (new method, new constant, new export) | **Minor** (1.1, 1.2) |
-| Bug fix, performance improvement, documentation | **Patch** (1.0.1, 1.0.2) |
-| Intentional Yoga divergence (following CSS spec where Yoga doesn't) | **Minor** with documentation |
+| Change                                                                         | Version Bump                 |
+| ------------------------------------------------------------------------------ | ---------------------------- |
+| Breaking API change (renamed method, removed export, changed default behavior) | **Major** (2.0, 3.0)         |
+| New feature (new method, new constant, new export)                             | **Minor** (1.1, 1.2)         |
+| Bug fix, performance improvement, documentation                                | **Patch** (1.0.1, 1.0.2)     |
+| Intentional Yoga divergence (following CSS spec where Yoga doesn't)            | **Minor** with documentation |
 
 **Yoga compatibility contract**: The Yoga-compatible API surface is part of the public API. Removing or renaming Yoga-compatible methods/constants is a breaking change. Adding Flexx-specific extensions is a minor change.
 
@@ -96,6 +96,7 @@ Flexx should reach 1.0 **before** inkx, because:
 4. The main blocker (vendor rename + npm publish) is shared with inkx
 
 Suggested order:
+
 1. Complete vendor rename (`km-infra.vendor-rename-impl`)
 2. Run bundle audit, verify all criteria above
 3. Tag and publish `@beorn/flexx@1.0.0`

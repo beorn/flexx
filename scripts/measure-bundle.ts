@@ -153,7 +153,7 @@ async function main() {
 
   for (const r of results) {
     console.log(
-      `| ${r.name} | ${formatBytes(r.minifiedBytes)} | ${formatBytes(r.gzipBytes)} | ${r.includesDebug ? "Yes" : "No"} |`
+      `| ${r.name} | ${formatBytes(r.minifiedBytes)} | ${formatBytes(r.gzipBytes)} | ${r.includesDebug ? "Yes" : "No"} |`,
     )
   }
 
@@ -168,10 +168,10 @@ async function main() {
     console.log("|         | Yoga | Flexx | Ratio |")
     console.log("| ------- | ---: | ----: | ----- |")
     console.log(
-      `| Minified | ${formatBytes(yogaSize.raw)} | ${formatBytes(flexxFull.minifiedBytes)} | **${rawRatio}x smaller** |`
+      `| Minified | ${formatBytes(yogaSize.raw)} | ${formatBytes(flexxFull.minifiedBytes)} | **${rawRatio}x smaller** |`,
     )
     console.log(
-      `| Gzipped | ${formatBytes(yogaSize.gzip)} | ${formatBytes(flexxFull.gzipBytes)} | **${gzipRatio}x smaller** |`
+      `| Gzipped | ${formatBytes(yogaSize.gzip)} | ${formatBytes(flexxFull.gzipBytes)} | **${gzipRatio}x smaller** |`,
     )
 
     if (debugDelta) {
@@ -184,10 +184,10 @@ async function main() {
       console.log("|         | Yoga | Flexx | Ratio |")
       console.log("| ------- | ---: | ----: | ----- |")
       console.log(
-        `| Minified | ${formatBytes(yogaSize.raw)} | ${formatBytes(flexxNoDebugRaw)} | **${rawRatioNoDebug}x smaller** |`
+        `| Minified | ${formatBytes(yogaSize.raw)} | ${formatBytes(flexxNoDebugRaw)} | **${rawRatioNoDebug}x smaller** |`,
       )
       console.log(
-        `| Gzipped | ${formatBytes(yogaSize.gzip)} | ${formatBytes(flexxNoDebugGzip)} | **${gzipRatioNoDebug}x smaller** |`
+        `| Gzipped | ${formatBytes(yogaSize.gzip)} | ${formatBytes(flexxNoDebugGzip)} | **${gzipRatioNoDebug}x smaller** |`,
       )
     }
 
@@ -197,11 +197,9 @@ async function main() {
   if (debugDelta) {
     console.log("## `debug` Dependency Impact\n")
     console.log(
-      `The \`debug\` dependency (via \`logger.ts\`) adds **${formatBytes(debugDelta.raw)}** minified / **${formatBytes(debugDelta.gzip)}** gzipped to the full bundle.`
+      `The \`debug\` dependency (via \`logger.ts\`) adds **${formatBytes(debugDelta.raw)}** minified / **${formatBytes(debugDelta.gzip)}** gzipped to the full bundle.`,
     )
-    console.log(
-      "Bundlers that tree-shake dynamic `require()` will exclude it automatically."
-    )
+    console.log("Bundlers that tree-shake dynamic `require()` will exclude it automatically.")
     console.log("")
   }
 

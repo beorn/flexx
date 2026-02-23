@@ -24,12 +24,12 @@ console.log(child.getComputedWidth()) // 100
 
 **TL;DR:** 1.5-2.5x faster initial layout, 5.5x faster no-change re-layout, 2.5-3.5x smaller, pure JavaScript (no WASM), synchronous initialization.
 
-|                      | Yoga              | Flexx             |
-| -------------------- | ----------------- | ----------------- |
-| **Runtime**          | WebAssembly       | Pure JavaScript   |
-| **Bundle (gzipped)** | 39 KB             | 16 KB (11 KB[^1]) |
-| **Initialization**   | Async (WASM load) | Synchronous       |
-| **Dependencies**     | WASM runtime      | `debug` (optional)|
+|                      | Yoga              | Flexx              |
+| -------------------- | ----------------- | ------------------ |
+| **Runtime**          | WebAssembly       | Pure JavaScript    |
+| **Bundle (gzipped)** | 39 KB             | 16 KB (11 KB[^1])  |
+| **Initialization**   | Async (WASM load) | Synchronous        |
+| **Dependencies**     | WASM runtime      | `debug` (optional) |
 
 [^1]: 11 KB when bundlers tree-shake the optional `debug` dependency.
 
@@ -99,10 +99,10 @@ See [docs/testing.md](docs/testing.md) for the full testing methodology and [doc
 
 ## Bundle Size
 
-|           | Yoga   | Flexx             | Savings            |
-| --------- | ------ | ----------------- | ------------------ |
-| Minified  | 117 KB | 47 KB (35 KB[^1]) | **2.5-3.4x smaller** |
-| Gzipped   | 39 KB  | 16 KB (11 KB[^1]) | **2.5-3.6x smaller** |
+|          | Yoga   | Flexx             | Savings              |
+| -------- | ------ | ----------------- | -------------------- |
+| Minified | 117 KB | 47 KB (35 KB[^1]) | **2.5-3.4x smaller** |
+| Gzipped  | 39 KB  | 16 KB (11 KB[^1]) | **2.5-3.6x smaller** |
 
 The `debug` dependency (used by `logger.ts`) adds ~12 KB minified / ~5 KB gzipped. Bundlers that tree-shake dynamic `require()` calls will exclude it automatically.
 
