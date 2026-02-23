@@ -33,9 +33,9 @@ Every box must be checked before tagging 1.0.
 - [x] Benchmark suite exists (`bench/yoga-compare-warmup.bench.ts`, `bench/incremental.bench.ts`)
 - [x] Performance claims documented (`docs/performance.md`)
 - [ ] Benchmark numbers verified on clean machine and recorded in release notes
-- [ ] Bundle size measured and documented:
-  - Current claim: raw 38 KB, gzipped ~7 KB
-  - [ ] Verify with `bun build` output or a bundler measurement script
+- [x] Bundle size measured and documented:
+  - Measured: 47 KB minified / 16 KB gzipped (35 KB / 11 KB without `debug`)
+  - Reproducible via `bun scripts/measure-bundle.ts`
 
 ### Packaging
 
@@ -60,7 +60,7 @@ Every box must be checked before tagging 1.0.
 
 ## Known Gaps
 
-1. **Bundle audit** (bead `km-flexx.bundle-audit`) -- bundle size needs formal measurement with a reproducible script, not just estimates from README.
+1. ~~**Bundle audit** (bead `km-flexx.bundle-audit`)~~ -- Done. `bun scripts/measure-bundle.ts` measures all entry points. README and docs updated with accurate numbers.
 2. **npm publish** (bead `km-flexx.npm-publish`) -- blocked by vendor rename (`km-infra.vendor-rename-impl`). The package name `@beorn/flexx` needs to be claimed on npm.
 3. **API surface audit** -- no formal review of which symbols are exported vs. internal. A pre-1.0 pass should ensure only intentional public API is accessible via the `exports` map.
 

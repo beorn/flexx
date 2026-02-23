@@ -1,6 +1,6 @@
 # Flexx - Pure JavaScript Flexbox Layout Engine
 
-Yoga-compatible API, 1.5-2.5x faster initial layout, 5.5x faster no-change re-layout, 5x smaller, pure JavaScript (no WASM).
+Yoga-compatible API, 1.5-2.5x faster initial layout, 5.5x faster no-change re-layout, 2.5-3.5x smaller, pure JavaScript (no WASM).
 
 ## Commands
 

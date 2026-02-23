@@ -369,7 +369,7 @@ positionType: RELATIVE     // Same as CSS
 - **Node creation**: ~8x cheaper than Yoga (no WASM boundary crossing)
 - **Initial layout**: 1.5-2.5x faster (JS node creation dominates)
 - **No-change re-layout**: 5.5x faster (fingerprint cache, 27ns regardless of tree size)
-- **Bundle size**: 7x smaller raw, 5x smaller gzipped
+- **Bundle size**: 2.5x smaller (3.4x without `debug` dep)
 
 ### Where Yoga Wins
 

@@ -2,7 +2,7 @@
 
 Flexx is a pure JavaScript flexbox layout engine with a Yoga-compatible API.
 
-**TL;DR:** Flexx is **1.5-2.5x faster for initial layout**, **5.5x faster for no-change re-layout**, and **5x smaller** than Yoga, with a synchronous API and zero dependencies. Yoga is faster at per-node layout computation during incremental re-layout and deep nesting.
+**TL;DR:** Flexx is **1.5-2.5x faster for initial layout**, **5.5x faster for no-change re-layout**, and **2.5-3.5x smaller** than Yoga, with a synchronous API and pure JavaScript. Yoga is faster at per-node layout computation during incremental re-layout and deep nesting.
 
 ## Status
 
@@ -20,17 +20,21 @@ Flexx is a pure JavaScript flexbox layout engine with a Yoga-compatible API.
 | ------------------ | --------------------- | ---------------------- |
 | **Runtime**        | WebAssembly           | Pure JavaScript        |
 | **Initialization** | Async (WASM load)     | Synchronous            |
-| **Dependencies**   | WASM runtime required | Zero dependencies      |
+| **Dependencies**   | WASM runtime required | `debug` (optional)     |
 | **Debugging**      | WASM stack traces     | Native JS stack traces |
 
 ### Bundle Size
 
-|             | Yoga                            | Flexx | Savings        |
-| ----------- | ------------------------------- | ----- | -------------- |
-| **Raw**     | 272 KB (183 KB JS + 89 KB WASM) | 38 KB | **7x smaller** |
-| **Gzipped** | 38 KB (9 KB JS + 28 KB WASM)    | 7 KB  | **5x smaller** |
+|              | Yoga                           | Flexx             | Savings              |
+| ------------ | ------------------------------ | ----------------- | -------------------- |
+| **Minified** | 117 KB (25 KB JS + 89 KB WASM) | 47 KB (35 KB[^1]) | **2.5-3.4x smaller** |
+| **Gzipped**  | 39 KB (9 KB JS + 28 KB WASM)   | 16 KB (11 KB[^1]) | **2.5-3.6x smaller** |
 
-Flexx is **5-7x smaller** than Yoga, which matters for:
+[^1]: Without the optional `debug` dependency (tree-shaken by most bundlers).
+
+Measured with `bun scripts/measure-bundle.ts` (Bun.build minified, zlib gzip).
+
+Flexx is **2.5-3.5x smaller** than Yoga, which matters for:
 
 - CLI tools where startup time matters
 - Edge runtimes with size limits
@@ -40,7 +44,7 @@ Flexx is **5-7x smaller** than Yoga, which matters for:
 
 - You want synchronous initialization (no async `await init()`)
 - You're in an environment where WASM is awkward (older bundlers, edge runtimes)
-- You want smaller bundles and simpler debugging
+- You want smaller bundles (2.5-3.5x) and simpler debugging
 - You're building interactive TUIs where no-change re-layout (5.5x faster) dominates
 
 **Use Yoga when:**
