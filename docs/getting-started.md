@@ -1,6 +1,8 @@
 # Getting Started with Flexx
 
-A quick guide to building layouts with Flexx.
+> **Building a terminal UI?** Use [inkx](https://github.com/beorn/inkx), which uses Flexx by default. You get React components, hooks, and layout feedback without touching the low-level API below.
+>
+> This guide is for developers who need the Flexx API directly — framework authors, canvas renderers, or anyone replacing Yoga.
 
 ## Installation
 

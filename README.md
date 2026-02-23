@@ -22,70 +22,94 @@ console.log(child.getComputedWidth()) // 100
 
 ## Why Flexx?
 
-**TL;DR:** 1.5-2.5x faster initial layout, 5.5x faster no-change re-layout, 2.5-3.5x smaller, pure JavaScript (no WASM), synchronous initialization.
+[Yoga](https://yogalayout.dev/) is the industry standard flexbox engine, used by React Native, Ink, and thousands of apps. It's mature and battle-tested. But it's C++ compiled to WASM, and that creates real problems for JavaScript applications:
 
-|                      | Yoga              | Flexx              |
-| -------------------- | ----------------- | ------------------ |
-| **Runtime**          | WebAssembly       | Pure JavaScript    |
-| **Bundle (gzipped)** | 39 KB             | 16 KB (11 KB[^1])  |
-| **Initialization**   | Async (WASM load) | Synchronous        |
-| **Dependencies**     | WASM runtime      | `debug` (optional) |
+**Async initialization.** Yoga requires `await Yoga.init()` before creating any nodes. No synchronous startup, no use at module load time, no use in config files or build scripts. For CLIs that should start instantly, this adds latency and complexity.
 
-[^1]: 11 KB when bundlers tree-shake the optional `debug` dependency.
+**WASM boundary crossing.** Every method call (`setWidth`, `setFlexGrow`, etc.) crosses the JS-to-WASM boundary. Node creation is ~8x more expensive than a JS object. For TUIs that rebuild layout trees per render, this dominates.
+
+**Memory growth.** WASM linear memory grows but never shrinks. Yoga's yoga-wasm-web has a [known memory growth bug](https://github.com/nicolo-ribaudo/yoga-wasm-web/issues/1) where each node allocation permanently grows the WASM heap. In long-running apps, this caused [120GB RAM usage in Claude Code](https://github.com/anthropics/claude-code/issues/4953).
+
+**Debugging opacity.** You can't step into WASM in a JS debugger. When layout is wrong, you get a computed number with no way to inspect the algorithm's intermediate state. Flexx is readable JS — set a breakpoint in `layout-zero.ts`.
+
+**No tree-shaking.** The WASM binary is monolithic. You get the entire engine even if you use a fraction of the features.
+
+Facebook's original pure-JS flexbox engine (`css-layout`) was abandoned when they moved to C++. [flexbox.js](https://github.com/Planning-nl/flexbox.js) exists but is unmaintained and missing features. Flexx fills the gap: full CSS flexbox spec, Yoga-compatible API, pure JS, zero WASM.
+
+## Who Should Use Flexx
+
+Most developers should use a framework built on Flexx, not Flexx directly. Flexx is for:
+
+- **Framework authors** building a TUI or layout framework that needs a JS layout engine
+- **Canvas/game developers** who need flexbox for non-DOM rendering
+- **Specialized tools** where you need direct control over layout computation
+- **Anyone replacing Yoga** who wants a drop-in pure-JS alternative
+
+> **Building a terminal UI?** Use [inkx](https://github.com/beorn/inkx), which uses Flexx by default. You get React components, hooks, and layout feedback without touching the low-level API.
 
 ## Status
 
-**Production-ready. 1368 tests passing including 41/41 Yoga compatibility tests and 1200+ incremental re-layout fuzz tests.**
+1368 tests passing, including 41/41 Yoga compatibility tests and 1200+ incremental re-layout fuzz tests. Used by [inkx](https://github.com/beorn/inkx) as its default layout engine.
 
-| Feature                                       | Status      |
-| --------------------------------------------- | ----------- |
-| Core flexbox (direction, grow, shrink, basis) | ✅ Complete |
-| Alignment (justify-content, align-items)      | ✅ Complete |
-| Spacing (gap, padding, margin, border)        | ✅ Complete |
-| Constraints (min/max width/height)            | ✅ Complete |
-| Measure functions (text sizing)               | ✅ Complete |
-| Absolute positioning                          | ✅ Complete |
-| Aspect ratio                                  | ✅ Complete |
-| Flex-wrap (multi-line layouts)                | ✅ Complete |
-| Logical edges (EDGE_START/END)                | ✅ Complete |
-| RTL support                                   | ✅ Complete |
-| Baseline alignment                            | ✅ Complete |
+| Feature                                       | Status   |
+| --------------------------------------------- | -------- |
+| Core flexbox (direction, grow, shrink, basis) | Complete |
+| Alignment (justify-content, align-items)      | Complete |
+| Spacing (gap, padding, margin, border)        | Complete |
+| Constraints (min/max width/height)            | Complete |
+| Measure functions (text sizing)               | Complete |
+| Absolute positioning                          | Complete |
+| Aspect ratio                                  | Complete |
+| Flex-wrap (multi-line layouts)                | Complete |
+| Logical edges (EDGE_START/END)                | Complete |
+| RTL support                                   | Complete |
+| Baseline alignment                            | Complete |
 
 ## Installation
 
 ```bash
-npm install @beorn/flexx
-# or
 bun add @beorn/flexx
+# or
+npm install @beorn/flexx
 ```
 
 ## Performance
 
 Flexx and Yoga each win in different scenarios:
 
-| Scenario                                      | Winner    | Margin     |
-| --------------------------------------------- | --------- | ---------- |
-| **Initial layout** (create + calculate)       | Flexx     | 1.5-2.5x   |
-| **No-change re-layout** (fingerprint cache)   | **Flexx** | **5.5x**   |
-| **Incremental re-layout** (single dirty leaf) | Yoga      | 2.8-3.4x   |
-| **Deep nesting** (15+ levels)                 | Yoga      | increasing |
+| Scenario                | Winner    | Margin     |
+| ----------------------- | --------- | ---------- |
+| **Initial layout**      | Flexx     | 1.5-2.5x   |
+| **No-change re-layout** | **Flexx** | **5.5x**   |
+| **Single dirty leaf**   | Yoga      | 2.8-3.4x   |
+| **Deep nesting (15+)**  | Yoga      | increasing |
 
-Flexx wins at initial layout because JS node creation avoids WASM boundary crossings (~8x cheaper). Flexx's fingerprint cache makes no-change re-layout essentially free (27ns regardless of tree size). Yoga's WASM layout computation is faster for per-node work during re-layout.
+**Where Yoga wins — and why it matters less in practice.** Yoga is 2.8-3.4x faster in the single-dirty-leaf scenario: one node changes in an existing tree. WASM's per-node layout computation is genuinely faster than JS. But in interactive TUIs, most renders are no-change frames (cursor moved, selection changed) where Flexx is 5.5x faster. Initial layout (new screen, tab switch) also favors Flexx at 1.5-2.5x. The single-dirty-leaf case is a minority of frames in practice.
 
-For interactive TUIs, the no-change case (cursor movement, selection) dominates — Flexx's 5.5x advantage there is the key differentiator.
+Flexx's fingerprint cache makes no-change re-layout essentially free (27ns regardless of tree size). Initial layout wins come from JS node creation avoiding WASM boundary crossings (~8x cheaper per node).
+
+**Use Yoga instead when** your primary workload is frequent incremental re-layout of large pre-existing trees, you have deep nesting (15+ levels), or you're in the React Native ecosystem.
 
 See [docs/performance.md](docs/performance.md) for detailed benchmarks including TUI-realistic trees with measure functions.
 
-```bash
-bun bench bench/yoga-compare-rich.bench.ts    # TUI boards, measure funcs, property diversity
-bun bench bench/incremental.bench.ts          # No-change, dirty leaf, resize
+## Algorithm
+
+Flexx provides two layout implementations that produce identical output and pass identical tests:
+
+**Zero-allocation** (default, `@beorn/flexx`): Mutates `FlexInfo` structs on nodes instead of allocating temporary objects. Faster for flat/wide trees typical of TUI layouts. Not reentrant — a single layout pass must complete before another starts.
+
+**Classic** (`@beorn/flexx/classic`): Allocates temporary objects during layout. Easier to read and debug. Use this when stepping through the algorithm or comparing behavior.
+
+```typescript
+import { Node } from "@beorn/flexx" // zero-allocation (default)
+import { Node } from "@beorn/flexx/classic" // allocating (debugging)
 ```
+
+Both implement CSS Flexbox spec Section 9.7 with iterative freeze for min/max constraints, Yoga-compatible edge-based rounding, weighted flex-shrink, auto margin absorption, and full RTL support.
 
 ## Correctness
 
-Flexx pursues both maximum performance **and** maximum correctness through aggressive caching with extensive verification.
-
-**The problem**: Incremental re-layout (caching unchanged subtrees) is essential for performance but introduces subtle bugs. Chrome's Blink team experienced a "chain of ~10 bugs over a year" in their flexbox implementation. Flexx addresses this with a multi-layered test strategy:
+Incremental re-layout (caching unchanged subtrees) is essential for performance but introduces subtle bugs — Chrome's Blink team experienced a "chain of ~10 bugs over a year" in their flexbox implementation. Flexx addresses this with layered testing:
 
 | Layer              | Tests     | What it verifies                                               |
 | ------------------ | --------- | -------------------------------------------------------------- |
@@ -95,7 +119,7 @@ Flexx pursues both maximum performance **and** maximum correctness through aggre
 
 The fuzz tests use a **differential oracle**: build a random tree, layout, mark nodes dirty, re-layout, then compare against a fresh layout of the identical tree. This has caught 3 distinct caching bugs that all 524 single-pass tests missed.
 
-See [docs/testing.md](docs/testing.md) for the full testing methodology and [docs/incremental-layout-bugs.md](docs/incremental-layout-bugs.md) for the bug taxonomy.
+See [docs/testing.md](docs/testing.md) for methodology and [docs/incremental-layout-bugs.md](docs/incremental-layout-bugs.md) for the bug taxonomy.
 
 ## Bundle Size
 
@@ -104,13 +128,11 @@ See [docs/testing.md](docs/testing.md) for the full testing methodology and [doc
 | Minified | 117 KB | 47 KB (35 KB[^1]) | **2.5-3.4x smaller** |
 | Gzipped  | 39 KB  | 16 KB (11 KB[^1]) | **2.5-3.6x smaller** |
 
-The `debug` dependency (used by `logger.ts`) adds ~12 KB minified / ~5 KB gzipped. Bundlers that tree-shake dynamic `require()` calls will exclude it automatically.
-
-Measure with `bun scripts/measure-bundle.ts`.
+[^1]: 11 KB when bundlers tree-shake the optional `debug` dependency.
 
 ## API Compatibility
 
-**100% Yoga API compatibility** (41/41 comparison tests passing). Drop-in replacement:
+100% Yoga API compatibility (41/41 comparison tests passing). Drop-in replacement:
 
 ```typescript
 // Yoga
@@ -124,23 +146,6 @@ const root = Node.create() // Sync!
 ```
 
 Same constants, same method names, same behavior.
-
-## Use Cases
-
-Flexx was built primarily for **terminal UIs**, but works anywhere you need flexbox layout:
-
-- **Terminal UIs** — our primary target (used by [inkx](https://github.com/beorn/inkx))
-- **CLI tools** — synchronous init, fast startup
-- **Canvas/game UIs** — calculate layout, render however you want
-- **Edge runtimes** — 16KB gzipped, no WASM complexity
-- **PDF/document generation** — layout before rendering
-
-**Use Yoga instead when:**
-
-- Your primary workload is frequent incremental re-layout of large pre-existing trees
-- You have deep nesting (15+ levels) as primary use case
-- You're in the React Native ecosystem
-- You need battle-tested stability across diverse environments
 
 ## Documentation
 
@@ -156,32 +161,13 @@ Flexx was built primarily for **terminal UIs**, but works anywhere you need flex
 
 ## Related Projects
 
-### Flexbox Layout Engines
-
-| Project                                                                | Language   | Description                                                                                                                               |
-| ---------------------------------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| [Yoga](https://yogalayout.dev/)                                        | C++/WASM   | Facebook's flexbox engine. The industry standard, used by React Native, Ink, and Litho. Mature and battle-tested across millions of apps. |
-| [Taffy](https://github.com/DioxusLabs/taffy)                           | Rust       | High-performance layout library supporting Flexbox and CSS Grid. Used by Dioxus and Bevy. Evolved from Stretch.                           |
-| [yoga-wasm-web](https://github.com/shuding/yoga-wasm-web)              | WASM       | Popular WASM build of Yoga for web/Node.js (~900K weekly npm downloads). Used by Satori and others.                                       |
-| [flexbox.js](https://github.com/Planning-nl/flexbox.js)                | JavaScript | Pure JS flexbox engine by Planning-nl. Reference implementation that inspired Flexx's algorithm.                                          |
-| [css-layout](https://www.npmjs.com/package/css-layout)                 | JavaScript | Facebook's original pure-JS flexbox, predecessor to Yoga. Deprecated but historically significant.                                        |
-| [stretch](https://github.com/vislyhq/stretch)                          | Rust       | Visly's flexbox implementation. Deprecated; evolved into Taffy.                                                                           |
-| [troika-flex-layout](https://www.npmjs.com/package/troika-flex-layout) | JavaScript | Flexbox for WebGL/3D scenes via Yoga in a web worker. Part of the Troika framework.                                                       |
-
-### Terminal UI Frameworks
-
-| Project                                                         | Description                                                                             |
-| --------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [Ink](https://github.com/vadimdemedes/ink)                      | React for CLIs. Uses Yoga for layout. Powers Claude Code, Wrangler, and many CLI tools. |
-| [inkx](https://github.com/beorn/inkx)                           | React for CLIs with layout feedback. Uses Flexx by default. Drop-in Ink replacement.    |
-| [blessed](https://github.com/chjj/blessed)                      | Curses-like terminal library with its own layout system.                                |
-| [react-blessed](https://github.com/Yomguithereal/react-blessed) | React renderer for blessed.                                                             |
-
-### Related Packages
-
-| Project                                   | Description                                                                         |
-| ----------------------------------------- | ----------------------------------------------------------------------------------- |
-| [chalkx](https://github.com/beorn/chalkx) | Terminal primitives with capability detection, extended underlines, and hyperlinks. |
+| Project                                                 | Language   | Description                                                                                      |
+| ------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
+| [Yoga](https://yogalayout.dev/)                         | C++/WASM   | Facebook's flexbox engine. Industry standard, used by React Native, Ink, Litho.                  |
+| [Taffy](https://github.com/DioxusLabs/taffy)            | Rust       | High-performance layout library supporting Flexbox and CSS Grid. Used by Dioxus and Bevy.        |
+| [flexbox.js](https://github.com/Planning-nl/flexbox.js) | JavaScript | Pure JS flexbox engine by Planning-nl. Reference implementation that inspired Flexx's algorithm. |
+| [css-layout](https://www.npmjs.com/package/css-layout)  | JavaScript | Facebook's original pure-JS flexbox, predecessor to Yoga. Deprecated.                            |
+| [inkx](https://github.com/beorn/inkx)                   | TypeScript | React for CLIs with layout feedback. Uses Flexx by default.                                      |
 
 ## Code Structure
 
@@ -197,24 +183,6 @@ src/
     ├── node.ts
     └── layout.ts
 ```
-
-The layout algorithm implements CSS Flexbox spec Section 9.7 with:
-
-- Iterative freeze algorithm for min/max constraints
-- Yoga-compatible edge-based rounding (prevents pixel gaps)
-- Weighted flex-shrink (larger items shrink more)
-- Auto margin absorption before justify-content
-- Full RTL support with EDGE_START/END resolution
-
-## Classic Algorithm
-
-The classic (allocating) algorithm is available for debugging or comparison:
-
-```typescript
-import { Node } from "@beorn/flexx/classic"
-```
-
-Both algorithms pass identical tests and produce identical output.
 
 ## License
 
