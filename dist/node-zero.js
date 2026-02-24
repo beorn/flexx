@@ -4,9 +4,9 @@
  * Yoga-compatible Node class for flexbox layout.
  */
 import * as C from "./constants.js";
-import { computeLayout, countNodes, markSubtreeLayoutSeen, } from "./layout-zero.js";
+import { computeLayout, countNodes, markSubtreeLayoutSeen } from "./layout-zero.js";
 import { createDefaultStyle, } from "./types.js";
-import { setEdgeValue, setEdgeBorder, getEdgeValue, getEdgeBorderValue, traversalStack, } from "./utils.js";
+import { setEdgeValue, setEdgeBorder, getEdgeValue, getEdgeBorderValue, traversalStack } from "./utils.js";
 import { log } from "./logger.js";
 /**
  * A layout node in the flexbox tree.

@@ -6,7 +6,7 @@
 import * as C from "../constants.js";
 import { computeLayout, countNodes, markSubtreeLayoutSeen } from "./layout.js";
 import { createDefaultStyle, } from "../types.js";
-import { setEdgeValue, setEdgeBorder, getEdgeValue, getEdgeBorderValue, } from "../utils.js";
+import { setEdgeValue, setEdgeBorder, getEdgeValue, getEdgeBorderValue } from "../utils.js";
 import { log } from "../logger.js";
 /**
  * A layout node in the flexbox tree.

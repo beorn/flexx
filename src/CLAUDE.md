@@ -14,21 +14,27 @@ Flexx is a pure-JavaScript flexbox layout engine with a Yoga-compatible API. The
                                 │
                 ┌───────────────┴───────────────┐
                 │                               │
-         ┌──────┴──────┐                 ┌──────┴──────┐
-         │ node-zero.ts│                 │layout-zero.ts│
-         │  (1412 LOC) │                 │  (2501 LOC)  │
-         │  Node class │                 │  Algorithm   │
-         └──────┬──────┘                 └──────┬───────┘
+         ┌──────┴──────┐                 ┌──────┴───────┐
+         │ node-zero.ts│                 │layout-zero.ts │
+         │  (1412 LOC) │                 │  (1781 LOC)   │
+         │  Node class │                 │  layoutNode   │
+         └──────┬──────┘                 └──────┬────────┘
                 │                               │
-         ┌──────┴──────┐                 ┌──────┴──────┐
-         │  types.ts   │                 │  utils.ts   │
-         │  Interfaces │                 │  Helpers    │
-         └─────────────┘                 └─────────────┘
+         ┌──────┴──────┐     ┌──────────────────┼──────────────────┐
+         │  types.ts   │     │                  │                  │
+         │  Interfaces │  layout-helpers.ts  layout-flex-lines.ts  │
+         └─────────────┘  (140 LOC)         (346 LOC)             │
+                          Edge resolution   Pre-alloc arrays   layout-measure.ts
+                                            Line breaking      (257 LOC)
+                                            Flex distribution  measureNode
 
-         constants.ts - Yoga-compatible enum values
-         logger.ts    - Optional debug logging (conditional)
-         testing.ts   - Layout inspection + differential oracles
-         classic/     - Allocating algorithm (debugging reference)
+         layout-traversal.ts (70 LOC) - Tree traversal (markSubtreeLayoutSeen, countNodes)
+         layout-stats.ts (43 LOC)     - Debug/benchmark counters
+         utils.ts                     - resolveValue, applyMinMax, traversal stack
+         constants.ts                 - Yoga-compatible enum values
+         logger.ts                    - Optional debug logging (conditional)
+         testing.ts                   - Layout inspection + differential oracles
+         classic/                     - Allocating algorithm (debugging reference)
 ```
 
 **Key design decisions:**
@@ -40,16 +46,21 @@ Flexx is a pure-JavaScript flexbox layout engine with a Yoga-compatible API. The
 
 ## Source Files
 
-| File             | LOC   | Role                                                                | Hot path?                      |
-| ---------------- | ----- | ------------------------------------------------------------------- | ------------------------------ |
-| `layout-zero.ts` | 2501  | Core layout algorithm                                               | **Yes** - most critical        |
-| `node-zero.ts`   | 1412  | Node class, tree ops, caching                                       | **Yes** - second most critical |
-| `types.ts`       | 229   | `FlexInfo`, `Style`, `Layout`, `Value` interfaces                   | No (types only)                |
-| `utils.ts`       | 217   | `resolveValue`, `applyMinMax`, edge helpers, shared traversal stack | Yes (called frequently)        |
-| `constants.ts`   | 81    | Yoga-compatible numeric constants                                   | No                             |
-| `logger.ts`      | 67    | Conditional debug logger (`log.debug?.()`)                          | No (conditional)               |
-| `testing.ts`     | 209   | `getLayout`, `diffLayouts`, `expectRelayoutMatchesFresh`            | No (test only)                 |
-| `classic/`       | ~2900 | Allocating reference algorithm                                      | No (debugging only)            |
+| File                   | LOC   | Role                                                                | Hot path?                      |
+| ---------------------- | ----- | ------------------------------------------------------------------- | ------------------------------ |
+| `layout-zero.ts`       | 1781  | Core layout: `computeLayout()`, `layoutNode()` (11 phases)         | **Yes** - most critical        |
+| `layout-helpers.ts`    | 140   | Edge resolution: margins, padding, borders                          | **Yes** - called per edge      |
+| `layout-flex-lines.ts` | 346   | Pre-alloc arrays, `breakIntoLines()`, `distributeFlexSpaceForLine()`| **Yes** - flex distribution    |
+| `layout-measure.ts`    | 257   | `measureNode()` — intrinsic sizing                                  | **Yes** - sizing pass          |
+| `layout-traversal.ts`  | 70    | Tree traversal: `markSubtreeLayoutSeen()`, `countNodes()`           | Moderate                       |
+| `layout-stats.ts`      | 43    | Debug/benchmark counters                                            | No (counters only)             |
+| `node-zero.ts`         | 1412  | Node class, tree ops, caching                                       | **Yes** - second most critical |
+| `types.ts`             | 229   | `FlexInfo`, `Style`, `Layout`, `Value` interfaces                   | No (types only)                |
+| `utils.ts`             | 217   | `resolveValue`, `applyMinMax`, edge helpers, shared traversal stack | Yes (called frequently)        |
+| `constants.ts`         | 81    | Yoga-compatible numeric constants                                   | No                             |
+| `logger.ts`            | 67    | Conditional debug logger (`log.debug?.()`)                          | No (conditional)               |
+| `testing.ts`           | 209   | `getLayout`, `diffLayouts`, `expectRelayoutMatchesFresh`            | No (test only)                 |
+| `classic/`             | ~2900 | Allocating reference algorithm                                      | No (debugging only)            |
 
 ## Layout Algorithm Phases
 

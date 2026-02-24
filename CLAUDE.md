@@ -52,21 +52,29 @@ diff /tmp/bench-before.txt /tmp/bench-after.txt
 
 ```
 src/
-├── index.ts        # Main export
-├── node-zero.ts    # Node class with FlexInfo (hot path)
-├── layout-zero.ts  # Layout algorithm (~2300 lines, hot path)
-├── constants.ts    # Flexbox constants (Yoga-compatible)
-├── types.ts        # TypeScript interfaces
-├── utils.ts        # Shared utilities
-└── classic/        # Allocating algorithm (for debugging)
+├── index.ts              # Main export
+├── node-zero.ts          # Node class with FlexInfo (hot path)
+├── layout-zero.ts        # Core layout: computeLayout + layoutNode (hot path)
+├── layout-helpers.ts     # Edge resolution: margins, padding, borders (hot path)
+├── layout-flex-lines.ts  # Pre-alloc arrays, line breaking, flex distribution (hot path)
+├── layout-measure.ts     # measureNode — intrinsic sizing (hot path)
+├── layout-traversal.ts   # Tree traversal utilities
+├── layout-stats.ts       # Debug/benchmark counters
+├── constants.ts          # Flexbox constants (Yoga-compatible)
+├── types.ts              # TypeScript interfaces
+├── utils.ts              # Shared utilities
+└── classic/              # Allocating algorithm (for debugging)
 ```
 
 ## Key Files
 
-| File                                 | Purpose                                               |
-| ------------------------------------ | ----------------------------------------------------- |
-| `src/layout-zero.ts`                 | Core layout algorithm - **most performance-critical** |
-| `src/node-zero.ts`                   | Node class - **second most performance-critical**     |
+| File                                 | Purpose                                                       |
+| ------------------------------------ | ------------------------------------------------------------- |
+| `src/layout-zero.ts`                 | Core layout: computeLayout + layoutNode - **most critical**   |
+| `src/layout-helpers.ts`              | Edge resolution helpers (margins, padding, borders)           |
+| `src/layout-flex-lines.ts`           | Pre-alloc arrays, line breaking, flex distribution            |
+| `src/layout-measure.ts`             | measureNode - intrinsic sizing                                |
+| `src/node-zero.ts`                   | Node class - **second most performance-critical**             |
 | `bench/yoga-compare-warmup.bench.ts` | Main benchmark comparing Flexx vs Yoga                |
 | `tests/yoga-comparison.test.ts`      | Yoga compatibility tests (41 tests)                   |
 
