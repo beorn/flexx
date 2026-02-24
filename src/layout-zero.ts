@@ -1273,9 +1273,17 @@ function layoutNode(
       // pass the actual childWidth instead of NaN. This ensures layoutNode's fingerprint check
       // detects the change — otherwise NaN===NaN matches across passes with different flex
       // distributions, preserving stale overridden dimensions from the previous pass.
+      //
+      // CRITICAL: Measure-func leaf nodes (text) must receive the actual constraint, not NaN.
+      // Their cross-axis size (e.g. height in a row) depends on the main-axis constraint
+      // (e.g. text wrapping width). Passing NaN causes them to measure unconstrained,
+      // producing height=1 instead of the correct wrapped height. The parent's Phase 8
+      // shouldMeasure path computes the correct childWidth/childHeight, but layoutNode
+      // would recompute with NaN and get a different result.
       const flexDistChanged = child.flex.mainSize !== child.flex.baseSize
+      const hasMeasureLeaf = child.hasMeasureFunc() && child.children.length === 0
       const passWidthToChild =
-        isRow && mainIsAutoChild && !hasFlexGrow && !flexDistChanged
+        isRow && mainIsAutoChild && !hasFlexGrow && !flexDistChanged && !hasMeasureLeaf
           ? NaN
           : !isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross
             ? NaN
@@ -1285,7 +1293,7 @@ function layoutNode(
                 ? crossAxisSize
                 : childWidth
       const passHeightToChild =
-        !isRow && mainIsAutoChild && !hasFlexGrow && !flexDistChanged
+        !isRow && mainIsAutoChild && !hasFlexGrow && !flexDistChanged && !hasMeasureLeaf
           ? NaN
           : isRow && crossIsAutoForLayoutCall && !parentHasDefiniteCross
             ? NaN
@@ -1309,19 +1317,22 @@ function layoutNode(
 
       // Set this child's layout - override what layoutNode computed
       // Override if any of:
-      // - Child has explicit main dimension (not auto)
+      // - Child has explicit main dimension AND parent has explicit main dimension (edge-based rounding)
       // - Child has flexGrow > 0 (flex distribution applied)
       // - Child has measureFunc (leaf text node)
       // - Flex distribution actually changed the size (grow or shrink)
       //
       // IMPORTANT: Don't override auto-sized containers when flex distribution
       // didn't change their size. The pre-measurement (Phase 5) computes intrinsic
-      // size at unconstrained width, but layoutNode recomputes with actual constraints.
-      // For containers with children that wrap text, layoutNode's result is correct
-      // because it accounts for the actual width after flex distribution of grandchildren.
+      // size at unconstrained main axis, but layoutNode recomputes with actual
+      // cross-axis constraints. For containers with children that wrap text,
+      // layoutNode's result is correct because it accounts for the actual width
+      // after flex distribution of grandchildren. The Phase 5 measureNode pass
+      // measures row children with NaN main width, so text doesn't wrap —
+      // producing height=1 instead of the correct wrapped height.
       const hasMeasure = child.hasMeasureFunc() && child.children.length === 0
       const flexDistributionChangedSize = child.flex.mainSize !== child.flex.baseSize
-      if (!mainIsAuto || hasFlexGrow || hasMeasure || flexDistributionChangedSize) {
+      if ((!mainIsAuto && !mainIsAutoChild) || hasFlexGrow || hasMeasure || flexDistributionChangedSize) {
         // Use edge-based rounding: size = round(end_edge) - round(start_edge)
         if (isRow) {
           _t?.parentOverride(_tn, "main", child.layout.width, edgeBasedMainSize)
@@ -1420,7 +1431,8 @@ function layoutNode(
       // - Phase 8 did NOT override (auto-sized container, no grow, no measure):
       //   Use child.layout (from layoutNode), which reflects actual content size.
       //   constrainedMainSize is a stale pre-layout estimate from unconstrained measurement.
-      const phaseEightOverrode = !mainIsAuto || hasFlexGrow || hasMeasure || flexDistributionChangedSize
+      const phaseEightOverrode =
+        (!mainIsAuto && !mainIsAutoChild) || hasFlexGrow || hasMeasure || flexDistributionChangedSize
       const fractionalMainSize = phaseEightOverrode
         ? constrainedMainSize
         : isRow
