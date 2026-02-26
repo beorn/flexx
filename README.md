@@ -77,11 +77,11 @@ npm install @beorn/flexx
 
 Flexx and Yoga each win in different scenarios:
 
-| Scenario                | Winner    | Margin   | Tree Size          |
-| ----------------------- | --------- | -------- | ------------------ |
-| **Initial layout**      | Flexx     | 1.5-2.5x | 64-969 nodes       |
-| **No-change re-layout** | **Flexx** | **5.5x** | 406-969 nodes      |
-| **Single dirty leaf**   | Yoga      | 2.8-3.4x | 406-969 nodes      |
+| Scenario                | Winner    | Margin     | Tree Size        |
+| ----------------------- | --------- | ---------- | ---------------- |
+| **Initial layout**      | Flexx     | 1.5-2.5x   | 64-969 nodes     |
+| **No-change re-layout** | **Flexx** | **5.5x**   | 406-969 nodes    |
+| **Single dirty leaf**   | Yoga      | 2.8-3.4x   | 406-969 nodes    |
 | **Deep nesting (15+)**  | Yoga      | increasing | 1 node per level |
 
 Benchmarks use TUI-realistic trees: columns × bordered cards with measure functions (e.g., 5 columns × 20 cards = ~406 nodes, 8×30 = ~969 nodes). Typical depth is 3-5 levels (column → card → content → text). See [docs/performance.md](docs/performance.md) for full methodology.
@@ -90,12 +90,12 @@ Benchmarks use TUI-realistic trees: columns × bordered cards with measure funct
 
 **Typical interactive TUI operation mix:**
 
-| Operation              | Frequency     | Winner       | Why                                   |
-| ---------------------- | ------------- | ------------ | ------------------------------------- |
-| Cursor/selection move  | Very frequent | Flexx 5.5x   | No layout change → fingerprint cache  |
-| Content edit           | Frequent      | Yoga 3x      | Single dirty leaf in existing tree    |
-| Initial render         | Once          | Flexx 1.5-2x | JS node creation avoids WASM boundary |
-| Window resize          | Occasional    | Yoga 2.7x    | Full re-layout of existing tree       |
+| Operation             | Frequency     | Winner       | Why                                   |
+| --------------------- | ------------- | ------------ | ------------------------------------- |
+| Cursor/selection move | Very frequent | Flexx 5.5x   | No layout change → fingerprint cache  |
+| Content edit          | Frequent      | Yoga 3x      | Single dirty leaf in existing tree    |
+| Initial render        | Once          | Flexx 1.5-2x | JS node creation avoids WASM boundary |
+| Window resize         | Occasional    | Yoga 2.7x    | Full re-layout of existing tree       |
 
 Flexx's fingerprint cache makes no-change re-layout essentially free (27ns regardless of tree size). Initial layout wins come from JS node creation avoiding WASM boundary crossings (~8x cheaper per node). Most TUI apps have shallow nesting (3-5 levels) — well below the 15-level crossover where Yoga overtakes Flexx.
 

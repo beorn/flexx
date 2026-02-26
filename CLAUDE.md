@@ -68,15 +68,15 @@ src/
 
 ## Key Files
 
-| File                                 | Purpose                                                       |
-| ------------------------------------ | ------------------------------------------------------------- |
-| `src/layout-zero.ts`                 | Core layout: computeLayout + layoutNode - **most critical**   |
-| `src/layout-helpers.ts`              | Edge resolution helpers (margins, padding, borders)           |
-| `src/layout-flex-lines.ts`           | Pre-alloc arrays, line breaking, flex distribution            |
-| `src/layout-measure.ts`             | measureNode - intrinsic sizing                                |
-| `src/node-zero.ts`                   | Node class - **second most performance-critical**             |
-| `bench/yoga-compare-warmup.bench.ts` | Main benchmark comparing Flexx vs Yoga                |
-| `tests/yoga-comparison.test.ts`      | Yoga compatibility tests (41 tests)                   |
+| File                                 | Purpose                                                     |
+| ------------------------------------ | ----------------------------------------------------------- |
+| `src/layout-zero.ts`                 | Core layout: computeLayout + layoutNode - **most critical** |
+| `src/layout-helpers.ts`              | Edge resolution helpers (margins, padding, borders)         |
+| `src/layout-flex-lines.ts`           | Pre-alloc arrays, line breaking, flex distribution          |
+| `src/layout-measure.ts`              | measureNode - intrinsic sizing                              |
+| `src/node-zero.ts`                   | Node class - **second most performance-critical**           |
+| `bench/yoga-compare-warmup.bench.ts` | Main benchmark comparing Flexx vs Yoga                      |
+| `tests/yoga-comparison.test.ts`      | Yoga compatibility tests (41 tests)                         |
 
 ## Architecture
 

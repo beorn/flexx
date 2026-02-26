@@ -1059,8 +1059,7 @@ function layoutNode(
       // 1. Explicit style (width/height in points or percent)
       // 2. Definite available space (crossAxisSize is not NaN)
       const parentCrossDim = isRow ? style.height : style.width
-      const parentHasDefiniteCrossStyle =
-        parentCrossDim.unit === C.UNIT_POINT || parentCrossDim.unit === C.UNIT_PERCENT
+      const parentHasDefiniteCrossStyle = parentCrossDim.unit === C.UNIT_POINT || parentCrossDim.unit === C.UNIT_PERCENT
       // crossAxisSize comes from available space - if it's a real number, we have a constraint
       const parentHasDefiniteCross = parentHasDefiniteCrossStyle || !Number.isNaN(crossAxisSize)
 
@@ -1179,10 +1178,7 @@ function layoutNode(
       // These must be included in the absolute position BEFORE rounding (Yoga-compatible)
       let posOffsetX = 0
       let posOffsetY = 0
-      if (
-        childStyle.positionType === C.POSITION_TYPE_RELATIVE ||
-        childStyle.positionType === C.POSITION_TYPE_STATIC
-      ) {
+      if (childStyle.positionType === C.POSITION_TYPE_RELATIVE || childStyle.positionType === C.POSITION_TYPE_STATIC) {
         const relLeftPos = childStyle.position[0]
         const relTopPos = childStyle.position[1]
         const relRightPos = childStyle.position[2]
