@@ -115,19 +115,6 @@ The most important test layer. 1200+ fuzz tests verify that incremental re-layou
 
 See `docs/testing.md` for test methodology, `docs/incremental-layout-bugs.md` for bug taxonomy and industry context.
 
-## Cache Diagnostics
-
-Fingerprint cache hit/miss counters are always tracked. The benchmark prints a summary automatically. For programmatic access:
-
-```typescript
-import { getLayoutStats, resetLayoutStats } from "flexx"
-
-resetLayoutStats()
-tree.calculateLayout(1000, 1000, DIRECTION_LTR)
-const stats = getLayoutStats()
-// { hits: number, misses: number, hitRate: number }
-```
-
 ## Aspect Ratio
 
 `measureNode` correctly applies `minWidth`/`maxWidth`/`minHeight`/`maxHeight` constraints after computing aspect-ratio-derived dimensions.

@@ -42,7 +42,6 @@ export {
   layoutPositioningCalls,
   layoutCacheHits,
   resetLayoutStats,
-  getLayoutStats,
 } from "./layout-stats.js"
 
 // Re-export measureNode for backward compatibility
@@ -63,8 +62,6 @@ import {
   incLayoutSizingCalls,
   incLayoutPositioningCalls,
   incLayoutCacheHits,
-  incFingerprintHit,
-  incFingerprintMiss,
 } from "./layout-stats.js"
 import { measureNode } from "./layout-measure.js"
 import {
@@ -159,7 +156,6 @@ function layoutNode(
     flex.lastDir === direction
   ) {
     // Constraints unchanged - just update position based on offset delta
-    incFingerprintHit()
     _t?.fingerprintHit(_tn, availableWidth, availableHeight)
     const deltaX = offsetX - flex.lastOffsetX
     const deltaY = offsetY - flex.lastOffsetY
@@ -173,7 +169,6 @@ function layoutNode(
     }
     return
   }
-  incFingerprintMiss()
   _t?.fingerprintMiss(_tn, availableWidth, availableHeight, {
     layoutValid: flex.layoutValid,
     isDirty: node.isDirty(),
