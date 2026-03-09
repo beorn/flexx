@@ -176,7 +176,7 @@ Same constants, same method names, same behavior.
 | [Taffy](https://github.com/DioxusLabs/taffy)            | Rust       | High-performance layout library supporting Flexbox and CSS Grid. Used by Dioxus and Bevy.          |
 | [flexbox.js](https://github.com/Planning-nl/flexbox.js) | JavaScript | Pure JS flexbox engine by Planning-nl. Reference implementation that inspired Flexily's algorithm. |
 | [css-layout](https://www.npmjs.com/package/css-layout)  | JavaScript | Facebook's original pure-JS flexbox, predecessor to Yoga. Deprecated.                              |
-| [silvery](https://silvery.dev)             | TypeScript | React for CLIs with layout feedback. Uses Flexily by default.                                      |
+| [silvery](https://silvery.dev)                          | TypeScript | React for CLIs with layout feedback. Uses Flexily by default.                                      |
 
 ## Code Structure
 

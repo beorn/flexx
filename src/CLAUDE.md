@@ -318,9 +318,9 @@ This is Yoga's algorithm. Layout positions stored in `layout.left`/`layout.top` 
 
 `measureNode()` (~240 lines) is a lightweight alternative to `layoutNode()` (~1650 lines). It computes `width` and `height` but NOT `left`/`top`. Used during Phase 5 for intrinsic sizing of auto-sized container children. Save/restore of `layout.width`/`layout.height` is required around `measureNode` calls because it overwrites those fields.
 
-## Integration: How silvery Uses Flexily
+## Integration: How Silvery Uses Flexily
 
-silvery uses flexily through an adapter layer:
+Silvery uses Flexily through an adapter layer:
 
 1. `silvery/src/layout-engine.ts` defines the `LayoutEngine` / `LayoutNode` interfaces
 2. `silvery/src/adapters/flexily-zero-adapter.ts` wraps `Node` in `FlexilyZeroNodeAdapter`

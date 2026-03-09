@@ -1,9 +1,10 @@
 node_modules/
+dist/
 *.tgz
 coverage/
 .bundle-measure/
 .DS_Store
-docs/site/.vitepress/dist/
-docs/site/.vitepress/cache/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
 *.log
 bun.lockb
