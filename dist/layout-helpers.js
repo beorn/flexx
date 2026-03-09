@@ -6,13 +6,8 @@
  */
 import * as C from "./constants.js";
 import { resolveValue } from "./utils.js";
-// ============================================================================
-// Constants for Edge Indices (avoid magic numbers)
-// ============================================================================
-export const EDGE_LEFT = 0;
-export const EDGE_TOP = 1;
-export const EDGE_RIGHT = 2;
-export const EDGE_BOTTOM = 3;
+// Re-export edge constants (canonical definitions in constants.ts)
+export { EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM } from "./constants.js";
 // ============================================================================
 // Helper Functions
 // ============================================================================

@@ -5,10 +5,7 @@
  * These are pure functions with no state — safe to extract.
  */
 import type { Value } from "./types.js";
-export declare const EDGE_LEFT = 0;
-export declare const EDGE_TOP = 1;
-export declare const EDGE_RIGHT = 2;
-export declare const EDGE_BOTTOM = 3;
+export { EDGE_LEFT, EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM } from "./constants.js";
 /**
  * Check if flex direction is row-oriented (horizontal main axis).
  */
