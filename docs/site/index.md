@@ -66,4 +66,4 @@ Most developers should use a framework built on Flexture, not Flexture directly.
 - **Specialized tools** where you need direct control over layout computation
 - **Anyone replacing Yoga** who wants a drop-in pure-JS alternative
 
-> **Building a terminal UI?** Use [Hightea](https://beorn.github.io/hightea/), which uses Flexture by default. You get React components, hooks, and layout feedback without touching the low-level API.
+> **Building a terminal UI?** Use [Silvery](https://beorn.github.io/silvery/), which uses Flexture by default. You get React components, hooks, and layout feedback without touching the low-level API.

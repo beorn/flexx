@@ -17,9 +17,9 @@
 
 ## What NOT to Test Here
 
-- How layout integrates with hightea rendering — that's hightea tests
-- Terminal output or ANSI codes — that's hightea or ansi
-- React component layout — that's hightea component tests
+- How layout integrates with silvery rendering — that's silvery tests
+- Terminal output or ANSI codes — that's silvery or ansi
+- React component layout — that's silvery component tests
 
 ## Helpers
 

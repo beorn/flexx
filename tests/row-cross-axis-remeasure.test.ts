@@ -280,8 +280,8 @@ describe("row cross-axis remeasure after flex distribution", () => {
     expect(card.getComputedHeight()).toBe(5)
   })
 
-  it("hightea-exact: root > bordered(setBorder) > row > prefix(measure) + content(flexGrow > text measure)", () => {
-    // Mirrors EXACTLY what hightea creates for:
+  it("silvery-exact: root > bordered(setBorder) > row > prefix(measure) + content(flexGrow > text measure)", () => {
+    // Mirrors EXACTLY what silvery creates for:
     // <Box borderStyle="single" width={40}>
     //   <Box flexDirection="row">
     //     <Box width={3} flexShrink={0}><Text>·  </Text></Box>
@@ -291,11 +291,11 @@ describe("row cross-axis remeasure after flex distribution", () => {
     //
     // Key differences from previous tests:
     // - Uses setBorder (not setPadding) for the bordered box
-    // - Has a root wrapper node (like hightea-root)
+    // - Has a root wrapper node (like silvery-root)
     // - prefix is a container with a measure-func child (not just a fixed-size box)
     // - content is a container with a measure-func child (not a direct measure leaf)
 
-    // hightea-root wrapper
+    // silvery-root wrapper
     const root = Node.create()
     // No explicit size — calculateLayout will set it
 
