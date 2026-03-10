@@ -17,7 +17,7 @@ export function createDefaultStyle() {
         display: 0, // DISPLAY_FLEX
         positionType: 1, // POSITION_TYPE_RELATIVE
         position: [createValue(), createValue(), createValue(), createValue(), createValue(), createValue()],
-        flexDirection: 0, // FLEX_DIRECTION_COLUMN (Yoga default, not CSS!)
+        flexDirection: 2, // FLEX_DIRECTION_ROW (CSS default)
         flexWrap: 0, // WRAP_NO_WRAP
         flexGrow: 0,
         flexShrink: 0, // Yoga native default (CSS uses 1)

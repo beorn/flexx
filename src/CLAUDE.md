@@ -335,7 +335,7 @@ silvery calls `calculateLayout()` on every render. The no-change case (cursor mo
 | ----------------------------------------- | ---------------------------------------- | ------------------------------------- | ---------------------------------------------- |
 | `overflow:hidden/scroll` + `flexShrink:0` | Item expands to content (ignores parent) | Item shrinks to fit parent            | 4.5: auto min-size = 0 for overflow containers |
 | Default `flexShrink`                      | 0 (Yoga native default)                  | 0 (matches Yoga)                      | CSS default is 1                               |
-| Default `flexDirection`                   | Column                                   | Column                                | CSS default is Row                             |
+| Default `flexDirection`                   | Column                                   | Row (CSS default)                     | Row                                            |
 | Baseline alignment                        | Full spec (recursive first-child)        | Simplified (no recursive propagation) | Recursive first-child                          |
 
 The `flexShrink` override for overflow containers (line ~1244 in layout-zero.ts) is the most significant divergence. Without it, `overflow:hidden` children inside constrained parents balloon to content size, defeating the purpose of clipping.
@@ -362,10 +362,10 @@ Edge-based properties use 6-element arrays: `[left, top, right, bottom, start, e
 
 Border widths are plain numbers (always points). Logical border slots use `NaN` as "not set" sentinel.
 
-### Default Style (Yoga-compatible, not CSS)
+### Default Style
 
 ```typescript
-flexDirection: COLUMN      // CSS default is ROW
+flexDirection: ROW         // CSS default (diverges from Yoga's COLUMN)
 flexShrink: 0              // CSS default is 1
 alignItems: STRETCH        // Same as CSS
 flexBasis: AUTO            // Same as CSS

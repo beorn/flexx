@@ -161,34 +161,59 @@ export function resolveValue(value, availableSize) {
 /**
  * Apply min/max constraints to a size.
  *
- * When size is NaN (auto-sized), min constraints establish a floor.
- * This handles the case where a parent has minWidth/maxWidth but no explicit width -
- * children need to resolve percentages against the constrained size.
+ * CSS behavior:
+ * - min: Floor constraint. Does NOT affect children's layout — the container expands
+ *   after shrink-wrap. When size is NaN (auto-sized), min is NOT applied here;
+ *   the post-shrink-wrap applyMinMax call (Phase 9) handles it.
+ * - max: Ceiling constraint. DOES affect children's layout — content wraps/clips
+ *   within the max. When size is NaN (auto-sized), max constrains the container
+ *   so children are laid out within the max bound.
+ *
+ * Percent constraints that can't resolve (available is NaN) are skipped entirely,
+ * since resolveValue returns 0 for percent-against-NaN, which would incorrectly
+ * clamp sizes to 0.
  */
 export function applyMinMax(size, min, max, available) {
     let result = size;
     if (min.unit !== C.UNIT_UNDEFINED) {
-        const minValue = resolveValue(min, available);
-        // Only apply if minValue is valid (not NaN from percent with NaN available)
-        if (!Number.isNaN(minValue)) {
-            // When size is NaN (auto-sized), min establishes the floor
-            if (Number.isNaN(result)) {
-                result = minValue;
-            }
-            else {
-                result = Math.max(result, minValue);
+        // Skip percent min when available is NaN — can't resolve meaningfully
+        if (min.unit === C.UNIT_PERCENT && Number.isNaN(available)) {
+            // Skip: percent against NaN resolves to 0, which would be wrong
+        }
+        else {
+            const minValue = resolveValue(min, available);
+            if (!Number.isNaN(minValue)) {
+                // Only apply min to definite sizes. When size is NaN (auto-sized),
+                // skip — the post-shrink-wrap applyMinMax call will floor it.
+                if (!Number.isNaN(result)) {
+                    result = Math.max(result, minValue);
+                }
             }
         }
     }
     if (max.unit !== C.UNIT_UNDEFINED) {
-        const maxValue = resolveValue(max, available);
-        // Only apply if maxValue is valid (not NaN from percent with NaN available)
-        if (!Number.isNaN(maxValue)) {
-            // When size is NaN (auto-sized), max alone doesn't set the size
-            // (the element should shrink-wrap to content, then be capped by max)
-            // Only apply max if we have a concrete size to constrain
-            if (!Number.isNaN(result)) {
-                result = Math.min(result, maxValue);
+        // Skip percent max when available is NaN — can't resolve meaningfully
+        if (max.unit === C.UNIT_PERCENT && Number.isNaN(available)) {
+            // Skip: percent against NaN resolves to 0, which would be wrong
+        }
+        else {
+            const maxValue = resolveValue(max, available);
+            if (!Number.isNaN(maxValue)) {
+                // Apply max as ceiling even when size is NaN (auto-sized).
+                // This constrains children's layout to the max bound.
+                // Phase 9 shrink-wrap may reduce it further; the post-shrink-wrap
+                // applyMinMax call ensures max is still respected.
+                if (Number.isNaN(result)) {
+                    // For auto-sized nodes, only apply finite max constraints.
+                    // Infinity means "no real constraint" (e.g., silvery sets
+                    // maxWidth=Infinity as default) and should not replace NaN.
+                    if (maxValue !== Infinity) {
+                        result = maxValue;
+                    }
+                }
+                else {
+                    result = Math.min(result, maxValue);
+                }
             }
         }
     }

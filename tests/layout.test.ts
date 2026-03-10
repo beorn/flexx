@@ -521,7 +521,7 @@ describe("Flexily Layout Engine", () => {
       const node = Node.create()
       expect(node.getFlexShrink()).toBe(0)
       expect(node.getFlexGrow()).toBe(0)
-      expect(node.getFlexDirection()).toBe(FLEX_DIRECTION_COLUMN)
+      expect(node.getFlexDirection()).toBe(FLEX_DIRECTION_ROW)
       expect(node.getAlignItems()).toBe(ALIGN_STRETCH)
       expect(node.getJustifyContent()).toBe(JUSTIFY_FLEX_START)
       expect(node.getPositionType()).toBe(POSITION_TYPE_RELATIVE)
@@ -658,7 +658,7 @@ describe("Flexily Layout Engine", () => {
 
         expect(style.display).toBe(DISPLAY_FLEX)
         expect(style.positionType).toBe(POSITION_TYPE_RELATIVE)
-        expect(style.flexDirection).toBe(FLEX_DIRECTION_COLUMN)
+        expect(style.flexDirection).toBe(FLEX_DIRECTION_ROW)
         expect(style.flexGrow).toBe(0)
         expect(style.flexShrink).toBe(0)
         expect(style.flexBasis).toEqual({ value: 0, unit: UNIT_AUTO })

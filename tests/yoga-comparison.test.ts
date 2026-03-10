@@ -789,7 +789,7 @@ describe("Yoga Comparison: MinMaxDimensions", () => {
     const match = compareLayouts({
       category: "MinMaxDimensions",
       name: "min-max-interaction",
-      rootConfig: { width: 100, height: 100 },
+      rootConfig: { width: 100, height: 100, flexDirection: Flexily.FLEX_DIRECTION_COLUMN },
       childConfigs: [
         {
           minWidth: 60,

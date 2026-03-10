@@ -709,16 +709,26 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
                 else if (crossDim.unit === C.UNIT_PERCENT && !Number.isNaN(crossAxisSize)) {
                     childCross = crossAxisSize * (crossDim.value / 100);
                 }
-                else {
-                    // Auto - use a default or measure. For now, use 0 and let stretch handle it.
-                    childCross = 0;
+                else if (child.hasMeasureFunc()) {
+                    // Auto-sized with measureFunc: get tentative cross size from cached measure.
+                    // Phase 5 already called cachedMeasure, so this is typically a cache hit (no alloc).
+                    const crossMargin = crossMarginStart + crossMarginEnd;
+                    const availCross = Number.isNaN(crossAxisSize) ? Infinity : crossAxisSize - crossMargin;
+                    const mW = isRow ? mainAxisSize : availCross;
+                    const mH = isRow ? availCross : mainAxisSize;
+                    const mWMode = Number.isNaN(mW) ? C.MEASURE_MODE_UNDEFINED : C.MEASURE_MODE_AT_MOST;
+                    const mHMode = Number.isNaN(mH) ? C.MEASURE_MODE_UNDEFINED : C.MEASURE_MODE_AT_MOST;
+                    const measured = child.cachedMeasure(Number.isNaN(mW) ? Infinity : mW, mWMode, Number.isNaN(mH) ? Infinity : mH, mHMode);
+                    if (measured) {
+                        childCross = isRow ? measured.height : measured.width;
+                    }
                 }
                 maxLineCross = Math.max(maxLineCross, childCross + crossMarginStart + crossMarginEnd);
             }
-            // Fallback cross size: use measured max, or divide available space among lines
-            // Guard against NaN/division-by-zero: if crossAxisSize is NaN or numLines is 0, use 0
-            const fallbackCross = numLines > 0 && !Number.isNaN(crossAxisSize) ? crossAxisSize / numLines : 0;
-            const lineCrossSize = maxLineCross > 0 ? maxLineCross : fallbackCross;
+            // Use measured max cross size. If all children are auto-sized (maxLineCross === 0),
+            // use 0 — NOT crossAxisSize/numLines, which would consume all free space and
+            // prevent alignContent from distributing it. Actual sizes are computed in Phase 8.
+            const lineCrossSize = maxLineCross;
             _lineCrossSizes[lineIdx] = lineCrossSize;
             cumulativeCrossOffset += lineCrossSize + crossGap;
         }
@@ -928,8 +938,10 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
                 childCrossSize = resolveValue(crossDim, crossAxisSize);
             }
             else if (parentHasDefiniteCross && alignment === C.ALIGN_STRETCH) {
-                // Stretch alignment with definite parent cross size - fill the cross axis
-                childCrossSize = crossAxisSize - crossMargin;
+                // Stretch alignment with definite parent cross size - fill the line's cross axis
+                // For wrapping layouts, stretch to line cross size, not full container cross size
+                const lineCross = numLines > 1 && childLineIdx < MAX_FLEX_LINES ? _lineCrossSizes[childLineIdx] : crossAxisSize;
+                childCrossSize = lineCross - crossMargin;
             }
             else {
                 // Non-stretch alignment or no definite cross size - shrink-wrap to content
@@ -954,7 +966,9 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
             // For auto main size children, use flex-computed size if flexGrow > 0,
             // otherwise pass remaining available space for shrink-wrap behavior
             const mainDim = isRow ? childStyle.width : childStyle.height;
-            const mainIsAutoChild = mainDim.unit === C.UNIT_AUTO || mainDim.unit === C.UNIT_UNDEFINED;
+            // A child has definite main size if it has explicit width/height OR non-auto flexBasis
+            const hasDefiniteFlexBasis = childStyle.flexBasis.unit === C.UNIT_POINT || childStyle.flexBasis.unit === C.UNIT_PERCENT;
+            const mainIsAutoChild = (mainDim.unit === C.UNIT_AUTO || mainDim.unit === C.UNIT_UNDEFINED) && !hasDefiniteFlexBasis;
             const hasFlexGrow = cflex.flexGrow > 0;
             // Use flex-computed mainSize for all cases - it includes padding/border as minimum
             // The flex algorithm already computed the proper size based on content/padding/border
@@ -1315,20 +1329,32 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
             // Auto-height column: shrink-wrap to content
             nodeHeight = actualUsedMain + innerTop + innerBottom;
         }
-        // For cross axis, find the max child size
-        // CSS spec: percentage margins resolve against containing block's WIDTH only
-        // Use resolveEdgeValue to respect logical EDGE_START/END
-        let maxCrossSize = 0;
-        for (const child of node.children) {
-            if (child.flex.relativeIndex < 0)
-                continue;
-            const childCross = isRow ? child.layout.height : child.layout.width;
-            const childMargin = isRow
-                ? resolveEdgeValue(child.style.margin, 1, style.flexDirection, contentWidth, direction) +
-                    resolveEdgeValue(child.style.margin, 3, style.flexDirection, contentWidth, direction)
-                : resolveEdgeValue(child.style.margin, 0, style.flexDirection, contentWidth, direction) +
-                    resolveEdgeValue(child.style.margin, 2, style.flexDirection, contentWidth, direction);
-            maxCrossSize = Math.max(maxCrossSize, childCross + childMargin);
+        // For cross axis, compute shrink-wrap size
+        // For multi-line (flex-wrap), sum line cross sizes + cross gaps
+        // For single line, use max child cross size (existing behavior)
+        let totalCrossSize = 0;
+        if (numLines > 1) {
+            // Multi-line: sum line cross sizes + cross gaps between lines
+            for (let i = 0; i < numLines; i++) {
+                totalCrossSize += _lineCrossSizes[i];
+            }
+            totalCrossSize += crossGap * (numLines - 1);
+        }
+        else {
+            // Single line: max child cross size
+            // CSS spec: percentage margins resolve against containing block's WIDTH only
+            // Use resolveEdgeValue to respect logical EDGE_START/END
+            for (const child of node.children) {
+                if (child.flex.relativeIndex < 0)
+                    continue;
+                const childCross = isRow ? child.layout.height : child.layout.width;
+                const childMargin = isRow
+                    ? resolveEdgeValue(child.style.margin, 1, style.flexDirection, contentWidth, direction) +
+                        resolveEdgeValue(child.style.margin, 3, style.flexDirection, contentWidth, direction)
+                    : resolveEdgeValue(child.style.margin, 0, style.flexDirection, contentWidth, direction) +
+                        resolveEdgeValue(child.style.margin, 2, style.flexDirection, contentWidth, direction);
+                totalCrossSize = Math.max(totalCrossSize, childCross + childMargin);
+            }
         }
         // Cross-axis shrink-wrap for auto-sized dimension
         // Only shrink-wrap when the available dimension is NaN (unconstrained)
@@ -1337,15 +1363,15 @@ function layoutNode(node, availableWidth, availableHeight, offsetX, offsetY, abs
             style.height.unit !== C.UNIT_POINT &&
             style.height.unit !== C.UNIT_PERCENT &&
             Number.isNaN(availableHeight)) {
-            // Auto-height row: shrink-wrap to max child height
-            nodeHeight = maxCrossSize + innerTop + innerBottom;
+            // Auto-height row: shrink-wrap to total cross size (accounts for multi-line)
+            nodeHeight = totalCrossSize + innerTop + innerBottom;
         }
         if (!isRow &&
             style.width.unit !== C.UNIT_POINT &&
             style.width.unit !== C.UNIT_PERCENT &&
             Number.isNaN(availableWidth)) {
-            // Auto-width column: shrink-wrap to max child width
-            nodeWidth = maxCrossSize + innerLeft + innerRight;
+            // Auto-width column: shrink-wrap to total cross size (accounts for multi-line)
+            nodeWidth = totalCrossSize + innerLeft + innerRight;
         }
     }
     // Re-apply min/max constraints after any shrink-wrap adjustments

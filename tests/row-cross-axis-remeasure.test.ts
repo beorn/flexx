@@ -28,11 +28,13 @@ describe("row cross-axis remeasure after flex distribution", () => {
     // The text is 50 chars wide. When constrained to 32 chars, it wraps to 2 lines.
 
     const root = Node.create()
+    root.setFlexDirection(FLEX_DIRECTION_COLUMN)
     root.setWidth(80)
     // Auto height — no explicit height set
 
     // Bordered container (simulates border with padding)
     const bordered = Node.create()
+    bordered.setFlexDirection(FLEX_DIRECTION_COLUMN)
     bordered.setPadding(0 /* left */, 1) // border left
     bordered.setPadding(2 /* right */, 1) // border right
     bordered.setPadding(1 /* top */, 1) // border top
@@ -80,10 +82,12 @@ describe("row cross-axis remeasure after flex distribution", () => {
     // Same as above but the total width is narrower, forcing text to wrap
 
     const root = Node.create()
+    root.setFlexDirection(FLEX_DIRECTION_COLUMN)
     root.setWidth(36) // Narrow — after border, only 34 chars for content
     // Auto height
 
     const bordered = Node.create()
+    bordered.setFlexDirection(FLEX_DIRECTION_COLUMN)
     bordered.setPadding(0, 1) // left border
     bordered.setPadding(2, 1) // right border
     bordered.setPadding(1, 1) // top border
@@ -131,6 +135,7 @@ describe("row cross-axis remeasure after flex distribution", () => {
 
   it("row height grows with multiple children where one wraps", () => {
     const root = Node.create()
+    root.setFlexDirection(FLEX_DIRECTION_COLUMN)
     root.setWidth(40)
 
     const row = Node.create()
@@ -179,10 +184,12 @@ describe("row cross-axis remeasure after flex distribution", () => {
     //         └── Row (child: prefix + flexGrow text that wraps)
 
     const root = Node.create()
+    root.setFlexDirection(FLEX_DIRECTION_COLUMN)
     root.setWidth(40)
 
     // Card: column with border (simulated as padding)
     const card = Node.create()
+    card.setFlexDirection(FLEX_DIRECTION_COLUMN)
     // border: 1 each side, paddingRight: 1
     card.setPadding(0, 1) // left
     card.setPadding(2, 2) // right (border + paddingRight)
@@ -210,6 +217,7 @@ describe("row cross-axis remeasure after flex distribution", () => {
 
     // Content column (flexGrow)
     const contentCol = Node.create()
+    contentCol.setFlexDirection(FLEX_DIRECTION_COLUMN)
     contentCol.setFlexGrow(1)
     contentCol.setFlexShrink(1)
     rootRow.insertChild(contentCol, 1)
@@ -297,10 +305,12 @@ describe("row cross-axis remeasure after flex distribution", () => {
 
     // silvery-root wrapper
     const root = Node.create()
+    root.setFlexDirection(FLEX_DIRECTION_COLUMN)
     // No explicit size — calculateLayout will set it
 
     // Bordered box: width=40, border=1 each side
     const bordered = Node.create()
+    bordered.setFlexDirection(FLEX_DIRECTION_COLUMN)
     bordered.setWidth(40)
     bordered.setBorder(0, 1) // left
     bordered.setBorder(1, 1) // top

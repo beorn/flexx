@@ -174,6 +174,7 @@ describe("Re-layout Consistency: targeted scenarios", () => {
     let currentTextWidth = 30
 
     const root = Node.create()
+    root.setFlexDirection(FLEX_DIRECTION_COLUMN)
     root.setWidth(40)
 
     const row = Node.create()
@@ -397,9 +398,11 @@ describe("Re-layout Consistency: snapshot regression", () => {
   it("card tree geometry locked down", () => {
     // Exact expected dimensions for the km-10mat card structure
     const root = Node.create()
+    root.setFlexDirection(FLEX_DIRECTION_COLUMN)
     root.setWidth(40)
 
     const bordered = Node.create()
+    bordered.setFlexDirection(FLEX_DIRECTION_COLUMN)
     bordered.setBorder(0, 1) // left
     bordered.setBorder(1, 1) // top
     bordered.setBorder(2, 1) // right
@@ -803,6 +806,7 @@ describe("Re-layout Consistency: content change", () => {
     let currentWidth = 30
 
     const root = Node.create()
+    root.setFlexDirection(FLEX_DIRECTION_COLUMN)
     root.setWidth(40)
     const row = Node.create()
     row.setFlexDirection(FLEX_DIRECTION_ROW)
@@ -826,6 +830,7 @@ describe("Re-layout Consistency: content change", () => {
 
     // Compare against fresh
     const fresh = Node.create()
+    fresh.setFlexDirection(FLEX_DIRECTION_COLUMN)
     fresh.setWidth(40)
     const freshRow = Node.create()
     freshRow.setFlexDirection(FLEX_DIRECTION_ROW)

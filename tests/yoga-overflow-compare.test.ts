@@ -96,6 +96,7 @@ describe("Yoga vs Flexily: overflow + flexGrow", () => {
 
     const fContainer = Flexily.Node.create()
     fContainer.setFlexGrow(1)
+    fContainer.setFlexDirection(Flexily.FLEX_DIRECTION_COLUMN) // Yoga defaults to COLUMN; Flexily now defaults to ROW
 
     for (let i = 0; i < 30; i++) {
       const fLine = Flexily.Node.create()

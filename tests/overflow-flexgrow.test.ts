@@ -63,6 +63,7 @@ describe("overflow + flexGrow", () => {
 
     const container = Node.create()
     container.setFlexGrow(1)
+    container.setFlexDirection(C.FLEX_DIRECTION_COLUMN)
     // default overflow = visible
 
     for (let i = 0; i < 30; i++) {
@@ -115,6 +116,7 @@ describe("overflow + flexGrow", () => {
 
     const container = Node.create()
     // no flexGrow - default 0
+    container.setFlexDirection(C.FLEX_DIRECTION_COLUMN)
     container.setOverflow(C.OVERFLOW_HIDDEN)
 
     for (let i = 0; i < 3; i++) {
@@ -139,6 +141,7 @@ describe("overflow + flexGrow", () => {
 
     const container = Node.create()
     // no flexGrow - default 0
+    container.setFlexDirection(C.FLEX_DIRECTION_COLUMN)
     container.setOverflow(C.OVERFLOW_HIDDEN)
 
     for (let i = 0; i < 30; i++) {

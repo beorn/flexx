@@ -1090,8 +1090,7 @@ function layoutNode(
       } else if (parentHasDefiniteCross && alignment === C.ALIGN_STRETCH) {
         // Stretch alignment with definite parent cross size - fill the line's cross axis
         // For wrapping layouts, stretch to line cross size, not full container cross size
-        const lineCross =
-          numLines > 1 && childLineIdx < MAX_FLEX_LINES ? _lineCrossSizes[childLineIdx]! : crossAxisSize
+        const lineCross = numLines > 1 && childLineIdx < MAX_FLEX_LINES ? _lineCrossSizes[childLineIdx]! : crossAxisSize
         childCrossSize = lineCross - crossMargin
       } else {
         // Non-stretch alignment or no definite cross size - shrink-wrap to content
@@ -1510,19 +1509,30 @@ function layoutNode(
       // Auto-height column: shrink-wrap to content
       nodeHeight = actualUsedMain + innerTop + innerBottom
     }
-    // For cross axis, find the max child size
-    // CSS spec: percentage margins resolve against containing block's WIDTH only
-    // Use resolveEdgeValue to respect logical EDGE_START/END
-    let maxCrossSize = 0
-    for (const child of node.children) {
-      if (child.flex.relativeIndex < 0) continue
-      const childCross = isRow ? child.layout.height : child.layout.width
-      const childMargin = isRow
-        ? resolveEdgeValue(child.style.margin, 1, style.flexDirection, contentWidth, direction) +
-          resolveEdgeValue(child.style.margin, 3, style.flexDirection, contentWidth, direction)
-        : resolveEdgeValue(child.style.margin, 0, style.flexDirection, contentWidth, direction) +
-          resolveEdgeValue(child.style.margin, 2, style.flexDirection, contentWidth, direction)
-      maxCrossSize = Math.max(maxCrossSize, childCross + childMargin)
+    // For cross axis, compute shrink-wrap size
+    // For multi-line (flex-wrap), sum line cross sizes + cross gaps
+    // For single line, use max child cross size (existing behavior)
+    let totalCrossSize = 0
+    if (numLines > 1) {
+      // Multi-line: sum line cross sizes + cross gaps between lines
+      for (let i = 0; i < numLines; i++) {
+        totalCrossSize += _lineCrossSizes[i]!
+      }
+      totalCrossSize += crossGap * (numLines - 1)
+    } else {
+      // Single line: max child cross size
+      // CSS spec: percentage margins resolve against containing block's WIDTH only
+      // Use resolveEdgeValue to respect logical EDGE_START/END
+      for (const child of node.children) {
+        if (child.flex.relativeIndex < 0) continue
+        const childCross = isRow ? child.layout.height : child.layout.width
+        const childMargin = isRow
+          ? resolveEdgeValue(child.style.margin, 1, style.flexDirection, contentWidth, direction) +
+            resolveEdgeValue(child.style.margin, 3, style.flexDirection, contentWidth, direction)
+          : resolveEdgeValue(child.style.margin, 0, style.flexDirection, contentWidth, direction) +
+            resolveEdgeValue(child.style.margin, 2, style.flexDirection, contentWidth, direction)
+        totalCrossSize = Math.max(totalCrossSize, childCross + childMargin)
+      }
     }
     // Cross-axis shrink-wrap for auto-sized dimension
     // Only shrink-wrap when the available dimension is NaN (unconstrained)
@@ -1533,8 +1543,8 @@ function layoutNode(
       style.height.unit !== C.UNIT_PERCENT &&
       Number.isNaN(availableHeight)
     ) {
-      // Auto-height row: shrink-wrap to max child height
-      nodeHeight = maxCrossSize + innerTop + innerBottom
+      // Auto-height row: shrink-wrap to total cross size (accounts for multi-line)
+      nodeHeight = totalCrossSize + innerTop + innerBottom
     }
     if (
       !isRow &&
@@ -1542,8 +1552,8 @@ function layoutNode(
       style.width.unit !== C.UNIT_PERCENT &&
       Number.isNaN(availableWidth)
     ) {
-      // Auto-width column: shrink-wrap to max child width
-      nodeWidth = maxCrossSize + innerLeft + innerRight
+      // Auto-width column: shrink-wrap to total cross size (accounts for multi-line)
+      nodeWidth = totalCrossSize + innerLeft + innerRight
     }
   }
 
