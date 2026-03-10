@@ -86,6 +86,8 @@ src/
 
 ## Intentional Divergences from Yoga
 
+_Divergences verified against Yoga 3.x (yoga-layout npm) as of 2026-03._
+
 Flexily is Yoga-compatible but follows CSS spec where Yoga doesn't:
 
 | Behavior                                  | Yoga                                                     | Flexily                    | CSS Spec                                             |

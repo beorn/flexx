@@ -1,5 +1,7 @@
 # Why Flexily?
 
+_External project claims last verified: 2026-03._
+
 [Yoga](https://yogalayout.dev/) is the industry standard flexbox engine, used by React Native, Ink, and thousands of apps. It's mature and battle-tested. But it's C++ compiled to WASM, and that creates real problems for JavaScript applications.
 
 ## The Problems with WASM

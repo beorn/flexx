@@ -4,6 +4,8 @@ Flexily is a pure JavaScript flexbox layout engine with a Yoga-compatible API.
 
 **TL;DR:** Flexily is **1.5-2.5x faster for initial layout**, **5.5x faster for no-change re-layout**, and **2.5-3.5x smaller** than Yoga, with a synchronous API and pure JavaScript. Yoga is faster at per-node layout computation during incremental re-layout and deep nesting.
 
+_Yoga comparisons last verified: 2026-03._
+
 ## Status
 
 |                      | Yoga                                                 | Flexily                              |
