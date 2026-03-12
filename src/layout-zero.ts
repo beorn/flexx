@@ -722,9 +722,15 @@ function layoutNode(
     // For ALIGN_BASELINE in row direction, we need to know the max baseline first
     // Zero-alloc: store baseline in child.flex.baseline, not a temporary array
     let maxBaseline = 0
+    // baselineZoneHeight: the effective cross-axis size that non-baseline children
+    // align within when baseline alignment is present. This is max(maxBaseline, maxChildHeight).
+    // Only meaningful when alignItems != ALIGN_BASELINE but some children have alignSelf=baseline.
+    let baselineZoneHeight = 0
+    const alignItemsIsBaseline = style.alignItems === C.ALIGN_BASELINE
 
     if (hasBaselineAlignment && isRow) {
       // First pass: compute each child's baseline and find the maximum
+      let maxChildHeight = 0
       for (const child of node.children) {
         if (child.flex.relativeIndex < 0) continue
         const childStyle = child.style
@@ -789,8 +795,23 @@ function layoutNode(
           // This is a simplification from CSS spec but acceptable for TUI use cases
           child.flex.baseline = topMargin + childHeight
         }
-        maxBaseline = Math.max(maxBaseline, child.flex.baseline)
+
+        // Track max child height (including margin) for baseline zone calculation
+        maxChildHeight = Math.max(maxChildHeight, topMargin + childHeight + child.flex.marginB)
+
+        // When alignItems is baseline, ALL children participate in baseline computation.
+        // When alignItems is NOT baseline, only children with alignSelf=baseline participate.
+        // This matches Yoga's behavior: non-baseline children are positioned within the
+        // "baseline zone" (the effective height determined by baseline-aligned children),
+        // not the full container cross-axis.
+        if (alignItemsIsBaseline || childStyle.alignSelf === C.ALIGN_BASELINE) {
+          maxBaseline = Math.max(maxBaseline, child.flex.baseline)
+        }
       }
+
+      // Baseline zone height: the max of maxBaseline and the tallest child.
+      // Non-baseline children are aligned within this zone, not the full container.
+      baselineZoneHeight = Math.max(maxBaseline, maxChildHeight)
     }
 
     // -----------------------------------------------------------------------
@@ -1431,7 +1452,14 @@ function layoutNode(
       const crossEndIndex = isRow ? 3 : 2 // bottom for row, right for column
       const hasAutoStartMargin = isEdgeAuto(childStyle.margin, crossStartIndex, style.flexDirection, direction)
       const hasAutoEndMargin = isEdgeAuto(childStyle.margin, crossEndIndex, style.flexDirection, direction)
-      const availableCrossSpace = crossAxisSize - finalCrossSize - crossMargin
+      // When baseline alignment is present (hasBaselineAlignment) and this child is NOT using
+      // baseline alignment, align within the baseline zone instead of the full container.
+      // Yoga behavior: non-baseline children are positioned relative to the effective height
+      // of the baseline group (max of maxBaseline and tallest child), not the container.
+      const useBaselineZone =
+        hasBaselineAlignment && isRow && !alignItemsIsBaseline && alignment !== C.ALIGN_BASELINE && baselineZoneHeight > 0
+      const effectiveCrossSize = useBaselineZone ? baselineZoneHeight : crossAxisSize
+      const availableCrossSpace = effectiveCrossSize - finalCrossSize - crossMargin
 
       if (hasAutoStartMargin && hasAutoEndMargin) {
         // Both auto: center the item
