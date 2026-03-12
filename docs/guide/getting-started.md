@@ -187,7 +187,7 @@ root.free()
 
 ## Next Steps
 
-- [API Reference](api.md) -- Complete API documentation
+- [API Reference](../api/reference.md) -- Complete API documentation
 - [Algorithm](algorithm.md) -- How the layout algorithm works
 - [Performance](performance.md) -- Benchmarks and methodology
 - [Yoga Comparison](yoga-comparison.md) -- Feature comparison with Yoga
