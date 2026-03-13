@@ -30,12 +30,16 @@ import {
   JUSTIFY_FLEX_END,
   JUSTIFY_FLEX_START,
   JUSTIFY_SPACE_BETWEEN,
+  JUSTIFY_SPACE_AROUND,
   JUSTIFY_SPACE_EVENLY,
   MEASURE_MODE_AT_MOST,
   MEASURE_MODE_EXACTLY,
+  MEASURE_MODE_UNDEFINED,
   Node,
+  OVERFLOW_HIDDEN,
   POSITION_TYPE_ABSOLUTE,
   POSITION_TYPE_RELATIVE,
+  POSITION_TYPE_STATIC,
   UNIT_AUTO,
   UNIT_PERCENT,
   UNIT_POINT,
@@ -1676,6 +1680,411 @@ describe("Flexily Layout Engine", () => {
 
       expect(child.getComputedHeight()).toBeLessThanOrEqual(30)
       root.free()
+    })
+  })
+
+  describe("Measure Mode Semantics (unconstrained widths)", () => {
+    it("should pass AT_MOST mode when parent has explicit width (row)", () => {
+      const modes: number[] = []
+      const root = Node.create()
+      root.setWidth(80)
+      root.setHeight(24)
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+
+      const text = Node.create()
+      text.setMeasureFunc((width, widthMode, _height, heightMode) => {
+        modes.push(widthMode, heightMode)
+        return { width: Math.min(20, width), height: 1 }
+      })
+      root.insertChild(text, 0)
+
+      root.calculateLayout(80, 24, DIRECTION_LTR)
+
+      // Width should be AT_MOST (auto width within constrained parent)
+      // Height should be UNDEFINED (cross-axis is auto-resolved)
+      expect(modes).toContain(MEASURE_MODE_AT_MOST)
+      expectLayout(text, { width: 20, height: 1 })
+    })
+
+    it("should pass AT_MOST mode when parent width is unconstrained", () => {
+      const modes: { wm: number; hm: number; w: number }[] = []
+      const root = Node.create()
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+      // No width set - auto/unconstrained
+
+      const text = Node.create()
+      text.setMeasureFunc((width, widthMode, _height, heightMode) => {
+        modes.push({ wm: widthMode, hm: heightMode, w: width })
+        return { width: 30, height: 1 }
+      })
+      root.insertChild(text, 0)
+
+      root.calculateLayout(undefined, undefined, DIRECTION_LTR)
+
+      // Unconstrained parent: first pre-measure call uses AT_MOST with Infinity,
+      // subsequent calls may use the measured width. Verify AT_MOST is used and
+      // the first call gets Infinity for the unconstrained dimension.
+      const firstCall = modes[0]!
+      expect(firstCall.wm).toBe(MEASURE_MODE_AT_MOST)
+      expect(firstCall.w).toBe(Infinity)
+      expectLayout(text, { width: 30, height: 1 })
+    })
+
+    it("should pass EXACTLY mode for width when child has explicit width", () => {
+      const modes: { wm: number; hm: number }[] = []
+      const root = Node.create()
+      root.setWidth(80)
+      root.setHeight(24)
+
+      const text = Node.create()
+      text.setWidth(40)
+      text.setMeasureFunc((width, widthMode, _height, heightMode) => {
+        modes.push({ wm: widthMode, hm: heightMode })
+        return { width, height: 1 }
+      })
+      root.insertChild(text, 0)
+
+      root.calculateLayout(80, 24, DIRECTION_LTR)
+
+      // Phase 8 final measure uses EXACTLY since child has explicit width
+      const finalCall = modes[modes.length - 1]!
+      expect(finalCall.wm).toBe(MEASURE_MODE_EXACTLY)
+      expectLayout(text, { width: 40, height: 1 })
+    })
+
+    it("should pass correct modes in column direction", () => {
+      const modes: { wm: number; hm: number }[] = []
+      const root = Node.create()
+      root.setWidth(80)
+      root.setHeight(24)
+      root.setFlexDirection(FLEX_DIRECTION_COLUMN)
+
+      const text = Node.create()
+      text.setMeasureFunc((_width, widthMode, _height, heightMode) => {
+        modes.push({ wm: widthMode, hm: heightMode })
+        return { width: 20, height: 3 }
+      })
+      root.insertChild(text, 0)
+
+      root.calculateLayout(80, 24, DIRECTION_LTR)
+
+      // In column direction: width is cross-axis (AT_MOST with available cross-axis space),
+      // height is main-axis (UNDEFINED — auto height). The measure function determines
+      // intrinsic size, then stretch is applied post-measure by the layout algorithm.
+      const finalCall = modes[modes.length - 1]!
+      expect(finalCall.wm).toBe(MEASURE_MODE_AT_MOST)
+      expect(finalCall.hm).toBe(MEASURE_MODE_UNDEFINED)
+    })
+
+    it("should handle measure function with wrapping text under constrained width", () => {
+      const root = Node.create()
+      root.setWidth(20)
+      root.setHeight(100)
+
+      const text = Node.create()
+      text.setMeasureFunc((width, widthMode) => {
+        const textWidth = 50 // 50 chars of text
+        if (widthMode === MEASURE_MODE_EXACTLY) {
+          const lines = Math.ceil(textWidth / Math.max(1, width))
+          return { width, height: lines }
+        } else if (widthMode === MEASURE_MODE_AT_MOST) {
+          const usedWidth = Math.min(textWidth, width)
+          const lines = Math.ceil(textWidth / Math.max(1, usedWidth))
+          return { width: usedWidth, height: lines }
+        }
+        return { width: textWidth, height: 1 }
+      })
+      root.insertChild(text, 0)
+
+      root.calculateLayout(20, 100, DIRECTION_LTR)
+
+      // Text should wrap: 50 chars / 20 width = 3 lines (ceil)
+      expectLayout(text, { width: 20, height: 3 })
+    })
+
+    it("should pass Infinity for unconstrained dimensions, not NaN", () => {
+      const receivedValues: { w: number; h: number }[] = []
+      const root = Node.create()
+      // No explicit dimensions - fully unconstrained
+
+      const text = Node.create()
+      text.setMeasureFunc((width, _widthMode, height, _heightMode) => {
+        receivedValues.push({ w: width, h: height })
+        return { width: 25, height: 2 }
+      })
+      root.insertChild(text, 0)
+
+      root.calculateLayout(undefined, undefined, DIRECTION_LTR)
+
+      // measureFunc should receive Infinity (not NaN) for unconstrained dimensions
+      // on the first call. Subsequent calls may use the measured/cached values.
+      const firstCall = receivedValues[0]!
+      expect(firstCall.w).toBe(Infinity)
+      expect(firstCall.h).toBe(Infinity)
+      expectLayout(text, { width: 25, height: 2 })
+    })
+  })
+
+  // ===========================================================================
+  // Missing edge-case tests (km-flexily.missing-tests)
+  // ===========================================================================
+
+  describe("flexShrink with minWidth clamping", () => {
+    it("should not shrink below minWidth", () => {
+      const root = Node.create()
+      root.setWidth(100)
+      root.setHeight(50)
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+
+      const child1 = Node.create()
+      child1.setWidth(80)
+      child1.setFlexShrink(1)
+      child1.setMinWidth(60)
+      root.insertChild(child1, 0)
+
+      const child2 = Node.create()
+      child2.setWidth(80)
+      child2.setFlexShrink(1)
+      root.insertChild(child2, 1)
+
+      root.calculateLayout(100, 50, DIRECTION_LTR)
+
+      // child1 has minWidth=60, so it cannot shrink below 60
+      // Total overflow: 80+80-100 = 60
+      // child1 shrinks to 60 (clamped by minWidth), child2 absorbs the rest
+      expect(child1.getComputedWidth()).toBe(60)
+      expect(child2.getComputedWidth()).toBe(40)
+    })
+  })
+
+  describe("maxHeight with flexGrow clamping", () => {
+    it("should not grow beyond maxHeight", () => {
+      const root = Node.create()
+      root.setWidth(100)
+      root.setHeight(100)
+      root.setFlexDirection(FLEX_DIRECTION_COLUMN)
+
+      const child1 = Node.create()
+      child1.setFlexGrow(1)
+      child1.setMaxHeight(30)
+      root.insertChild(child1, 0)
+
+      const child2 = Node.create()
+      child2.setFlexGrow(1)
+      root.insertChild(child2, 1)
+
+      root.calculateLayout(100, 100, DIRECTION_LTR)
+
+      // child1 is clamped to maxHeight=30, remaining 70 goes to child2
+      expect(child1.getComputedHeight()).toBe(30)
+      expect(child2.getComputedHeight()).toBe(70)
+    })
+  })
+
+  describe("weighted flexGrow distribution", () => {
+    it("should distribute proportionally with different flexGrow values", () => {
+      const root = Node.create()
+      root.setWidth(120)
+      root.setHeight(50)
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+
+      const child1 = Node.create()
+      child1.setFlexGrow(1)
+      root.insertChild(child1, 0)
+
+      const child2 = Node.create()
+      child2.setFlexGrow(2)
+      root.insertChild(child2, 1)
+
+      const child3 = Node.create()
+      child3.setFlexGrow(3)
+      root.insertChild(child3, 2)
+
+      root.calculateLayout(120, 50, DIRECTION_LTR)
+
+      // Total flexGrow = 6, space = 120
+      // child1: 120/6*1 = 20, child2: 120/6*2 = 40, child3: 120/6*3 = 60
+      expect(child1.getComputedWidth()).toBe(20)
+      expect(child2.getComputedWidth()).toBe(40)
+      expect(child3.getComputedWidth()).toBe(60)
+    })
+  })
+
+  describe("nested display:none", () => {
+    it("should handle display:none inside display:none", () => {
+      const root = Node.create()
+      root.setWidth(100)
+      root.setHeight(100)
+      root.setFlexDirection(FLEX_DIRECTION_COLUMN)
+
+      const visible = Node.create()
+      visible.setFlexGrow(1)
+      root.insertChild(visible, 0)
+
+      const hidden = Node.create()
+      hidden.setDisplay(DISPLAY_NONE)
+      hidden.setFlexDirection(FLEX_DIRECTION_ROW)
+      root.insertChild(hidden, 1)
+
+      const nestedHidden = Node.create()
+      nestedHidden.setDisplay(DISPLAY_NONE)
+      nestedHidden.setWidth(50)
+      nestedHidden.setHeight(50)
+      hidden.insertChild(nestedHidden, 0)
+
+      root.calculateLayout(100, 100, DIRECTION_LTR)
+
+      // Visible child takes all space, hidden subtree is zero
+      expect(visible.getComputedHeight()).toBe(100)
+      expectLayout(hidden, { width: 0, height: 0 })
+      expectLayout(nestedHidden, { width: 0, height: 0 })
+    })
+  })
+
+  describe("overflow:hidden + flexShrink", () => {
+    it("should shrink overflow:hidden child to fit parent (CSS spec)", () => {
+      const root = Node.create()
+      root.setWidth(100)
+      root.setHeight(50)
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+
+      const child = Node.create()
+      child.setWidth(200)
+      child.setOverflow(OVERFLOW_HIDDEN)
+      // flexShrink defaults to 0, but Flexily CSS-compliance forces shrink for overflow:hidden
+      root.insertChild(child, 0)
+
+      root.calculateLayout(100, 50, DIRECTION_LTR)
+
+      // Per CSS spec 4.5, overflow containers should shrink to fit
+      // Flexily forces flexShrink >= 1 for overflow:hidden (diverges from Yoga)
+      expect(child.getComputedWidth()).toBe(100)
+    })
+  })
+
+  describe("zero gap vs no gap", () => {
+    it("should produce identical layout with gap=0 vs no gap", () => {
+      function buildTree(withGap: boolean): Node {
+        const root = Node.create()
+        root.setWidth(100)
+        root.setHeight(50)
+        root.setFlexDirection(FLEX_DIRECTION_ROW)
+        if (withGap) root.setGap(GUTTER_ALL, 0)
+        for (let i = 0; i < 3; i++) {
+          const child = Node.create()
+          child.setFlexGrow(1)
+          root.insertChild(child, i)
+        }
+        root.calculateLayout(100, 50, DIRECTION_LTR)
+        return root
+      }
+
+      const withGap = buildTree(true)
+      const withoutGap = buildTree(false)
+
+      for (let i = 0; i < 3; i++) {
+        expect(withGap.getChild(i)!.getComputedWidth()).toBe(withoutGap.getChild(i)!.getComputedWidth())
+        expect(withGap.getChild(i)!.getComputedLeft()).toBe(withoutGap.getChild(i)!.getComputedLeft())
+      }
+    })
+  })
+
+  describe("POSITION_TYPE_STATIC", () => {
+    it("should treat static same as relative for layout", () => {
+      const root = Node.create()
+      root.setWidth(100)
+      root.setHeight(100)
+      root.setFlexDirection(FLEX_DIRECTION_COLUMN)
+
+      const child1 = Node.create()
+      child1.setPositionType(POSITION_TYPE_STATIC)
+      child1.setHeight(30)
+      root.insertChild(child1, 0)
+
+      const child2 = Node.create()
+      child2.setPositionType(POSITION_TYPE_RELATIVE)
+      child2.setHeight(30)
+      root.insertChild(child2, 1)
+
+      root.calculateLayout(100, 100, DIRECTION_LTR)
+
+      // Static and relative should behave identically for basic layout
+      expect(child1.getComputedWidth()).toBe(child2.getComputedWidth())
+      expect(child1.getComputedHeight()).toBe(child2.getComputedHeight())
+      expect(child1.getComputedTop()).toBe(0)
+      expect(child2.getComputedTop()).toBe(30)
+    })
+  })
+
+  describe("absolute child alignment", () => {
+    it("should center absolute child with align-items:center", () => {
+      const root = Node.create()
+      root.setWidth(100)
+      root.setHeight(100)
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+      root.setAlignItems(ALIGN_CENTER)
+
+      const absChild = Node.create()
+      absChild.setPositionType(POSITION_TYPE_ABSOLUTE)
+      absChild.setWidth(30)
+      absChild.setHeight(30)
+      root.insertChild(absChild, 0)
+
+      root.calculateLayout(100, 100, DIRECTION_LTR)
+
+      // Absolute child with align-items:center should be vertically centered
+      expect(absChild.getComputedWidth()).toBe(30)
+      expect(absChild.getComputedHeight()).toBe(30)
+      expect(absChild.getComputedTop()).toBe(35) // (100-30)/2 = 35
+    })
+  })
+
+  describe("justify-content space-around", () => {
+    it("should distribute equal space around items", () => {
+      const root = Node.create()
+      root.setWidth(100)
+      root.setHeight(50)
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+      root.setJustifyContent(JUSTIFY_SPACE_AROUND)
+
+      const child1 = Node.create()
+      child1.setWidth(20)
+      root.insertChild(child1, 0)
+
+      const child2 = Node.create()
+      child2.setWidth(20)
+      root.insertChild(child2, 1)
+
+      root.calculateLayout(100, 50, DIRECTION_LTR)
+
+      // Remaining space: 100 - 40 = 60
+      // space-around: half-spacing on edges, full spacing between
+      // Each item gets 60/2 = 30 spacing, half on each side = 15
+      // child1: left = 15, child2: left = 15 + 20 + 30 = 65
+      expect(child1.getComputedLeft()).toBe(15)
+      expect(child2.getComputedLeft()).toBe(65)
+    })
+  })
+
+  describe("EDGE_START/END in LTR", () => {
+    it("should resolve EDGE_START to left in LTR", () => {
+      const root = Node.create()
+      root.setWidth(100)
+      root.setHeight(50)
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+
+      const child = Node.create()
+      child.setFlexGrow(1)
+      child.setMargin(EDGE_START, 10)
+      child.setMargin(EDGE_END, 20)
+      root.insertChild(child, 0)
+
+      root.calculateLayout(100, 50, DIRECTION_LTR)
+
+      // In LTR: START=left, END=right
+      // Child width = 100 - 10 - 20 = 70
+      expect(child.getComputedLeft()).toBe(10)
+      expect(child.getComputedWidth()).toBe(70)
     })
   })
 })

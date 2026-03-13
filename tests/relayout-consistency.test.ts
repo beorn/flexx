@@ -21,11 +21,20 @@
 import { describe, expect, it } from "vitest"
 import {
   DIRECTION_LTR,
+  DIRECTION_RTL,
+  EDGE_ALL,
+  EDGE_LEFT,
+  EDGE_TOP,
   FLEX_DIRECTION_COLUMN,
+  FLEX_DIRECTION_COLUMN_REVERSE,
   FLEX_DIRECTION_ROW,
+  FLEX_DIRECTION_ROW_REVERSE,
+  GUTTER_ALL,
   MEASURE_MODE_AT_MOST,
   MEASURE_MODE_EXACTLY,
   Node,
+  POSITION_TYPE_ABSOLUTE,
+  WRAP_WRAP,
 } from "../src/index.js"
 import {
   assertLayoutSanity,
@@ -550,6 +559,13 @@ describe("Re-layout Consistency: resize stability", () => {
 // Group 5: Fuzz — Re-layout vs Fresh
 // ============================================================================
 
+const FLEX_DIRECTIONS = [
+  FLEX_DIRECTION_ROW,
+  FLEX_DIRECTION_COLUMN,
+  FLEX_DIRECTION_ROW_REVERSE,
+  FLEX_DIRECTION_COLUMN_REVERSE,
+]
+
 function buildRandomTree(rng: () => number): () => BuildTreeResult {
   // Capture the seed state by building a spec first, then replaying
   const nodeCount = 3 + Math.floor(rng() * 8)
@@ -562,22 +578,39 @@ function buildRandomTree(rng: () => number): () => BuildTreeResult {
     measureWidth: number
     isBordered: boolean
     flexDirection: number
+    padding?: number
+    gap?: number
+    isAbsolute: boolean
+    posLeft?: number
+    posTop?: number
+    isWrap: boolean
+    minWidth?: number
+    maxWidth?: number
     children: number[] // indices of children
   }> = []
 
-  // Generate flat-ish spec
+  // Generate flat-ish spec with broader style distribution
   for (let i = 0; i < nodeCount; i++) {
     const isLeaf = i >= nodeCount / 2
     const hasMeasure = isLeaf && rng() < 0.4
+    const isAbsolute = i > 0 && !hasMeasure && rng() < 0.1 // 10% chance of absolute
     specs.push({
       width: !hasMeasure && rng() < 0.5 ? 5 + Math.floor(rng() * 20) : undefined,
       height: !hasMeasure && rng() < 0.3 ? 1 + Math.floor(rng() * 5) : undefined,
-      flexGrow: rng() < 0.4 ? 1 : undefined,
-      flexShrink: rng() < 0.3 ? 1 : undefined,
+      flexGrow: !isAbsolute && rng() < 0.4 ? 1 : undefined,
+      flexShrink: !isAbsolute && rng() < 0.3 ? 1 : undefined,
       hasMeasure,
       measureWidth: 10 + Math.floor(rng() * 60),
       isBordered: !isLeaf && rng() < 0.2,
-      flexDirection: rng() < 0.5 ? FLEX_DIRECTION_ROW : FLEX_DIRECTION_COLUMN,
+      flexDirection: FLEX_DIRECTIONS[Math.floor(rng() * FLEX_DIRECTIONS.length)]!,
+      padding: !isLeaf && rng() < 0.2 ? 1 + Math.floor(rng() * 5) : undefined,
+      gap: !isLeaf && rng() < 0.15 ? 1 + Math.floor(rng() * 4) : undefined,
+      isAbsolute,
+      posLeft: isAbsolute && rng() < 0.5 ? Math.floor(rng() * 20) : undefined,
+      posTop: isAbsolute && rng() < 0.5 ? Math.floor(rng() * 10) : undefined,
+      isWrap: !isLeaf && !isAbsolute && rng() < 0.1, // 10% chance of wrap
+      minWidth: !hasMeasure && rng() < 0.1 ? 3 + Math.floor(rng() * 10) : undefined,
+      maxWidth: !hasMeasure && rng() < 0.1 ? 15 + Math.floor(rng() * 30) : undefined,
       children: [],
     })
   }
@@ -602,6 +635,9 @@ function buildRandomTree(rng: () => number): () => BuildTreeResult {
     if (!dirtyIndices.includes(idx)) dirtyIndices.push(idx)
   }
 
+  // Randomly use RTL direction (~15% of trees)
+  const direction = rng() < 0.15 ? DIRECTION_RTL : DIRECTION_LTR
+
   return function buildTree(): BuildTreeResult {
     const nodes: Node[] = []
     const dirtyTargets: Node[] = []
@@ -625,6 +661,26 @@ function buildRandomTree(rng: () => number): () => BuildTreeResult {
         node.setBorder(2, 1)
         node.setBorder(3, 1)
       }
+      if (spec.padding !== undefined) {
+        node.setPadding(EDGE_ALL, spec.padding)
+      }
+      if (spec.gap !== undefined) {
+        node.setGap(GUTTER_ALL, spec.gap)
+      }
+      if (spec.isAbsolute) {
+        node.setPositionType(POSITION_TYPE_ABSOLUTE)
+        if (spec.posLeft !== undefined) node.setPosition(EDGE_LEFT, spec.posLeft)
+        if (spec.posTop !== undefined) node.setPosition(EDGE_TOP, spec.posTop)
+      }
+      if (spec.isWrap) {
+        node.setFlexWrap(WRAP_WRAP)
+      }
+      if (spec.minWidth !== undefined) {
+        node.setMinWidth(spec.minWidth)
+      }
+      if (spec.maxWidth !== undefined) {
+        node.setMaxWidth(spec.maxWidth)
+      }
       if (spec.hasMeasure) {
         node.setMeasureFunc(textMeasure(spec.measureWidth))
       }
@@ -643,7 +699,7 @@ function buildRandomTree(rng: () => number): () => BuildTreeResult {
       }
     }
 
-    return { root: nodes[0]!, dirtyTargets }
+    return { root: nodes[0]!, dirtyTargets, direction }
   }
 }
 
@@ -660,10 +716,11 @@ describe("Re-layout Consistency: fuzz", () => {
     for (let seed = 0; seed < 50; seed++) {
       const rng = createRng(seed * 1009 + 7)
       const buildTree = buildRandomTree(rng)
-      const { root, dirtyTargets } = buildTree()
-      root.calculateLayout(80, NaN, DIRECTION_LTR)
+      const { root, dirtyTargets, direction: dir } = buildTree()
+      const layoutDir = dir ?? DIRECTION_LTR
+      root.calculateLayout(80, NaN, layoutDir)
       for (const t of dirtyTargets) t.markDirty()
-      root.calculateLayout(80, NaN, DIRECTION_LTR)
+      root.calculateLayout(80, NaN, layoutDir)
       assertLayoutSanity(root)
     }
   })
@@ -683,18 +740,19 @@ describe("Fuzz: cache invalidation stress", () => {
       const buildTree = buildRandomTree(rng)
 
       // Build a SINGLE tree and re-layout at multiple widths
-      const { root, dirtyTargets } = buildTree()
+      const { root, dirtyTargets, direction: dir } = buildTree()
+      const layoutDir = dir ?? DIRECTION_LTR
       const widths = [60, 80, 100, 80] // include a return to 80 to test round-trip
 
       for (const w of widths) {
         root.setWidth(w)
-        root.calculateLayout(w, NaN, DIRECTION_LTR)
+        root.calculateLayout(w, NaN, layoutDir)
         const incremental = getLayout(root)
 
         // Fresh reference at same width
         const fresh = buildTree()
         fresh.root.setWidth(w)
-        fresh.root.calculateLayout(w, NaN, DIRECTION_LTR)
+        fresh.root.calculateLayout(w, NaN, layoutDir)
         const reference = getLayout(fresh.root)
 
         expect(incremental).toEqual(reference)
@@ -702,11 +760,11 @@ describe("Fuzz: cache invalidation stress", () => {
 
       // Also test: mark dirty + re-layout at final width
       for (const t of dirtyTargets) t.markDirty()
-      root.calculateLayout(80, NaN, DIRECTION_LTR)
+      root.calculateLayout(80, NaN, layoutDir)
       const incremental = getLayout(root)
 
       const fresh = buildTree()
-      fresh.root.calculateLayout(80, NaN, DIRECTION_LTR)
+      fresh.root.calculateLayout(80, NaN, layoutDir)
       const reference = getLayout(fresh.root)
 
       expect(incremental).toEqual(reference)
@@ -763,26 +821,27 @@ describe("Fuzz: multi-step constraint sweep", () => {
       const rng = createRng(seed * 1039 + 97)
       const buildTree = buildRandomTree(rng)
 
-      const { root, dirtyTargets } = buildTree()
+      const { root, dirtyTargets, direction: dir } = buildTree()
+      const layoutDir = dir ?? DIRECTION_LTR
       const widths = [40 + Math.floor(rng() * 80), 40 + Math.floor(rng() * 80), 40 + Math.floor(rng() * 80)]
 
       // Phase 1: layout at varying widths
       for (const w of widths) {
         root.setWidth(w)
-        root.calculateLayout(w, NaN, DIRECTION_LTR)
+        root.calculateLayout(w, NaN, layoutDir)
       }
 
       // Phase 2: mark dirty + re-layout at a new width
       const finalWidth = 40 + Math.floor(rng() * 80)
       for (const t of dirtyTargets) t.markDirty()
       root.setWidth(finalWidth)
-      root.calculateLayout(finalWidth, NaN, DIRECTION_LTR)
+      root.calculateLayout(finalWidth, NaN, layoutDir)
       const incremental = getLayout(root)
 
       // Fresh reference
       const fresh = buildTree()
       fresh.root.setWidth(finalWidth)
-      fresh.root.calculateLayout(finalWidth, NaN, DIRECTION_LTR)
+      fresh.root.calculateLayout(finalWidth, NaN, layoutDir)
       const reference = getLayout(fresh.root)
 
       const diffs = diffLayouts(reference, incremental)

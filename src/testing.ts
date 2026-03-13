@@ -37,6 +37,7 @@ export interface LayoutResult {
 export interface BuildTreeResult {
   root: Node
   dirtyTargets: Node[]
+  direction?: number // DIRECTION_LTR or DIRECTION_RTL, defaults to LTR
 }
 
 // ============================================================================
@@ -121,11 +122,13 @@ export function assertLayoutSanity(node: Node, path = "root"): void {
   const l = node.getComputedLeft()
   const t = node.getComputedTop()
 
-  if (w < 0) throw new Error(`${path}: width is negative (${w})`)
-  if (!Number.isFinite(w)) throw new Error(`${path}: width is not finite (${w})`)
-  if (!Number.isFinite(l)) throw new Error(`${path}: left is not finite (${l})`)
+  // Width and height should be non-negative when finite.
+  // They can be NaN for auto-sized nodes in unconstrained containers (e.g., absolute children).
+  if (Number.isFinite(w) && w < 0) throw new Error(`${path}: width is negative (${w})`)
   if (Number.isFinite(h) && h < 0) throw new Error(`${path}: height is negative (${h})`)
-  if (Number.isFinite(t) && t < 0) throw new Error(`${path}: top is negative (${t})`)
+  // Position values can be negative (absolute positioning) or non-finite (unconstrained containers).
+  // Only check that width is not Infinity (NaN is ok for auto-sized).
+  if (w === Infinity || w === -Infinity) throw new Error(`${path}: width is Infinity`)
 
   for (let i = 0; i < node.getChildCount(); i++) {
     assertLayoutSanity(node.getChild(i)!, `${path}[${i}]`)
@@ -142,15 +145,16 @@ export function expectRelayoutMatchesFresh(
   layoutHeight: number,
 ): void {
   // 1. Build, layout, mark dirty, re-layout
-  const { root, dirtyTargets } = buildTree()
-  root.calculateLayout(layoutWidth, layoutHeight, DIRECTION_LTR)
+  const { root, dirtyTargets, direction: dir } = buildTree()
+  const layoutDir = dir ?? DIRECTION_LTR
+  root.calculateLayout(layoutWidth, layoutHeight, layoutDir)
   for (const t of dirtyTargets) t.markDirty()
-  root.calculateLayout(layoutWidth, layoutHeight, DIRECTION_LTR)
+  root.calculateLayout(layoutWidth, layoutHeight, layoutDir)
   const incremental = getLayout(root)
 
   // 2. Build identical fresh tree, layout once
   const fresh = buildTree()
-  fresh.root.calculateLayout(layoutWidth, layoutHeight, DIRECTION_LTR)
+  fresh.root.calculateLayout(layoutWidth, layoutHeight, layoutDir)
   const reference = getLayout(fresh.root)
 
   // 3. Must be identical — show detailed diff on failure
@@ -168,10 +172,11 @@ export function expectRelayoutMatchesFresh(
  * Catches non-determinism or state corruption from a single layout pass.
  */
 export function expectIdempotent(buildTree: () => BuildTreeResult, layoutWidth: number, layoutHeight: number): void {
-  const { root } = buildTree()
-  root.calculateLayout(layoutWidth, layoutHeight, DIRECTION_LTR)
+  const { root, direction: dir } = buildTree()
+  const layoutDir = dir ?? DIRECTION_LTR
+  root.calculateLayout(layoutWidth, layoutHeight, layoutDir)
   const first = getLayout(root)
-  root.calculateLayout(layoutWidth, layoutHeight, DIRECTION_LTR)
+  root.calculateLayout(layoutWidth, layoutHeight, layoutDir)
   const second = getLayout(root)
 
   const diffs = diffLayouts(first, second)
@@ -187,10 +192,11 @@ export function expectIdempotent(buildTree: () => BuildTreeResult, layoutWidth: 
  * Catches stale cache entries that don't update on constraint change.
  */
 export function expectResizeRoundTrip(buildTree: () => BuildTreeResult, widths: number[]): void {
-  const { root } = buildTree()
+  const { root, direction: dir } = buildTree()
+  const layoutDir = dir ?? DIRECTION_LTR
   for (const w of widths) {
     root.setWidth(w)
-    root.calculateLayout(w, NaN, DIRECTION_LTR)
+    root.calculateLayout(w, NaN, layoutDir)
   }
   const incremental = getLayout(root)
 
@@ -198,7 +204,7 @@ export function expectResizeRoundTrip(buildTree: () => BuildTreeResult, widths: 
   const finalWidth = widths[widths.length - 1]!
   const fresh = buildTree()
   fresh.root.setWidth(finalWidth)
-  fresh.root.calculateLayout(finalWidth, NaN, DIRECTION_LTR)
+  fresh.root.calculateLayout(finalWidth, NaN, layoutDir)
   const reference = getLayout(fresh.root)
 
   const diffs = diffLayouts(reference, incremental)

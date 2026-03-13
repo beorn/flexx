@@ -205,7 +205,10 @@ function breakIntoLines(children: ChildLayout[], mainAxisSize: number, mainGap: 
   let lineMainSize = 0
 
   for (const child of children) {
-    const childMainSize = child.baseSize + child.mainMargin
+    // CSS spec 9.3.4: line breaking uses the "hypothetical main size" which is
+    // the flex base size clamped to min/max, not the unclamped base size.
+    const hypotheticalMainSize = Math.max(child.minMain, Math.min(child.maxMain, child.baseSize))
+    const childMainSize = hypotheticalMainSize + child.mainMargin
     const gapIfNotFirst = currentLine.length > 0 ? mainGap : 0
 
     // Check if child fits on current line
@@ -528,7 +531,9 @@ function layoutNode(
   // This ensures children's absolute positions include parent's position offset
   let parentPosOffsetX = 0
   let parentPosOffsetY = 0
-  if (style.positionType === C.POSITION_TYPE_STATIC || style.positionType === C.POSITION_TYPE_RELATIVE) {
+  // CSS spec: position:static ignores insets (top/left/right/bottom).
+  // Only position:relative applies insets as offsets from normal flow position.
+  if (style.positionType === C.POSITION_TYPE_RELATIVE) {
     const leftPos = style.position[0]
     const topPos = style.position[1]
     const rightPos = style.position[2]
@@ -935,6 +940,11 @@ function layoutNode(
           childCross = crossDim.value
         } else if (crossDim.unit === C.UNIT_PERCENT && !Number.isNaN(crossAxisSize)) {
           childCross = crossAxisSize * (crossDim.value / 100)
+        } else if (childLayout.node.children.length > 0) {
+          // Auto-sized container children: Phase 5 already laid them out with
+          // layoutNode to compute baseSize. The cross-axis size is available
+          // on the child's layout (height for row, width for column).
+          childCross = isRow ? childLayout.node.layout.height : childLayout.node.layout.width
         } else {
           // Auto - use a default or measure. For now, use 0 and let stretch handle it.
           childCross = 0
@@ -1261,11 +1271,12 @@ function layoutNode(
       const fractionalLeft = innerLeft + childX
       const fractionalTop = innerTop + childY
 
-      // Compute position offsets for RELATIVE/STATIC positioned children
+      // Compute position offsets for RELATIVE positioned children
+      // CSS spec: position:static ignores insets; only position:relative applies them.
       // These must be included in the absolute position BEFORE rounding (Yoga-compatible)
       let posOffsetX = 0
       let posOffsetY = 0
-      if (childStyle.positionType === C.POSITION_TYPE_RELATIVE || childStyle.positionType === C.POSITION_TYPE_STATIC) {
+      if (childStyle.positionType === C.POSITION_TYPE_RELATIVE) {
         const relLeftPos = childStyle.position[0]
         const relTopPos = childStyle.position[1]
         const relRightPos = childStyle.position[2]
@@ -1479,7 +1490,7 @@ function layoutNode(
         }
       }
 
-      if (crossOffset > 0) {
+      if (crossOffset !== 0) {
         if (isRow) {
           child.layout.top += Math.round(crossOffset)
         } else {
@@ -1615,6 +1626,7 @@ function layoutNode(
   // Content box dimensions for percentage resolution of absolute children
   const absContentBoxW = absPaddingBoxW - paddingLeft - paddingRight
   const absContentBoxH = absPaddingBoxH - paddingTop - paddingBottom
+  const isRow = isRowDirection(style.flexDirection)
 
   for (const child of absoluteChildren) {
     const childStyle = child.style
@@ -1636,10 +1648,11 @@ function layoutNode(
     const hasTop = topPos.unit !== C.UNIT_UNDEFINED
     const hasBottom = bottomPos.unit !== C.UNIT_UNDEFINED
 
-    const leftOffset = resolveValue(leftPos, nodeWidth)
-    const topOffset = resolveValue(topPos, nodeHeight)
-    const rightOffset = resolveValue(rightPos, nodeWidth)
-    const bottomOffset = resolveValue(bottomPos, nodeHeight)
+    // Yoga resolves percentage position offsets against the content box dimensions
+    const leftOffset = resolveValue(leftPos, absContentBoxW)
+    const topOffset = resolveValue(topPos, absContentBoxH)
+    const rightOffset = resolveValue(rightPos, absContentBoxW)
+    const bottomOffset = resolveValue(bottomPos, absContentBoxH)
 
     // Calculate available size for absolute child using padding box
     const contentW = absPaddingBoxW
@@ -1712,28 +1725,45 @@ function layoutNode(
     const childHeight = child.layout.height
 
     // Apply alignment when no explicit position set
-    // For absolute children, align-items/justify-content apply when no position offsets
+    // For absolute children, align-items applies on cross axis, justify-content on main axis
+    // Row: X = main axis (justifyContent), Y = cross axis (alignItems)
+    // Column: X = cross axis (alignItems), Y = main axis (justifyContent)
     if (!hasLeft && !hasRight) {
-      // No horizontal position - use align-items (for row) or justify-content (for column)
-      // Default column direction: cross-axis is horizontal, use alignItems
-      let alignment = style.alignItems
-      if (childStyle.alignSelf !== C.ALIGN_AUTO) {
-        alignment = childStyle.alignSelf
-      }
-      const freeSpaceX = contentW - childWidth - childMarginLeft - childMarginRight
-      switch (alignment) {
-        case C.ALIGN_CENTER:
-          childX = childMarginLeft + freeSpaceX / 2
-          break
-        case C.ALIGN_FLEX_END:
-          childX = childMarginLeft + freeSpaceX
-          break
-        case C.ALIGN_STRETCH:
-          // Stretch: already handled by setting width to fill
-          break
-        default: // FLEX_START
-          childX = childMarginLeft
-          break
+      if (isRow) {
+        // Row: X is main axis, use justifyContent
+        const freeSpaceX = contentW - childWidth - childMarginLeft - childMarginRight
+        switch (style.justifyContent) {
+          case C.JUSTIFY_CENTER:
+            childX = childMarginLeft + freeSpaceX / 2
+            break
+          case C.JUSTIFY_FLEX_END:
+            childX = childMarginLeft + freeSpaceX
+            break
+          default: // FLEX_START
+            childX = childMarginLeft
+            break
+        }
+      } else {
+        // Column: X is cross axis, use alignItems/alignSelf
+        let alignment = style.alignItems
+        if (childStyle.alignSelf !== C.ALIGN_AUTO) {
+          alignment = childStyle.alignSelf
+        }
+        const freeSpaceX = contentW - childWidth - childMarginLeft - childMarginRight
+        switch (alignment) {
+          case C.ALIGN_CENTER:
+            childX = childMarginLeft + freeSpaceX / 2
+            break
+          case C.ALIGN_FLEX_END:
+            childX = childMarginLeft + freeSpaceX
+            break
+          case C.ALIGN_STRETCH:
+            // Stretch: already handled by setting width to fill
+            break
+          default: // FLEX_START
+            childX = childMarginLeft
+            break
+        }
       }
     } else if (!hasLeft && hasRight) {
       // Position from right edge
@@ -1744,19 +1774,41 @@ function layoutNode(
     }
 
     if (!hasTop && !hasBottom) {
-      // No vertical position - use justify-content (for row) or align-items (for column)
-      // Default column direction: main-axis is vertical, use justifyContent
-      const freeSpaceY = contentH - childHeight - childMarginTop - childMarginBottom
-      switch (style.justifyContent) {
-        case C.JUSTIFY_CENTER:
-          childY = childMarginTop + freeSpaceY / 2
-          break
-        case C.JUSTIFY_FLEX_END:
-          childY = childMarginTop + freeSpaceY
-          break
-        default: // FLEX_START
-          childY = childMarginTop
-          break
+      if (isRow) {
+        // Row: Y is cross axis, use alignItems/alignSelf
+        let alignment = style.alignItems
+        if (childStyle.alignSelf !== C.ALIGN_AUTO) {
+          alignment = childStyle.alignSelf
+        }
+        const freeSpaceY = contentH - childHeight - childMarginTop - childMarginBottom
+        switch (alignment) {
+          case C.ALIGN_CENTER:
+            childY = childMarginTop + freeSpaceY / 2
+            break
+          case C.ALIGN_FLEX_END:
+            childY = childMarginTop + freeSpaceY
+            break
+          case C.ALIGN_STRETCH:
+            // Stretch: already handled by setting height to fill
+            break
+          default: // FLEX_START
+            childY = childMarginTop
+            break
+        }
+      } else {
+        // Column: Y is main axis, use justifyContent
+        const freeSpaceY = contentH - childHeight - childMarginTop - childMarginBottom
+        switch (style.justifyContent) {
+          case C.JUSTIFY_CENTER:
+            childY = childMarginTop + freeSpaceY / 2
+            break
+          case C.JUSTIFY_FLEX_END:
+            childY = childMarginTop + freeSpaceY
+            break
+          default: // FLEX_START
+            childY = childMarginTop
+            break
+        }
       }
     } else if (!hasTop && hasBottom) {
       // Position from bottom edge
@@ -1779,14 +1831,12 @@ function layoutNode(
 // so the public API remains consistent between versions.
 
 export let layoutNodeCalls = 0
-export let resolveEdgeCalls = 0
 export let layoutSizingCalls = 0
 export let layoutPositioningCalls = 0
 export let layoutCacheHits = 0
 
 export function resetLayoutStats(): void {
   layoutNodeCalls = 0
-  resolveEdgeCalls = 0
   layoutSizingCalls = 0
   layoutPositioningCalls = 0
   layoutCacheHits = 0

@@ -19,6 +19,7 @@ interface Mutation {
   replace: string
   description: string
   equivalent?: boolean // True = mutation disables redundant defense layer, expected to pass
+  testFiles?: string[] // Test files to run (defaults to relayout-consistency only)
 }
 
 const mutations: Mutation[] = [
@@ -175,6 +176,56 @@ const mutations: Mutation[] = [
       "Never mark layout as valid — fingerprint check always fails, forcing full recompute (should still be correct if algorithm is sound)",
     equivalent: true, // Disables optimization, doesn't affect correctness
   },
+
+  // =========================================================================
+  // Layout logic mutations (caught by layout.test.ts + relayout-consistency)
+  // =========================================================================
+
+  {
+    name: "skip-display-none",
+    file: "src/layout-zero.ts",
+    find: `  // Handle display: none
+  if (style.display === C.DISPLAY_NONE) {
+    layout.left = 0
+    layout.top = 0
+    layout.width = 0
+    layout.height = 0
+    return
+  }`,
+    replace: `  // MUTATION: skip display:none handling — nodes should still render
+  // if (style.display === C.DISPLAY_NONE) { ... }`,
+    description: "Skip display:none handling — hidden nodes would participate in layout and consume space",
+    testFiles: ["vendor/flexily/tests/layout.test.ts"],
+  },
+  {
+    name: "skip-overflow-flexShrink-override",
+    file: "src/layout-zero.ts",
+    find: `    cflex.flexShrink =
+      childStyle.overflow !== C.OVERFLOW_VISIBLE ? Math.max(childStyle.flexShrink, 1) : childStyle.flexShrink`,
+    replace: `    cflex.flexShrink =
+      childStyle.flexShrink /* MUTATION: removed overflow flexShrink override */`,
+    description:
+      "Remove CSS 4.5 overflow:hidden flexShrink override — overflow containers won't shrink to fit parent",
+    testFiles: ["vendor/flexily/tests/layout.test.ts"],
+  },
+  {
+    name: "wrong-edge-rounding-leaf",
+    file: "src/layout-zero.ts",
+    find: `    layout.width = Math.round(nodeWidth)
+    layout.height = Math.round(nodeHeight)
+    layout.left = Math.round(offsetX + marginLeft)
+    layout.top = Math.round(offsetY + marginTop)
+
+    // Handle measure function for leaf nodes with intrinsic sizing`,
+    replace: `    layout.width = Math.floor(nodeWidth)
+    layout.height = Math.floor(nodeHeight)
+    layout.left = Math.floor(offsetX + marginLeft)
+    layout.top = Math.floor(offsetY + marginTop)
+
+    // MUTATION: use floor instead of round — creates pixel drift`,
+    description: "Use Math.floor instead of Math.round for leaf node rounding — dimensions will be wrong for fractional values",
+    testFiles: ["vendor/flexily/tests/layout.test.ts", "vendor/flexily/tests/relayout-consistency.test.ts"],
+  },
 ]
 
 async function main() {
@@ -187,8 +238,8 @@ async function main() {
   const gaps: string[] = []
   const skipped: string[] = []
 
-  console.log(`Mutation testing for Flexily cache code paths`)
-  console.log(`Running ${mutations.length} mutations against relayout-consistency fuzz suite\n`)
+  console.log(`Mutation testing for Flexily code paths`)
+  console.log(`Running ${mutations.length} mutations against test suite\n`)
 
   for (const mutation of mutations) {
     const filepath = resolve(dir, mutation.file)
@@ -215,8 +266,9 @@ async function main() {
 
       process.stdout.write(`  "${mutation.name}" ... `)
 
+      const testFiles = mutation.testFiles ?? ["vendor/flexily/tests/relayout-consistency.test.ts"]
       const proc = Bun.spawn(
-        ["bun", "vitest", "run", "vendor/flexily/tests/relayout-consistency.test.ts", "--reporter=dot"],
+        ["bun", "vitest", "run", "--project", "vendor", ...testFiles, "--reporter=dot"],
         { cwd: kmRoot, stdout: "pipe", stderr: "pipe" },
       )
       const exitCode = await proc.exited

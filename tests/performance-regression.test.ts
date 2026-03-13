@@ -4,8 +4,17 @@
  * Timing-based tests that verify layout performance stays within acceptable bounds.
  * These run in CI and catch performance regressions.
  *
- * Baselines are generous (10-50x slower than typical) to avoid flaky failures
- * on slow CI machines. The point is catching O(n^2) regressions, not micro-benchmarks.
+ * Thresholds are ~10x typical dev machine performance to avoid CI flakiness
+ * while still catching O(n^2) regressions and major performance bugs.
+ *
+ * Baseline measurements (M-series Mac, 2026-03):
+ *   Small tree (10 nodes):     ~0.03ms
+ *   Medium tree (50 nodes):    ~0.10ms
+ *   Large tree (100 nodes):    ~0.19ms
+ *   Nested tree (105 nodes):   ~0.31ms
+ *   Dirty leaf relayout:       ~0.015ms
+ *   No-change relayout:        ~0.0001ms
+ *   Large dirty leaf:          ~0.11ms
  */
 
 import { describe, expect, it } from "vitest"
@@ -32,7 +41,7 @@ function measureMs(fn: () => void, iterations: number): number {
 }
 
 describe("Performance Regression: Single Layout Pass", () => {
-  it("should layout a small tree (10 nodes) under 2ms", () => {
+  it("should layout a small tree (10 nodes) under 0.5ms", () => {
     const median = measureMs(() => {
       const root = Node.create()
       root.setWidth(100)
@@ -49,10 +58,10 @@ describe("Performance Regression: Single Layout Pass", () => {
       root.calculateLayout(100, 100, DIRECTION_LTR)
     }, 100)
 
-    expect(median).toBeLessThan(2)
+    expect(median).toBeLessThan(0.5)
   })
 
-  it("should layout a medium tree (50 nodes) under 5ms", () => {
+  it("should layout a medium tree (50 nodes) under 1.5ms", () => {
     const median = measureMs(() => {
       const root = Node.create()
       root.setWidth(200)
@@ -69,12 +78,12 @@ describe("Performance Regression: Single Layout Pass", () => {
       root.calculateLayout(200, 500, DIRECTION_LTR)
     }, 50)
 
-    expect(median).toBeLessThan(5)
+    expect(median).toBeLessThan(1.5)
   })
 })
 
 describe("Performance Regression: Repeated Layout with Dirty Nodes", () => {
-  it("should re-layout with single dirty leaf under 1ms (10-node tree)", () => {
+  it("should re-layout with single dirty leaf under 0.2ms (10-node tree)", () => {
     // Build tree once
     const root = Node.create()
     root.setWidth(100)
@@ -99,10 +108,10 @@ describe("Performance Regression: Repeated Layout with Dirty Nodes", () => {
       root.calculateLayout(100, 100, DIRECTION_LTR)
     }, 200)
 
-    expect(median).toBeLessThan(1)
+    expect(median).toBeLessThan(0.2)
   })
 
-  it("should skip no-change re-layout nearly instantly (under 0.1ms)", () => {
+  it("should skip no-change re-layout nearly instantly (under 0.01ms)", () => {
     const root = Node.create()
     root.setWidth(100)
     root.setHeight(100)
@@ -122,12 +131,12 @@ describe("Performance Regression: Repeated Layout with Dirty Nodes", () => {
       root.calculateLayout(100, 100, DIRECTION_LTR)
     }, 1000)
 
-    expect(median).toBeLessThan(0.1)
+    expect(median).toBeLessThan(0.01)
   })
 })
 
 describe("Performance Regression: Large Tree", () => {
-  it("should layout 100+ nodes under 10ms", () => {
+  it("should layout 100+ nodes under 2ms", () => {
     const median = measureMs(() => {
       const root = Node.create()
       root.setWidth(500)
@@ -144,10 +153,10 @@ describe("Performance Regression: Large Tree", () => {
       root.calculateLayout(500, 1000, DIRECTION_LTR)
     }, 20)
 
-    expect(median).toBeLessThan(10)
+    expect(median).toBeLessThan(2)
   })
 
-  it("should layout 100+ nodes with nested structure under 15ms", () => {
+  it("should layout 100+ nodes with nested structure under 3ms", () => {
     const median = measureMs(() => {
       const root = Node.create()
       root.setWidth(500)
@@ -172,10 +181,10 @@ describe("Performance Regression: Large Tree", () => {
       root.calculateLayout(500, 1000, DIRECTION_LTR)
     }, 20)
 
-    expect(median).toBeLessThan(15)
+    expect(median).toBeLessThan(3)
   })
 
-  it("should re-layout large tree with dirty leaf under 5ms", () => {
+  it("should re-layout large tree with dirty leaf under 1ms", () => {
     // Build tree: 5 columns x 20 rows with measure functions
     const root = Node.create()
     root.setWidth(120)
@@ -219,7 +228,7 @@ describe("Performance Regression: Large Tree", () => {
       root.calculateLayout(120, 40, DIRECTION_LTR)
     }, 100)
 
-    expect(median).toBeLessThan(5)
+    expect(median).toBeLessThan(1)
   })
 })
 

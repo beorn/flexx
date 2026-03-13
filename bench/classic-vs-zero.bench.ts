@@ -9,7 +9,7 @@
  */
 
 import { bench, describe, beforeAll } from "vitest"
-import * as Classic from "../src/index.js"
+import * as Classic from "../src/index-classic.js"
 import * as Zero from "../src/index.js"
 
 // ============================================================================
