@@ -42,7 +42,7 @@ Flexily is a pure-JavaScript flexbox layout engine with a Yoga-compatible API. T
 - Factory function API: `Node.create()` (no `new` in user code, though `Node` is a class internally)
 - Yoga-compatible API surface: same method names, same constants, drop-in replacement
 - Pure JavaScript: no WASM, no native dependencies, synchronous initialization
-- Single-threaded: layout uses module-level pre-allocated arrays (not reentrant)
+- Module-level pre-allocated arrays with save/restore for re-entrancy (measureFunc/baselineFunc may call calculateLayout on other trees)
 
 ## Source Files
 
@@ -125,6 +125,7 @@ Single pass over children:
 ### Phase 7a: Estimate Line Cross Sizes
 
 - Tentative cross-axis sizes from definite child dimensions
+- For measureFunc children: uses `child.flex.mainSize` (from flex distribution), not parent `mainAxisSize`. This ensures text wrapping is measured at the child's actual constrained width.
 - Auto-sized children use 0 (actual size computed in Phase 8)
 
 ### Phase 7b: Apply alignContent
@@ -145,6 +146,14 @@ The most complex phase. For each relative child:
 7. Override sizes based on flex distribution results
 8. Apply cross-axis alignment offset (flex-end, center, baseline)
 9. Advance `mainPos` for next child
+
+### Phase 9b: Re-stretch Auto-Sized Cross Axis
+
+- When cross axis was auto (NaN) during Phase 8, `ALIGN_STRETCH` children need re-stretching to the now-known cross size
+
+### Phase 9c: Re-align Auto-Sized Cross Axis
+
+- When `crossAxisSize` was NaN during Phase 8, alignment offsets for `ALIGN_CENTER`, `ALIGN_FLEX_END`, and cross-axis auto margins computed NaN. Phase 9c recomputes these using the final shrink-wrapped cross size.
 
 ### Phase 9: Shrink-Wrap Auto-Sized Containers
 
@@ -184,7 +193,7 @@ let _lineItemSpacings = new Float64Array(32) // Per-line item spacing
 
 These grow dynamically if >32 lines (rare). Total memory: ~1,344 bytes (4 Float64Arrays × 256 bytes + 1 Uint16Array × 64 bytes + Array overhead).
 
-**Consequence: Not reentrant.** Layout is single-threaded; concurrent `calculateLayout()` calls corrupt shared state. This is safe because layout is synchronous.
+**Re-entrancy**: A `measureFunc` or `baselineFunc` may synchronously call `calculateLayout()` on a separate tree. `enterLayout()`/`exitLayout()` in `layout-flex-lines.ts` bracket nested calls to save and restore the module-level scratch arrays, preventing corruption of the outer pass's state. Only allocates on re-entrant calls (depth > 0).
 
 ### Per-Node FlexInfo (`node.flex`)
 

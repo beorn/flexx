@@ -105,7 +105,7 @@ See [docs/performance.md](docs/performance.md) for detailed benchmarks including
 
 Flexily provides two layout implementations that produce identical output and pass identical tests:
 
-**Zero-allocation** (default, `@beorn/flexily`): Mutates `FlexInfo` structs on nodes instead of allocating temporary objects. Faster for flat/wide trees typical of TUI layouts. Not reentrant — a single layout pass must complete before another starts.
+**Zero-allocation** (default, `@beorn/flexily`): Mutates `FlexInfo` structs on nodes instead of allocating temporary objects. Faster for flat/wide trees typical of TUI layouts. Re-entrant via save/restore of scratch arrays (supports nested `calculateLayout()` calls from measure/baseline functions).
 
 **Classic** (`@beorn/flexily/classic`): Allocates temporary objects during layout. Easier to read and debug. Use this when stepping through the algorithm or comparing behavior.
 

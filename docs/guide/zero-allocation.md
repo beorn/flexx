@@ -103,7 +103,7 @@ for (const child of children) {
 
 ### Disadvantages
 
-- Not reentrant (single layout calculation at a time)
+- Re-entrant via save/restore (minor allocation on nested calls only)
 - Higher memory per node (FlexInfo struct)
 - More complex code than classic algorithm
 
