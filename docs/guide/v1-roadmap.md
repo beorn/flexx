@@ -23,7 +23,7 @@ Every box must be checked before tagging 1.0.
 ### API Stability
 
 - [x] Yoga-compatible API surface (same constants, same method names)
-- [x] Two entry points: `@beorn/flexily` (zero-alloc) and `@beorn/flexily/classic` (allocating)
+- [x] Two entry points: `flexily` (zero-alloc) and `flexily/classic` (allocating)
 - [ ] API surface audit: review all public exports, remove any accidental leaks
 - [ ] TypeScript declaration files (`dist/`) build cleanly and match source types
 - [ ] No planned breaking changes (or: list remaining breaking changes and execute them pre-1.0)
@@ -43,7 +43,7 @@ Every box must be checked before tagging 1.0.
 - [x] `package.json` has correct `exports` map (`.` and `./classic`)
 - [x] `files` field limits published content to `dist` and `src`
 - [ ] `npm pack --dry-run` produces a clean, minimal tarball
-- [ ] Published on npm as `@beorn/flexily`
+- [ ] Published on npm as `flexily`
 - [x] MIT license
 
 ### Documentation
@@ -61,7 +61,7 @@ Every box must be checked before tagging 1.0.
 ## Known Gaps
 
 1. ~~**Bundle audit** (bead `km-flexily.bundle-audit`)~~ -- Done. `bun scripts/measure-bundle.ts` measures all entry points. README and docs updated with accurate numbers.
-2. **npm publish** (bead `km-flexily.npm-publish`) -- blocked by vendor rename (`km-infra.vendor-rename-impl`). The package name `@beorn/flexily` needs to be claimed on npm.
+2. **npm publish** (bead `km-flexily.npm-publish`) -- blocked by vendor rename (`km-infra.vendor-rename-impl`). The package name `flexily` needs to be claimed on npm.
 3. **API surface audit** -- no formal review of which symbols are exported vs. internal. A pre-1.0 pass should ensure only intentional public API is accessible via the `exports` map.
 
 ## What's NOT in 1.0
@@ -99,5 +99,5 @@ Suggested order:
 
 1. Complete vendor rename (`km-infra.vendor-rename-impl`)
 2. Run bundle audit, verify all criteria above
-3. Tag and publish `@beorn/flexily@1.0.0`
-4. Update silvery's `peerDependencies` to `@beorn/flexily@^1.0.0`
+3. Tag and publish `flexily@1.0.0`
+4. Update silvery's `peerDependencies` to `flexily@^1.0.0`

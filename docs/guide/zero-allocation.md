@@ -122,10 +122,10 @@ Both algorithms now have complete feature parity:
 
 ```typescript
 // Default: Zero-allocation algorithm (recommended)
-import { Node } from "@beorn/flexily"
+import { Node } from "flexily"
 
 // Classic algorithm (for debugging or comparison)
-import { Node } from "@beorn/flexily/classic"
+import { Node } from "flexily/classic"
 ```
 
 Both exports have identical APIs - only the internal algorithm differs.

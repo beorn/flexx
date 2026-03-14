@@ -178,7 +178,40 @@ The no-change case dominates in interactive TUIs (most keystrokes don't change l
 
 WASM is AOT-compiled with manual memory management, so it's consistent from the first run. JavaScript needs JIT warmup. For sustained rendering, both stabilize.
 
-## Running Benchmarks
+## Benchmark Methodology
+
+### How Benchmarks Were Run
+
+All benchmarks were run on Apple M-series (ARM64), macOS, Bun 1.2, February-March 2026. Each benchmark uses Vitest's `bench()` with JIT warmup iterations to ensure stable numbers. Times reported are mean per operation after warmup.
+
+**Before each run**, system load was verified with `top` -- no CPU-heavy processes (builds, browsers, video encoding) running concurrently. Benchmarks were run multiple times and results checked for consistency within the RME (relative margin of error) ranges listed above.
+
+### Caveats About the Yoga Comparison
+
+These benchmarks compare **fundamentally different execution models** (pure JS vs WASM), which means apples-to-apples comparison is inherently limited:
+
+1. **Initial layout benchmarks include node creation.** Flexily's advantage (1.5-2.5x) is dominated by JS object creation being ~8x cheaper than WASM node creation. If you create the tree once and re-layout many times, this advantage is amortized away.
+
+2. **WASM per-node computation is genuinely faster.** For incremental re-layout of pre-existing trees, Yoga wins (2.8-3.4x) because compiled C++ outperforms JIT-compiled JavaScript at the per-node level. This is a fundamental characteristic, not an implementation gap.
+
+3. **Fingerprint cache advantage is workload-dependent.** Flexily's 5.5x no-change advantage is dramatic but only applies when the layout inputs are identical between frames. If every frame changes something, this cache doesn't help.
+
+4. **Deep nesting compounds JS overhead.** Flexily's recursive JS function calls get increasingly expensive at 15+ levels of nesting. Most TUI apps have 3-5 levels of nesting, well below this crossover point, but document renderers or deeply nested component trees may hit it.
+
+5. **Bun's JIT differs from V8/Node.** Benchmark numbers may differ on Node.js (V8) vs Bun (JavaScriptCore). WASM performance is more consistent across runtimes.
+
+### Source Code
+
+All benchmark source code is in the `bench/` directory:
+
+| File | What it measures |
+| --- | --- |
+| [`bench/yoga-compare-warmup.bench.ts`](https://github.com/beorn/flexily/tree/main/bench/yoga-compare-warmup.bench.ts) | Flat + deep initial layout with JIT warmup |
+| [`bench/yoga-compare-rich.bench.ts`](https://github.com/beorn/flexily/tree/main/bench/yoga-compare-rich.bench.ts) | TUI boards, measure functions, property diversity |
+| [`bench/incremental.bench.ts`](https://github.com/beorn/flexily/tree/main/bench/incremental.bench.ts) | No-change, dirty leaf, resize re-layout |
+| [`bench/features.bench.ts`](https://github.com/beorn/flexily/tree/main/bench/features.bench.ts) | Per-feature comparison (grow, shrink, wrap, etc.) |
+
+### Running Benchmarks
 
 ```bash
 # Quick comparison (flat + deep, with warmup)

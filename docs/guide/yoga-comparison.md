@@ -64,7 +64,7 @@ Flexily is designed as a **drop-in replacement** for Yoga's JavaScript API:
 
 ```typescript
 // Same constants
-import { FLEX_DIRECTION_ROW, JUSTIFY_CENTER, ALIGN_STRETCH } from "@beorn/flexily"
+import { FLEX_DIRECTION_ROW, JUSTIFY_CENTER, ALIGN_STRETCH } from "flexily"
 
 // Same Node API
 const root = Node.create()
@@ -174,7 +174,7 @@ bun bench bench/incremental.bench.ts          # No-change, dirty leaf, resize
 - import Yoga from 'yoga-wasm-web';
 - const yoga = await Yoga.init();
 - const root = yoga.Node.create();
-+ import { Node } from '@beorn/flexily';
++ import { Node } from 'flexily';
 + const root = Node.create();  // Synchronous!
 
 // Rest of the API is identical
@@ -186,7 +186,7 @@ root.setFlexDirection(FLEX_DIRECTION_ROW);
 ### Key Changes
 
 1. **No async init** — Remove `await Yoga.init()`
-2. **Import from package** — `import { Node, FLEX_DIRECTION_ROW } from '@beorn/flexily'`
+2. **Import from package** — `import { Node, FLEX_DIRECTION_ROW } from 'flexily'`
 
 ---
 

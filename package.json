@@ -1,15 +1,20 @@
 {
   "name": "flexily",
   "version": "0.2.0",
-  "description": "Pure JavaScript flexbox layout engine with Yoga-compatible API",
+  "description": "Pure JavaScript flexbox layout engine — Yoga-compatible API, faster initial layout, smaller bundle, no WASM",
   "keywords": [
+    "canvas-ui",
     "css",
     "flexbox",
     "layout",
+    "measure",
     "pure-javascript",
     "terminal",
     "tui",
+    "ui-layout",
     "yoga",
+    "yoga-alternative",
+    "yoga-wasm",
     "zero-dependency"
   ],
   "homepage": "https://beorn.github.io/flexily/",

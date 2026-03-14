@@ -89,7 +89,7 @@ Separate from relayout-consistency, these fuzz tests compare Flexily's zero-allo
 bun test tests/differential-fuzz.fuzz.ts
 ```
 
-## Public Testing API (`@beorn/flexily/testing`)
+## Public Testing API (`flexily/testing`)
 
 Flexily exports diagnostic helpers for downstream consumers (silvery, km-tui):
 
@@ -103,7 +103,7 @@ import {
   expectRelayoutMatchesFresh,
   expectIdempotent,
   expectResizeRoundTrip,
-} from "@beorn/flexily/testing"
+} from "flexily/testing"
 ```
 
 | Export                                        | Description                                          |

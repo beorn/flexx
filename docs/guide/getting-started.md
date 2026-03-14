@@ -31,7 +31,7 @@ yarn add flexily
 Create a simple row with two children:
 
 ```typescript
-import { Node, FLEX_DIRECTION_ROW, DIRECTION_LTR } from "@beorn/flexily"
+import { Node, FLEX_DIRECTION_ROW, DIRECTION_LTR } from "flexily"
 
 // Create the root node
 const root = Node.create()

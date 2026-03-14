@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ```typescript
-import { Node, FLEX_DIRECTION_ROW, DIRECTION_LTR } from "@beorn/flexily"
+import { Node, FLEX_DIRECTION_ROW, DIRECTION_LTR } from "flexily"
 
 const root = Node.create()
 root.setWidth(100)
@@ -105,13 +105,13 @@ See [docs/performance.md](docs/performance.md) for detailed benchmarks including
 
 Flexily provides two layout implementations that produce identical output and pass identical tests:
 
-**Zero-allocation** (default, `@beorn/flexily`): Mutates `FlexInfo` structs on nodes instead of allocating temporary objects. Faster for flat/wide trees typical of TUI layouts. Re-entrant via save/restore of scratch arrays (supports nested `calculateLayout()` calls from measure/baseline functions).
+**Zero-allocation** (default, `flexily`): Mutates `FlexInfo` structs on nodes instead of allocating temporary objects. Faster for flat/wide trees typical of TUI layouts. Re-entrant via save/restore of scratch arrays (supports nested `calculateLayout()` calls from measure/baseline functions).
 
-**Classic** (`@beorn/flexily/classic`): Allocates temporary objects during layout. Easier to read and debug. Use this when stepping through the algorithm or comparing behavior.
+**Classic** (`flexily/classic`): Allocates temporary objects during layout. Easier to read and debug. Use this when stepping through the algorithm or comparing behavior.
 
 ```typescript
-import { Node } from "@beorn/flexily" // zero-allocation (default)
-import { Node } from "@beorn/flexily/classic" // allocating (debugging)
+import { Node } from "flexily" // zero-allocation (default)
+import { Node } from "flexily/classic" // allocating (debugging)
 ```
 
 Both implement CSS Flexbox spec Section 9.7 with iterative freeze for min/max constraints, Yoga-compatible edge-based rounding, weighted flex-shrink, auto margin absorption, and full RTL support.
@@ -150,7 +150,7 @@ const yoga = await Yoga.init() // Async!
 const root = yoga.Node.create()
 
 // Flexily
-import { Node } from "@beorn/flexily"
+import { Node } from "flexily"
 const root = Node.create() // Sync!
 ```
 

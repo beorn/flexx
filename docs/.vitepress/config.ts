@@ -46,6 +46,8 @@ export default defineConfig({
           text: "Reference",
           items: [
             { text: "Yoga Comparison", link: "/guide/yoga-comparison" },
+            { text: "Yoga Divergences", link: "/guide/yoga-divergences" },
+            { text: "Migration from Yoga", link: "/guide/migration-from-yoga" },
             { text: "v1 Roadmap", link: "/guide/v1-roadmap" },
           ],
         },
