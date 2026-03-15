@@ -71,6 +71,8 @@ Most developers should use a framework built on Flexily, not Flexily directly. F
 npm install flexily
 ```
 
+**Runtimes:** Bun >= 1.0, Node.js >= 18. Pure JavaScript — no native or WASM dependencies.
+
 ## Performance
 
 Flexily and Yoga each win in different scenarios:
