@@ -154,7 +154,7 @@ export function resolveEdgeBorderValue(
 
   // Logical takes precedence if set (NaN = not set)
   if (logicalSlot !== undefined && !Number.isNaN(arr[logicalSlot])) {
-    return arr[logicalSlot]
+    return arr[logicalSlot]!
   }
-  return arr[physicalIndex]
+  return arr[physicalIndex]!
 }

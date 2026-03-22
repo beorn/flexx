@@ -261,74 +261,78 @@ function applyYogaConfig(node: YogaNode, config: NodeConfig) {
   if (config.heightPercent !== undefined) {
     node.setHeightPercent(config.heightPercent)
   }
+  // Yoga's API uses branded numeric types (FlexDirection, Wrap, etc.)
+  // while NodeConfig uses plain numbers for cross-engine compatibility.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const n = node as any
   if (config.flexDirection !== undefined) {
-    node.setFlexDirection(config.flexDirection)
+    n.setFlexDirection(config.flexDirection)
   }
   if (config.flexWrap !== undefined) {
-    node.setFlexWrap(config.flexWrap)
+    n.setFlexWrap(config.flexWrap)
   }
   if (config.alignContent !== undefined) {
-    node.setAlignContent(config.alignContent)
+    n.setAlignContent(config.alignContent)
   }
   if (config.alignItems !== undefined) {
-    node.setAlignItems(config.alignItems)
+    n.setAlignItems(config.alignItems)
   }
   if (config.justifyContent !== undefined) {
-    node.setJustifyContent(config.justifyContent)
+    n.setJustifyContent(config.justifyContent)
   }
   if (config.flexGrow !== undefined) {
-    node.setFlexGrow(config.flexGrow)
+    n.setFlexGrow(config.flexGrow)
   }
   if (config.flexShrink !== undefined) {
-    node.setFlexShrink(config.flexShrink)
+    n.setFlexShrink(config.flexShrink)
   }
   if (config.flexBasis !== undefined) {
-    node.setFlexBasis(config.flexBasis)
+    n.setFlexBasis(config.flexBasis)
   }
   if (config.gap !== undefined) {
-    node.setGap(config.gap.gutter, config.gap.value)
+    n.setGap(config.gap.gutter, config.gap.value)
   }
   if (config.gapRow !== undefined) {
-    node.setGap(yoga.GUTTER_ROW, config.gapRow)
+    n.setGap(yoga.GUTTER_ROW, config.gapRow)
   }
   if (config.gapColumn !== undefined) {
-    node.setGap(yoga.GUTTER_COLUMN, config.gapColumn)
+    n.setGap(yoga.GUTTER_COLUMN, config.gapColumn)
   }
   if (config.padding !== undefined) {
-    node.setPadding(yoga.EDGE_ALL, config.padding)
+    n.setPadding(yoga.EDGE_ALL, config.padding)
   }
   if (config.paddingPercent !== undefined) {
-    node.setPaddingPercent(yoga.EDGE_ALL, config.paddingPercent)
+    n.setPaddingPercent(yoga.EDGE_ALL, config.paddingPercent)
   }
   if (config.margin !== undefined) {
-    node.setMargin(config.margin.edge, config.margin.value)
+    n.setMargin(config.margin.edge, config.margin.value)
   }
   if (config.marginPercent !== undefined) {
-    node.setMarginPercent(config.marginPercent.edge, config.marginPercent.value)
+    n.setMarginPercent(config.marginPercent.edge, config.marginPercent.value)
   }
   if (config.minWidth !== undefined) {
-    node.setMinWidth(config.minWidth)
+    n.setMinWidth(config.minWidth)
   }
   if (config.maxWidth !== undefined) {
-    node.setMaxWidth(config.maxWidth)
+    n.setMaxWidth(config.maxWidth)
   }
   if (config.minWidthPercent !== undefined) {
-    node.setMinWidthPercent(config.minWidthPercent)
+    n.setMinWidthPercent(config.minWidthPercent)
   }
   if (config.maxWidthPercent !== undefined) {
-    node.setMaxWidthPercent(config.maxWidthPercent)
+    n.setMaxWidthPercent(config.maxWidthPercent)
   }
   if (config.positionType !== undefined) {
-    node.setPositionType(config.positionType)
+    n.setPositionType(config.positionType)
   }
   if (config.position !== undefined) {
     for (const p of config.position) {
-      node.setPosition(p.edge, p.value)
+      n.setPosition(p.edge, p.value)
     }
   }
   if (config.positionPercent !== undefined) {
     for (const p of config.positionPercent) {
-      node.setPositionPercent(p.edge, p.value)
+      n.setPositionPercent(p.edge, p.value)
     }
   }
 }

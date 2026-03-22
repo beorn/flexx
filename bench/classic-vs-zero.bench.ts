@@ -16,11 +16,17 @@ import * as Zero from "../src/index.js"
 // Tree Generators
 // ============================================================================
 
-function createFlatTree(engine: "classic" | "zero", nodeCount: number): Classic.Node | Zero.Node {
+// Helper functions use Classic.Node as the common type for simplicity.
+// Both Classic.Node and Zero.Node share the same API surface; the type union
+// with private members reduces to `never` under strict TS, so we cast to
+// Classic.Node which has identical public methods.
+
+function createFlatTree(engine: "classic" | "zero", nodeCount: number): Classic.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
   const FLEX_DIRECTION_COLUMN = engine === "classic" ? Classic.FLEX_DIRECTION_COLUMN : Zero.FLEX_DIRECTION_COLUMN
 
-  const root = Node.create()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- union of Node types reduces to never
+  const root = Node.create() as any
   root.setWidth(1000)
   root.setHeight(1000)
   root.setFlexDirection(FLEX_DIRECTION_COLUMN)
@@ -35,11 +41,12 @@ function createFlatTree(engine: "classic" | "zero", nodeCount: number): Classic.
   return root
 }
 
-function createDeepTree(engine: "classic" | "zero", depth: number): Classic.Node | Zero.Node {
+function createDeepTree(engine: "classic" | "zero", depth: number): Classic.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
   const EDGE_LEFT = engine === "classic" ? Classic.EDGE_LEFT : Zero.EDGE_LEFT
 
-  const root = Node.create()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- union of Node types reduces to never
+  const root = Node.create() as any
   root.setWidth(1000)
   root.setHeight(1000)
 
@@ -55,14 +62,15 @@ function createDeepTree(engine: "classic" | "zero", depth: number): Classic.Node
   return root
 }
 
-function createKanbanTree(engine: "classic" | "zero", cardsPerColumn: number): Classic.Node | Zero.Node {
+function createKanbanTree(engine: "classic" | "zero", cardsPerColumn: number): Classic.Node {
   const Node = engine === "classic" ? Classic.Node : Zero.Node
   const FLEX_DIRECTION_ROW = engine === "classic" ? Classic.FLEX_DIRECTION_ROW : Zero.FLEX_DIRECTION_ROW
   const FLEX_DIRECTION_COLUMN = engine === "classic" ? Classic.FLEX_DIRECTION_COLUMN : Zero.FLEX_DIRECTION_COLUMN
   const GUTTER_ALL = engine === "classic" ? Classic.GUTTER_ALL : Zero.GUTTER_ALL
   const EDGE_LEFT = engine === "classic" ? Classic.EDGE_LEFT : Zero.EDGE_LEFT
 
-  const root = Node.create()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- union of Node types reduces to never
+  const root = Node.create() as any
   root.setWidth(120)
   root.setHeight(40)
   root.setFlexDirection(FLEX_DIRECTION_ROW)
@@ -76,13 +84,13 @@ function createKanbanTree(engine: "classic" | "zero", cardsPerColumn: number): C
 
     const header = Node.create()
     header.setHeight(1)
-    column.insertChild(header, 0)
+    ;(column as any).insertChild(header, 0)
 
     for (let card = 0; card < cardsPerColumn; card++) {
       const cardNode = Node.create()
       cardNode.setHeight(3)
       cardNode.setPadding(EDGE_LEFT, 1)
-      column.insertChild(cardNode, card + 1)
+      ;(column as any).insertChild(cardNode, card + 1)
     }
 
     root.insertChild(column, col)
@@ -156,8 +164,8 @@ describe("Classic vs Zero - Layout Only (no allocation)", () => {
   let zeroTree: Zero.Node
 
   beforeAll(() => {
-    classicTree = createKanbanTree("classic", 50) as Classic.Node
-    zeroTree = createKanbanTree("zero", 50) as Zero.Node
+    classicTree = createKanbanTree("classic", 50)
+    zeroTree = createKanbanTree("zero", 50) as unknown as Zero.Node
   })
 
   bench("Classic: Kanban 3×50 - layout only", () => {
@@ -182,8 +190,8 @@ describe("Classic vs Zero - Incremental Update", () => {
   let zeroLeaf: Zero.Node
 
   beforeAll(() => {
-    classicTree = createKanbanTree("classic", 100) as Classic.Node
-    zeroTree = createKanbanTree("zero", 100) as Zero.Node
+    classicTree = createKanbanTree("classic", 100)
+    zeroTree = createKanbanTree("zero", 100) as unknown as Zero.Node
 
     classicLeaf = classicTree.getChild(1)!.getChild(50)!
     zeroLeaf = zeroTree.getChild(1)!.getChild(50)! as Zero.Node
@@ -208,7 +216,7 @@ describe("Classic vs Zero - Incremental Update", () => {
 // ============================================================================
 
 describe("Classic vs Zero - Large Scale TUI", () => {
-  function createLargeTUI(engine: "classic" | "zero", nodeCount: number): Classic.Node | Zero.Node {
+  function createLargeTUI(engine: "classic" | "zero", nodeCount: number): Classic.Node {
     const Node = engine === "classic" ? Classic.Node : Zero.Node
     const FLEX_DIRECTION_ROW = engine === "classic" ? Classic.FLEX_DIRECTION_ROW : Zero.FLEX_DIRECTION_ROW
     const FLEX_DIRECTION_COLUMN = engine === "classic" ? Classic.FLEX_DIRECTION_COLUMN : Zero.FLEX_DIRECTION_COLUMN
@@ -217,19 +225,22 @@ describe("Classic vs Zero - Large Scale TUI", () => {
     const cols = 8
     const itemsPerCol = Math.floor(nodeCount / cols / 3)
 
-    const root = Node.create()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- union of Node types reduces to never
+    const root = Node.create() as any
     root.setWidth(250)
     root.setHeight(120)
     root.setFlexDirection(FLEX_DIRECTION_ROW)
     root.setGap(GUTTER_ALL, 1)
 
     for (let c = 0; c < cols; c++) {
-      const col = Node.create()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const col = Node.create() as any
       col.setFlexGrow(1)
       col.setFlexDirection(FLEX_DIRECTION_COLUMN)
 
       for (let i = 0; i < itemsPerCol; i++) {
-        const item = Node.create()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const item = Node.create() as any
         item.setFlexDirection(FLEX_DIRECTION_ROW)
         item.setHeight(1)
 

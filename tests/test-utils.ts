@@ -2,12 +2,12 @@
  * Test utilities for Flexily layout tests
  */
 import { expect } from "vitest"
-import { DIRECTION_LTR, Node, type Direction } from "../src/index.js"
+import { DIRECTION_LTR, Node } from "../src/index.js"
 
 /**
  * Creates a root node, configures it, and calculates layout
  */
-export function createAndLayoutRoot(width: number, height: number, direction: Direction = DIRECTION_LTR): Node {
+export function createAndLayoutRoot(width: number, height: number, direction: number = DIRECTION_LTR): Node {
   const root = Node.create()
   root.setWidth(width)
   root.setHeight(height)
@@ -28,7 +28,9 @@ export interface LayoutBounds {
 /**
  * Asserts computed layout bounds on a node
  */
-export function expectLayout(node: Node, bounds: LayoutBounds): void {
+export function expectLayout(node: Node | undefined, bounds: LayoutBounds): void {
+  expect(node).toBeDefined()
+  if (!node) return // unreachable after assertion, satisfies TypeScript
   if (bounds.left !== undefined) {
     expect(node.getComputedLeft()).toBe(bounds.left)
   }

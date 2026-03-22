@@ -651,7 +651,7 @@ describe("Flexily Layout Engine", () => {
           name: "auto",
         },
       ] as const)("should create $name value", ({ args, expected }) => {
-        const value = createValue(...(args as [number?, number?]))
+        const value = createValue(...(args as unknown as [number?, number?]))
         expect(value).toEqual(expected)
       })
     })

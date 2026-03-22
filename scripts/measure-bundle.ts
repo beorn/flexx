@@ -108,7 +108,7 @@ async function main() {
   // Also build with debug marked as external to measure the delta
   const fullWithoutDebugFile = resolve(outDir, "index-no-debug.min.js")
   const resultNoDebug = await Bun.build({
-    entrypoints: [entries[0].entrypoint],
+    entrypoints: [entries[0]!.entrypoint],
     outdir: outDir,
     naming: "index-no-debug.min.js",
     minify: true,
@@ -121,8 +121,8 @@ async function main() {
     const contentsNoDebug = readFileSync(fullWithoutDebugFile)
     const gzippedNoDebug = gzipSync(contentsNoDebug)
     debugDelta = {
-      raw: results[0].minifiedBytes - contentsNoDebug.length,
-      gzip: results[0].gzipBytes - gzippedNoDebug.length,
+      raw: results[0]!.minifiedBytes - contentsNoDebug.length,
+      gzip: results[0]!.gzipBytes - gzippedNoDebug.length,
     }
   }
 
@@ -160,7 +160,7 @@ async function main() {
   console.log("")
 
   if (yogaSize) {
-    const flexilyFull = results[0]
+    const flexilyFull = results[0]!
     const rawRatio = (yogaSize.raw / flexilyFull.minifiedBytes).toFixed(1)
     const gzipRatio = (yogaSize.gzip / flexilyFull.gzipBytes).toFixed(1)
 
