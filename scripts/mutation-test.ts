@@ -9,8 +9,8 @@
  * Run: cd vendor/flexily && bun scripts/mutation-test.ts
  */
 
-import { readFileSync, writeFileSync } from "fs"
-import { resolve } from "path"
+import { existsSync, readFileSync, writeFileSync } from "fs"
+import { resolve, relative } from "path"
 
 interface Mutation {
   name: string
@@ -195,7 +195,7 @@ const mutations: Mutation[] = [
     replace: `  // MUTATION: skip display:none handling — nodes should still render
   // if (style.display === C.DISPLAY_NONE) { ... }`,
     description: "Skip display:none handling — hidden nodes would participate in layout and consume space",
-    testFiles: ["vendor/flexily/tests/layout.test.ts"],
+    testFiles: ["tests/layout.test.ts"],
   },
   {
     name: "skip-overflow-flexShrink-override",
@@ -205,7 +205,7 @@ const mutations: Mutation[] = [
     replace: `    cflex.flexShrink =
       childStyle.flexShrink /* MUTATION: removed overflow flexShrink override */`,
     description: "Remove CSS 4.5 overflow:hidden flexShrink override — overflow containers won't shrink to fit parent",
-    testFiles: ["vendor/flexily/tests/layout.test.ts"],
+    testFiles: ["tests/layout.test.ts"],
   },
   {
     name: "wrong-edge-rounding-leaf",
@@ -224,13 +224,20 @@ const mutations: Mutation[] = [
     // MUTATION: use floor instead of round — creates pixel drift`,
     description:
       "Use Math.floor instead of Math.round for leaf node rounding — dimensions will be wrong for fractional values",
-    testFiles: ["vendor/flexily/tests/layout.test.ts", "vendor/flexily/tests/relayout-consistency.test.ts"],
+    testFiles: ["tests/layout.test.ts", "tests/relayout-consistency.test.ts"],
   },
 ]
 
 async function main() {
+  // Flexily package root (parent of scripts/)
   const dir = resolve(import.meta.dir, "..")
+
+  // Detect monorepo: if we're vendored inside km, use the km root as cwd
+  // so vitest picks up the workspace config with --project vendor.
+  // Otherwise, run from the flexily root with its own vitest.config.ts.
   const kmRoot = resolve(dir, "../..")
+  const inMonorepo = existsSync(resolve(kmRoot, "vitest.config.ts")) && existsSync(resolve(kmRoot, "vendor/flexily"))
+
   let caught = 0
   let equivalentConfirmed = 0
   let unexpectedPass = 0
@@ -266,9 +273,15 @@ async function main() {
 
       process.stdout.write(`  "${mutation.name}" ... `)
 
-      const testFiles = mutation.testFiles ?? ["vendor/flexily/tests/relayout-consistency.test.ts"]
-      const proc = Bun.spawn(["bun", "vitest", "run", "--project", "vendor", ...testFiles, "--reporter=dot"], {
-        cwd: kmRoot,
+      // Test file paths are relative to flexily root; resolve for the chosen cwd
+      const relTestFiles = mutation.testFiles ?? ["tests/relayout-consistency.test.ts"]
+      const cwd = inMonorepo ? kmRoot : dir
+      const resolvedTestFiles = relTestFiles.map((f) => (inMonorepo ? relative(kmRoot, resolve(dir, f)) : f))
+      const vitestArgs = inMonorepo
+        ? ["bun", "vitest", "run", "--project", "vendor", ...resolvedTestFiles, "--reporter=dot"]
+        : ["bun", "vitest", "run", ...resolvedTestFiles, "--reporter=dot"]
+      const proc = Bun.spawn(vitestArgs, {
+        cwd,
         stdout: "pipe",
         stderr: "pipe",
       })
