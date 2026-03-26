@@ -5,7 +5,10 @@ export default defineConfig({
   description: "Pure JavaScript Flexbox Layout Engine -- Yoga-compatible API, faster, smaller, no WASM",
   base: "/flexily/",
 
-  head: [["link", { rel: "icon", type: "image/svg+xml", href: "/flexily/logo.svg" }]],
+  head: [
+    ["link", { rel: "icon", type: "image/svg+xml", href: "/flexily/logo.svg" }],
+    ["script", { defer: "", src: "https://static.cloudflareinsights.com/beacon.min.js", "data-cf-beacon": '{"token": "f7205b82de9042c39f6609a9661b479f"}' }],
+  ],
 
   themeConfig: {
     logo: "/logo.svg",
