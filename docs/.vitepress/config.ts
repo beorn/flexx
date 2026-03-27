@@ -12,6 +12,18 @@ export default defineConfig({
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:site_name", content: "Flexily" }],
     ["meta", { name: "twitter:card", content: "summary" }],
+    ["meta", { property: "og:image", content: "https://flexily.dev/og-image.png" }],
+    [
+      "script",
+      { type: "application/ld+json" },
+      JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "Flexily",
+        url: "https://flexily.dev",
+        description: "High-performance flexbox layout engine",
+      }),
+    ],
     [
       "script",
       {
@@ -101,6 +113,13 @@ export default defineConfig({
         {
           property: "og:url",
           content: `https://flexily.dev/${pageData.relativePath.replace(/\.md$/, ".html").replace(/index\.html$/, "")}`,
+        },
+      ],
+      [
+        "link",
+        {
+          rel: "canonical",
+          href: `https://flexily.dev/${pageData.relativePath.replace(/\.md$/, ".html").replace(/index\.html$/, "")}`,
         },
       ],
     )

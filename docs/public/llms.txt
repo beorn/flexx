@@ -1,0 +1,12 @@
+# Flexily
+
+High-performance flexbox layout engine. Yoga-compatible API with zero-allocation architecture.
+
+## Documentation
+- Getting Started: https://flexily.dev/guide/getting-started
+- API Reference: https://flexily.dev/api/
+- Benchmarks: https://flexily.dev/benchmarks/
+
+## Source
+- GitHub: https://github.com/beorn/flexily
+- npm: @flexily/core
