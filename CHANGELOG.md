@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-30
+
+### Added
+
+- **Composable engine**: `createFlexily()` batteries-included factory, `createBareFlexily()` + `pipe()` for custom plugin composition
+- **TextLayoutService**: pluggable text measurement interface with prepare/layout two-phase API
+- **MonospaceMeasurer**: terminal text measurement (1 char = 1 cell), default for `createFlexily()`
+- **DeterministicTestMeasurer**: fixed grapheme widths (Latin 0.8, CJK 1.0, emoji 1.8) for CI-stable tests
+- **PretextMeasurer**: adapter for [@chenglou/pretext](https://github.com/chenglou/pretext) proportional font measurement
+- **FlexilyNode**: `setTextContent(text, style?)` and `getTextContent()` — auto-creates MeasureFunc from TextLayoutService
+- 31 new tests for the composable API (1561 total)
+- Full documentation: API reference, getting-started, README updated
+
+### Changed
+
+- `FlexilyNode` is a mixin on Node (zero overhead), not a wrapper class
+
+## [0.3.3] - 2026-03-10
+
 ### Fixed
 
 - **measureNode layout corruption**: `measureNode` overwrote `layout.width/height` on clean nodes during partial re-layout, causing text to bleed past card borders
@@ -28,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Updated performance docs with accurate multi-scenario benchmarks (initial, incremental, no-change, resize)
-- Corrected performance claims: Flexx is 1.5-2.5x faster for initial layout, 5.5x for no-change, Yoga faster for incremental re-layout
+- Corrected performance claims: Flexily is 1.5-2.5x faster for initial layout, 5.5x for no-change, Yoga faster for incremental re-layout
 
 ## [0.1.0] - 2026-02-06
 
@@ -51,4 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 524 tests total
 - 1.5-2.5x faster initial layout than Yoga, 5x smaller bundle, zero dependencies
 
-[0.1.0]: https://github.com/beorn/flexx/releases/tag/v0.1.0
+[Unreleased]: https://github.com/beorn/flexily/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/beorn/flexily/compare/v0.3.3...v0.5.0
+[0.3.3]: https://github.com/beorn/flexily/compare/v0.1.0...v0.3.3
+[0.1.0]: https://github.com/beorn/flexily/releases/tag/v0.1.0
