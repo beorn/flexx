@@ -44,8 +44,6 @@ export type {
   IntrinsicSizes,
   ResolvedTextStyle,
   TextPrepareInput,
-  Rect,
-  TextHit,
 } from "./text-layout.js"
 
 // Node class (zero-alloc version) — low-level Yoga-compatible API

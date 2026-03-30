@@ -52,20 +52,6 @@ export interface TextLine {
   endIndex: number
 }
 
-/** A rectangle (for hit testing, caret, selection). */
-export interface Rect {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-/** Result of hit-testing a point in laid-out text. */
-export interface TextHit {
-  index: number
-  affinity: "upstream" | "downstream"
-}
-
 /** Result of laying out prepared text at a specific width. */
 export interface TextLayout {
   width: number
@@ -75,17 +61,12 @@ export interface TextLayout {
   lastBaseline: number
   truncated: boolean
   lines?: readonly TextLine[]
-
-  // Geometry — on the layout result, not on PreparedText.
-  hitTest?(x: number, y: number): TextHit
-  caretRect?(index: number, affinity?: "upstream" | "downstream"): Rect
-  selectionRects?(start: number, end: number): readonly Rect[]
 }
 
 /** Prepared text — measured and segmented, ready for layout at any width. */
 export interface PreparedText {
-  intrinsicSizes(options?: { wrap?: "normal" | "anywhere" | "none" }): IntrinsicSizes
-  layout(constraints: TextConstraints, options?: { includeLines?: boolean; includeGeometry?: boolean }): TextLayout
+  intrinsicSizes(): IntrinsicSizes
+  layout(constraints: TextConstraints, options?: { includeLines?: boolean }): TextLayout
 }
 
 /** Pluggable text measurement backend. */

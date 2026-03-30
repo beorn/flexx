@@ -109,7 +109,7 @@ export function createBareFlexily(): FlexilyEngine {
       return mixTextContent(Node.create(), engine)
     },
     calculateLayout(root: FlexilyNode, width?: number, height?: number, direction?: number): void {
-      ;(root as Node).calculateLayout(width, height, direction ?? DIRECTION_LTR)
+      root.calculateLayout(width, height, direction ?? DIRECTION_LTR)
     },
   }
   return engine
