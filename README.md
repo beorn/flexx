@@ -16,7 +16,7 @@ root.setWidth(80)
 root.setFlexDirection(FLEX_DIRECTION_ROW)
 
 const label = flex.createNode()
-label.setTextContent("Hello")  // auto-measured: 5 wide
+label.setTextContent("Hello") // auto-measured: 5 wide
 
 const content = flex.createNode()
 content.setFlexGrow(1)
@@ -106,6 +106,7 @@ const flex = pipe(createBareFlexily(), withTestMeasurer())
 ```
 
 Text measurement backends:
+
 - **`withMonospace()`** — terminal grids (1 char = 1 cell), default
 - **`withTestMeasurer()`** — deterministic widths for CI (Latin 0.8, CJK 1.0, emoji 1.8)
 - **`withPretext(pretext)`** — proportional fonts via [Pretext](https://github.com/chenglou/pretext)

@@ -19,10 +19,10 @@ flex.calculateLayout(node, 80, 24)
 
 **Options:**
 
-| Option       | Type     | Default | Description                          |
-| ------------ | -------- | ------- | ------------------------------------ |
-| `charWidth`  | `number` | `1`     | Width of each character cell         |
-| `charHeight` | `number` | `1`     | Height of each character cell        |
+| Option       | Type     | Default | Description                   |
+| ------------ | -------- | ------- | ----------------------------- |
+| `charWidth`  | `number` | `1`     | Width of each character cell  |
+| `charHeight` | `number` | `1`     | Height of each character cell |
 
 For terminal UIs, the default `charWidth=1, charHeight=1` maps directly to terminal cells.
 
@@ -77,10 +77,10 @@ interface FlexilyNode extends Node {
 }
 ```
 
-| Method             | Description                                                                 |
-| ------------------ | --------------------------------------------------------------------------- |
-| `setTextContent()` | Set text content and install an automatic measure function                  |
-| `getTextContent()` | Get the current text content (or `null` if none)                            |
+| Method             | Description                                                |
+| ------------------ | ---------------------------------------------------------- |
+| `setTextContent()` | Set text content and install an automatic measure function |
+| `getTextContent()` | Get the current text content (or `null` if none)           |
 
 Calling `setMeasureFunc()` on a FlexilyNode clears its text content. Calling `setTextContent()` replaces any existing measure function.
 
@@ -116,10 +116,10 @@ import { createBareFlexily, pipe, withMonospace } from "flexily"
 const flex = pipe(createBareFlexily(), withMonospace(1, 1))
 ```
 
-| Parameter    | Type     | Default | Description                   |
-| ------------ | -------- | ------- | ----------------------------- |
-| `charWidth`  | `number` | `1`     | Width per character cell      |
-| `charHeight` | `number` | `1`     | Height per character cell     |
+| Parameter    | Type     | Default | Description               |
+| ------------ | -------- | ------- | ------------------------- |
+| `charWidth`  | `number` | `1`     | Width per character cell  |
+| `charHeight` | `number` | `1`     | Height per character cell |
 
 #### withTestMeasurer()
 
@@ -144,9 +144,9 @@ import pretext from "@chenglou/pretext"
 const flex = pipe(createBareFlexily(), withPretext(pretext))
 ```
 
-| Parameter | Type         | Description                                  |
-| --------- | ------------ | -------------------------------------------- |
-| `pretext`  | `PretextAPI` | The pretext module (install separately)      |
+| Parameter | Type         | Description                             |
+| --------- | ------------ | --------------------------------------- |
+| `pretext` | `PretextAPI` | The pretext module (install separately) |
 
 ---
 
