@@ -226,10 +226,10 @@ Same constants, same method names, same behavior.
 
 ## Documentation
 
-| Document                                                   | Description                         |
-| ---------------------------------------------------------- | ----------------------------------- |
+| Document                                                         | Description                         |
+| ---------------------------------------------------------------- | ----------------------------------- |
 | [Getting Started](docs/guide/getting-started.md)                 | Quick guide to building layouts     |
-| [API Reference](docs/api/reference.md)                          | Complete API documentation          |
+| [API Reference](docs/api/reference.md)                           | Complete API documentation          |
 | [Algorithm](docs/guide/algorithm.md)                             | How the layout algorithm works      |
 | [Performance](docs/guide/performance.md)                         | Benchmarks and methodology          |
 | [Yoga Comparison](docs/guide/yoga-comparison.md)                 | Feature comparison with Yoga        |
