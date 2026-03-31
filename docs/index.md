@@ -82,6 +82,18 @@ flex.calculateLayout(root, 100, 100)
 console.log(child.getComputedWidth()) // 100
 ```
 
+### Custom Composition
+
+Build your own Flexily instance with only the plugins you need:
+
+```typescript
+import { createBareFlexily, pipe, withTestMeasurer } from "flexily"
+
+const flex = pipe(createBareFlexily(), withTestMeasurer())
+```
+
+Available plugins: `withMonospaceMeasurer()` (terminal), `withTestMeasurer()` (deterministic), `withPretextMeasurer()` (proportional fonts via [Pretext](https://github.com/chenglou/pretext)).
+
 ### Low-Level API
 
 For direct Yoga-compatible usage without the composable engine:
@@ -110,4 +122,4 @@ Most developers should use a framework built on Flexily, not Flexily directly. F
 - **Specialized tools** where you need direct control over layout computation
 - **Anyone replacing Yoga** who wants a drop-in pure-JS alternative
 
-> **Building a terminal UI?** Use [Silvery](https://beorn.github.io/silvery/), which uses Flexily by default. You get React components, hooks, and layout feedback without touching the low-level API.
+> **Building a terminal UI?** Use [Silvery](https://silvery.dev), which uses Flexily by default. You get React components, hooks, and layout feedback without touching the low-level API.
