@@ -28,7 +28,10 @@ features:
     details: "Yoga-compatible API. Same constants, same methods. 44 Yoga comparison tests pass. Just change the import."
   - icon: "\U0001F4D0"
     title: Composable Text Measurement
-    details: "Pluggable text measurement via createFlexily(). Monospace, deterministic test, and proportional (pretext) backends. Just setTextContent() — no manual measure functions."
+    details: "Pluggable text measurement via createFlexily(). Monospace, deterministic test, and proportional backends. Just setTextContent() — no manual measure functions."
+  - icon: "\U0001F4DD"
+    title: Pretext Integration (alpha)
+    details: "Rich text layout with word-wrap, hyphenation, and proportional fonts — powered by Pretext. Enables browser-quality text rendering in terminal and canvas applications."
   - icon: "\U0001F9EA"
     title: 1561 Tests
     details: "Includes 1200+ incremental re-layout fuzz tests using differential oracle. Catches bugs that single-pass tests miss."
