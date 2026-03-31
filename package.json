@@ -58,6 +58,7 @@
     "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "loggily": "^0.4.2",
     "typescript": "^5.9.3",
     "vitepress": "^1.6.3",
