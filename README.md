@@ -150,7 +150,7 @@ Flexily and Yoga each win in different scenarios:
 | **Single dirty leaf**   | Yoga        | 2.8-3.4x   | 406-969 nodes    |
 | **Deep nesting (15+)**  | Yoga        | increasing | 1 node per level |
 
-Benchmarks use TUI-realistic trees: columns × bordered cards with measure functions (e.g., 5 columns × 20 cards = ~406 nodes, 8×30 = ~969 nodes). Typical depth is 3-5 levels (column → card → content → text). See [docs/performance.md](docs/performance.md) for full methodology.
+Benchmarks use TUI-realistic trees: columns × bordered cards with measure functions (e.g., 5 columns × 20 cards = ~406 nodes, 8×30 = ~969 nodes). Typical depth is 3-5 levels (column → card → content → text). See [docs/guide/performance.md](docs/guide/performance.md) for full methodology.
 
 **Where Yoga wins — and why it matters less in practice.** Yoga is 2.8-3.4x faster in the single-dirty-leaf scenario: one node changes in a ~400-1000 node tree. WASM's per-node layout computation is genuinely faster than JS. But in interactive TUIs, most renders are no-change frames (cursor moved, selection changed) where Flexily is 5.5x faster. Initial layout (new screen, tab switch) also favors Flexily at 1.5-2.5x. The single-dirty-leaf case is a minority of frames in practice.
 
@@ -167,7 +167,7 @@ Flexily's fingerprint cache makes no-change re-layout essentially free (27ns reg
 
 **Use Yoga instead when** your primary workload is frequent incremental re-layout of large pre-existing trees, you have deep nesting (15+ levels), or you're in the React Native ecosystem.
 
-See [docs/performance.md](docs/performance.md) for detailed benchmarks including TUI-realistic trees with measure functions.
+See [docs/guide/performance.md](docs/guide/performance.md) for detailed benchmarks including TUI-realistic trees with measure functions.
 
 ## Algorithm
 
@@ -196,7 +196,7 @@ Incremental re-layout (caching unchanged subtrees) is essential for performance 
 
 The fuzz tests use a **differential oracle**: build a random tree, layout, mark nodes dirty, re-layout, then compare against a fresh layout of the identical tree. This has caught 3 distinct caching bugs that all 524 single-pass tests missed.
 
-See [docs/testing.md](docs/testing.md) for methodology and [docs/incremental-layout-bugs.md](docs/incremental-layout-bugs.md) for the bug taxonomy.
+See [docs/guide/testing.md](docs/guide/testing.md) for methodology and [docs/guide/incremental-layout-bugs.md](docs/guide/incremental-layout-bugs.md) for the bug taxonomy.
 
 ## Bundle Size
 
@@ -228,13 +228,13 @@ Same constants, same method names, same behavior.
 
 | Document                                                   | Description                         |
 | ---------------------------------------------------------- | ----------------------------------- |
-| [Getting Started](docs/getting-started.md)                 | Quick guide to building layouts     |
-| [API Reference](docs/api.md)                               | Complete API documentation          |
-| [Algorithm](docs/algorithm.md)                             | How the layout algorithm works      |
-| [Performance](docs/performance.md)                         | Benchmarks and methodology          |
-| [Yoga Comparison](docs/yoga-comparison.md)                 | Feature comparison with Yoga        |
-| [Testing](docs/testing.md)                                 | Test infrastructure and methodology |
-| [Incremental Layout Bugs](docs/incremental-layout-bugs.md) | Bug taxonomy and debugging guide    |
+| [Getting Started](docs/guide/getting-started.md)                 | Quick guide to building layouts     |
+| [API Reference](docs/api/reference.md)                          | Complete API documentation          |
+| [Algorithm](docs/guide/algorithm.md)                             | How the layout algorithm works      |
+| [Performance](docs/guide/performance.md)                         | Benchmarks and methodology          |
+| [Yoga Comparison](docs/guide/yoga-comparison.md)                 | Feature comparison with Yoga        |
+| [Testing](docs/guide/testing.md)                                 | Test infrastructure and methodology |
+| [Incremental Layout Bugs](docs/guide/incremental-layout-bugs.md) | Bug taxonomy and debugging guide    |
 
 ## Related Projects
 
@@ -250,14 +250,17 @@ Same constants, same method names, same behavior.
 
 ```
 src/
-├── index.ts              # Main export (everything)
-├── create-flexily.ts     # createFlexily, createBareFlexily, pipe, FlexilyNode
+├── index.ts              # Main export (everything: createFlexily, Node, constants, plugins)
+├── create-flexily.ts     # createFlexily, createBareFlexily, pipe, FlexilyNode mixin
 ├── text-layout.ts        # TextLayoutService, PreparedText interfaces
-├── monospace-measurer.ts # Terminal text measurement (1 char = 1 cell)
-├── test-measurer.ts      # Deterministic test measurer
-├── pretext-measurer.ts   # Proportional font measurement (peer dep)
-├── node-zero.ts          # Node class with FlexInfo
-├── layout-zero.ts        # Layout algorithm (~2000 lines)
+├── monospace-measurer.ts # Monospace text measurement (terminal: 1 char = 1 cell)
+├── test-measurer.ts      # Deterministic test measurer (Latin 0.8, CJK 1.0, emoji 1.8)
+├── pretext-measurer.ts   # Pretext proportional text plugin (peer dep)
+├── node-zero.ts          # Node class with FlexInfo (hot path)
+├── layout-zero.ts        # Core layout: computeLayout + layoutNode (hot path)
+├── layout-helpers.ts     # Edge resolution: margins, padding, borders (hot path)
+├── layout-flex-lines.ts  # Pre-alloc arrays, line breaking, flex distribution (hot path)
+├── layout-measure.ts     # measureNode — intrinsic sizing (hot path)
 ├── constants.ts          # Flexbox constants (Yoga-compatible)
 ├── types.ts              # TypeScript interfaces
 ├── utils.ts              # Shared utilities

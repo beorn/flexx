@@ -172,6 +172,8 @@ console.log(body.getComputedHeight()) // 170
 For nodes that size based on content (like text), use measure functions:
 
 ```typescript
+import { Node, FLEX_DIRECTION_ROW, MEASURE_MODE_EXACTLY, DIRECTION_LTR } from "flexily"
+
 const root = Node.create()
 root.setWidth(200)
 root.setFlexDirection(FLEX_DIRECTION_ROW)

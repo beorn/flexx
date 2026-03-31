@@ -139,7 +139,7 @@ Flexily is Yoga-compatible but follows CSS spec where Yoga doesn't:
 ## Testing
 
 ```bash
-bun test                                              # All tests (1495)
+bun test                                              # All tests (1561)
 bun test tests/yoga-comparison.test.ts tests/yoga-overflow-compare.test.ts  # Yoga compatibility (44)
 bun test tests/layout.test.ts                         # Layout algorithm tests
 bun test tests/relayout-consistency.test.ts  # Re-layout fuzz (1200+)
@@ -155,7 +155,7 @@ The most important test layer. 1200+ fuzz tests verify that incremental re-layou
 
 **When modifying caching/fingerprint code**: Run the full suite. Any new failures indicate a correctness regression.
 
-See `docs/testing.md` for test methodology, `docs/incremental-layout-bugs.md` for bug taxonomy and industry context.
+See `docs/guide/testing.md` for test methodology, `docs/guide/incremental-layout-bugs.md` for bug taxonomy and industry context.
 
 ## Aspect Ratio
 
