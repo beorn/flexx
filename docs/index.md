@@ -4,11 +4,14 @@ layout: home
 hero:
   name: "Flexily"
   text: "Pure JavaScript Flexbox Layout"
-  tagline: "Yoga-compatible API. Composable text measurement. 1.5-2.5x faster initial layout. 5.5x faster re-layout. 2.5-3.5x smaller. No WASM."
+  tagline: "Need flexbox layout outside the browser? Yoga requires WASM, async init, and leaks memory in long-running apps. Flexily is a pure JavaScript drop-in replacement — 1.5-5.5x faster, 3x smaller, no WASM. Powers Silvery's terminal UI layout."
   actions:
     - theme: brand
       text: Get Started
       link: /guide/getting-started
+    - theme: alt
+      text: Benchmarks
+      link: /guide/performance
     - theme: alt
       text: View on GitHub
       link: https://github.com/beorn/flexily
@@ -31,7 +34,7 @@ features:
     details: "Pluggable text measurement via createFlexily(). Monospace, deterministic test, and proportional backends. Just setTextContent() — no manual measure functions."
   - icon: "\U0001F4DD"
     title: Pretext Integration (alpha)
-    details: "Rich text layout with word-wrap, hyphenation, and proportional fonts — powered by Pretext. Enables browser-quality text rendering in terminal and canvas applications."
+    details: "Rich text layout with word-wrap, hyphenation, and proportional fonts — powered by <a href='https://github.com/chenglou/pretext'>Pretext</a>. Enables browser-quality text rendering in terminal and canvas applications."
   - icon: "\U0001F9EA"
     title: 1561 Tests
     details: "Includes 1200+ incremental re-layout fuzz tests using differential oracle. Catches bugs that single-pass tests miss."
