@@ -21,7 +21,7 @@ bun run typecheck   # Type check without emitting
 ## Running Tests
 
 ```bash
-bun test                    # All tests (1495)
+bun test                    # All tests (1561)
 bun test tests/layout.test.ts   # Specific test file
 bun test --watch            # Watch mode
 ```
@@ -87,8 +87,8 @@ See `docs/` for detailed documentation on the algorithm, API, performance, and t
 - **Yoga API compatibility** — same constants, same method names
 - **Two algorithms**: zero (production, zero-alloc) and classic (debugging, allocating)
 
-For the full development workflow and detailed guidance, see [CLAUDE.md](CLAUDE.md).
+For the full development workflow and detailed guidance, see [CLAUDE.md](https://github.com/beorn/flexily/blob/main/CLAUDE.md).
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+By contributing, you agree that your contributions will be licensed under the [MIT License](https://github.com/beorn/flexily/blob/main/LICENSE).
