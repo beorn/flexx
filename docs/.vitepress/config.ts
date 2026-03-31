@@ -12,7 +12,7 @@ export default defineConfig({
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:site_name", content: "Flexily" }],
     ["meta", { name: "twitter:card", content: "summary" }],
-    ["meta", { property: "og:image", content: "https://flexily.dev/og-image.png" }],
+    ["meta", { property: "og:image", content: "https://flexily.dev/og-image.svg" }],
     [
       "script",
       { type: "application/ld+json" },
@@ -104,24 +104,40 @@ export default defineConfig({
   transformPageData(pageData) {
     const title = pageData.title || "Flexily"
     const description = pageData.description || "High-performance flexbox layout engine"
+    const cleanPath = pageData.relativePath.replace(/\.md$/, ".html").replace(/index\.html$/, "")
     pageData.frontmatter.head ??= []
     pageData.frontmatter.head.push(
       ["meta", { property: "og:title", content: title }],
       ["meta", { property: "og:description", content: description }],
-      [
-        "meta",
-        {
-          property: "og:url",
-          content: `https://flexily.dev/${pageData.relativePath.replace(/\.md$/, ".html").replace(/index\.html$/, "")}`,
-        },
-      ],
-      [
-        "link",
-        {
-          rel: "canonical",
-          href: `https://flexily.dev/${pageData.relativePath.replace(/\.md$/, ".html").replace(/index\.html$/, "")}`,
-        },
-      ],
+      ["meta", { property: "og:url", content: `https://flexily.dev/${cleanPath}` }],
+      ["link", { rel: "canonical", href: `https://flexily.dev/${cleanPath}` }],
     )
+
+    // JSON-LD BreadcrumbList
+    const segments = cleanPath.replace(/\.html$/, "").split("/").filter(Boolean)
+    if (segments.length > 0) {
+      const breadcrumbItems = [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://flexily.dev/" },
+      ]
+      for (let i = 0; i < segments.length; i++) {
+        const path = segments.slice(0, i + 1).join("/")
+        const name = segments[i].replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+        breadcrumbItems.push({
+          "@type": "ListItem",
+          position: i + 2,
+          name: pageData.title && i === segments.length - 1 ? pageData.title : name,
+          item: `https://flexily.dev/${path}`,
+        })
+      }
+      pageData.frontmatter.head.push([
+        "script",
+        { type: "application/ld+json" },
+        JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: breadcrumbItems,
+        }),
+      ])
+    }
   },
 })
