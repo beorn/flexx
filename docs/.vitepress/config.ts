@@ -5,14 +5,14 @@ export default defineConfig({
   description: "Pure JavaScript Flexbox Layout Engine -- Yoga-compatible API, faster, smaller, no WASM",
   base: "/flexily/",
 
-  sitemap: { hostname: "https://beorn.github.io/flexily" },
+  sitemap: { hostname: "https://beorn.codes/flexily" },
 
   head: [
     ["link", { rel: "icon", type: "image/svg+xml", href: "/flexily/logo.svg" }],
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:site_name", content: "Flexily" }],
     ["meta", { name: "twitter:card", content: "summary" }],
-    ["meta", { property: "og:image", content: "https://beorn.github.io/flexily/og-image.svg" }],
+    ["meta", { property: "og:image", content: "https://beorn.codes/flexily/og-image.svg" }],
     [
       "script",
       { type: "application/ld+json" },
@@ -20,7 +20,7 @@ export default defineConfig({
         "@context": "https://schema.org",
         "@type": "WebSite",
         name: "Flexily",
-        url: "https://beorn.github.io/flexily",
+        url: "https://beorn.codes/flexily",
         description: "High-performance flexbox layout engine",
       }),
     ],
@@ -109,8 +109,8 @@ export default defineConfig({
     pageData.frontmatter.head.push(
       ["meta", { property: "og:title", content: title }],
       ["meta", { property: "og:description", content: description }],
-      ["meta", { property: "og:url", content: `https://beorn.github.io/flexily/${cleanPath}` }],
-      ["link", { rel: "canonical", href: `https://beorn.github.io/flexily/${cleanPath}` }],
+      ["meta", { property: "og:url", content: `https://beorn.codes/flexily/${cleanPath}` }],
+      ["link", { rel: "canonical", href: `https://beorn.codes/flexily/${cleanPath}` }],
     )
 
     // JSON-LD BreadcrumbList
@@ -119,7 +119,7 @@ export default defineConfig({
       .split("/")
       .filter(Boolean)
     if (segments.length > 0) {
-      const breadcrumbItems = [{ "@type": "ListItem", position: 1, name: "Home", item: "https://beorn.github.io/flexily/" }]
+      const breadcrumbItems = [{ "@type": "ListItem", position: 1, name: "Home", item: "https://beorn.codes/flexily/" }]
       for (let i = 0; i < segments.length; i++) {
         const path = segments.slice(0, i + 1).join("/")
         const name = segments[i].replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
@@ -127,7 +127,7 @@ export default defineConfig({
           "@type": "ListItem",
           position: i + 2,
           name: pageData.title && i === segments.length - 1 ? pageData.title : name,
-          item: `https://beorn.github.io/flexily/${path}`,
+          item: `https://beorn.codes/flexily/${path}`,
         })
       }
       pageData.frontmatter.head.push([

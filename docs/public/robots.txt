@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://beorn.github.io/flexily/sitemap.xml
+Sitemap: https://beorn.codes/flexily/sitemap.xml

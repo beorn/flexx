@@ -17,7 +17,7 @@
     "yoga-wasm",
     "zero-dependency"
   ],
-  "homepage": "https://beorn.github.io/flexily/",
+  "homepage": "https://beorn.codes/flexily/",
   "bugs": {
     "url": "https://github.com/beorn/flexily/issues"
   },
