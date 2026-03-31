@@ -96,8 +96,8 @@ export default defineConfig({
     },
 
     footer: {
-      message: "Released under the MIT License.",
-      copyright: "Copyright &copy; 2024-present",
+      message: 'Powers <a href="https://silvery.dev">Silvery</a> layout · <a href="https://beorn.codes/flexily">Pretext</a> text layout integration (alpha)',
+      copyright: 'Built by <a href="https://beorn.codes">Bjorn Stabell</a>'
     },
   },
 
