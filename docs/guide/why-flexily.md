@@ -49,6 +49,7 @@ See [Performance](/guide/performance) for detailed benchmarks.
 - You're in an environment where WASM is awkward (older bundlers, edge runtimes)
 - You want smaller bundles (2.5-3.5x) and simpler debugging
 - You're building interactive TUIs where no-change re-layout dominates
+- You need proportional font layout for canvas or rich text rendering (via [Pretext](https://github.com/chenglou/pretext) integration)
 
 ## Use Yoga When
 

@@ -116,7 +116,7 @@ export default defineConfig({
 
     footer: {
       message:
-        'Powers <a href="https://silvery.dev">Silvery</a> layout · <a href="https://beorn.codes/flexily">Pretext</a> text layout integration (alpha)',
+        'Powers <a href="https://silvery.dev">Silvery</a> layout · <a href="https://github.com/chenglou/pretext">Pretext</a> text layout integration (alpha)',
       copyright: 'Built by <a href="https://beorn.codes">Bjørn Stabell</a>',
     },
   },

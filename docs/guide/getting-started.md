@@ -54,7 +54,7 @@ console.log(label.getComputedWidth()) // 11 (one cell per character)
 console.log(content.getComputedWidth()) // 69
 ```
 
-`createFlexily()` includes monospace text measurement by default (1 char = 1 cell), making it ideal for terminal UIs. For custom text backends, see [Composable API](../api/reference.md#composable-api) in the API reference.
+`createFlexily()` includes monospace text measurement by default (1 char = 1 cell), making it ideal for terminal UIs. For proportional fonts (canvas rendering, rich text), use the [Pretext integration](../api/reference.md#withpretext-pretext). For all text backends, see [Composable API](../api/reference.md#composable-api) in the API reference.
 
 ## Low-Level API
 
@@ -226,6 +226,26 @@ root.removeChild(child)
 child.free()
 root.free()
 ```
+
+## Text Measurement Backends
+
+The composable API supports pluggable text measurement. Choose the backend that matches your rendering target:
+
+```typescript
+import { createFlexily, createBareFlexily, pipe, withMonospace, withTestMeasurer, withPretext } from "flexily"
+
+// Terminal (default) -- 1 char = 1 cell
+const termFlex = createFlexily()
+
+// Proportional fonts -- word-wrap, hyphenation, variable-width glyphs
+import pretext from "@chenglou/pretext"
+const canvasFlex = pipe(createBareFlexily(), withPretext(pretext))
+
+// Deterministic (tests/CI) -- fixed glyph widths, cross-platform identical
+const testFlex = pipe(createBareFlexily(), withTestMeasurer())
+```
+
+See [Text Measurement Plugins](../api/reference.md#text-measurement-plugins) in the API reference for details on each backend.
 
 ## Next Steps
 
