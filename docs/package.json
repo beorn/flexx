@@ -8,7 +8,7 @@
     "docs:preview": "vitepress preview"
   },
   "devDependencies": {
-    "@bearly/vitepress-enrich": "^0.3.5",
+    "vitepress-enrich": "^0.4.0",
     "vitepress": "^1.6.3",
     "vitepress-plugin-llms": "^1.12.0"
   }

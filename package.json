@@ -62,7 +62,7 @@
     "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
-    "@bearly/vitepress-enrich": "^0.3.5",
+    "vitepress-enrich": "^0.4.0",
     "@types/node": "^25.5.0",
     "loggily": "^0.4.2",
     "typescript": "^5.9.3",

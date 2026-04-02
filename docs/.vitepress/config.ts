@@ -1,6 +1,6 @@
 import { defineConfig } from "vitepress"
 import llmstxt from "vitepress-plugin-llms"
-import { seoHead, seoTransformPageData } from "@bearly/vitepress-enrich"
+import { seoHead, seoTransformPageData } from "vitepress-enrich"
 
 const seoOptions = {
   hostname: "https://beorn.codes/flexily",
@@ -22,7 +22,7 @@ export default defineConfig({
   vite: {
     plugins: [llmstxt()],
     ssr: {
-      noExternal: ["@bearly/vitepress-enrich"],
+      noExternal: ["vitepress-enrich"],
     },
   },
 
