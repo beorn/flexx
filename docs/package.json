@@ -8,8 +8,8 @@
     "docs:preview": "vitepress preview"
   },
   "devDependencies": {
-    "vitepress-enrich": "^0.4.0",
     "vitepress": "^1.6.3",
+    "vitepress-enrich": "^0.4.0",
     "vitepress-plugin-llms": "^1.12.0"
   }
 }

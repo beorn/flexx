@@ -96,7 +96,7 @@ card.insertChild(title, 0)
 const body = flex.createNode()
 body.setTextContent(
   "Flexily is a pure JavaScript flexbox layout engine. " +
-  "It provides the same API as Yoga without the WASM dependency.",
+    "It provides the same API as Yoga without the WASM dependency.",
   {
     fontShorthand: "14px Inter, sans-serif",
     fontFamily: "Inter, sans-serif",
@@ -112,10 +112,10 @@ card.insertChild(body, 1)
 flex.calculateLayout(card, 300, undefined)
 
 // Read computed positions for canvas drawing
-console.log(title.getComputedTop())    // 12 (top padding)
+console.log(title.getComputedTop()) // 12 (top padding)
 console.log(title.getComputedHeight()) // 24 (one line at lineHeight 24)
-console.log(body.getComputedTop())     // 36 (after title)
-console.log(body.getComputedHeight())  // 40 (two lines at lineHeight 20)
+console.log(body.getComputedTop()) // 36 (after title)
+console.log(body.getComputedHeight()) // 40 (two lines at lineHeight 20)
 ```
 
 The key difference from monospace: the body text wraps based on actual pixel widths, not character count. An "i" takes fewer pixels than an "m", so more text fits per line.
@@ -126,12 +126,12 @@ The key difference from monospace: the body text wraps based on actual pixel wid
 
 ```typescript
 interface ResolvedTextStyle {
-  fontShorthand: string  // CSS font shorthand, e.g. "14px 'Inter', sans-serif"
-  fontFamily: string     // Font family name
-  fontSize: number       // Font size in pixels
-  fontWeight: number     // 100-900
-  fontStyle: string      // "normal" or "italic"
-  lineHeight: number     // Line height in pixels
+  fontShorthand: string // CSS font shorthand, e.g. "14px 'Inter', sans-serif"
+  fontFamily: string // Font family name
+  fontSize: number // Font size in pixels
+  fontWeight: number // 100-900
+  fontStyle: string // "normal" or "italic"
+  lineHeight: number // Line height in pixels
 }
 ```
 
@@ -141,22 +141,16 @@ The `fontShorthand` is passed directly to Pretext for font matching. The other f
 
 Flexily ships three text measurement backends:
 
-| Backend | Plugin | Use Case | Word Wrap | Proportional |
-| ------- | ------ | -------- | --------- | ------------ |
-| Monospace | `createFlexily()` | Terminal UIs | No | No |
-| Test | `withTestMeasurer()` | CI/tests | No | Simulated |
-| **Pretext** | **`withPretext(pretext)`** | **Canvas, web, PDF** | **Yes** | **Yes** |
+| Backend     | Plugin                     | Use Case             | Word Wrap | Proportional |
+| ----------- | -------------------------- | -------------------- | --------- | ------------ |
+| Monospace   | `createFlexily()`          | Terminal UIs         | No        | No           |
+| Test        | `withTestMeasurer()`       | CI/tests             | No        | Simulated    |
+| **Pretext** | **`withPretext(pretext)`** | **Canvas, web, PDF** | **Yes**   | **Yes**      |
 
 Choose the backend that matches your rendering target:
 
 ```typescript
-import {
-  createFlexily,
-  createBareFlexily,
-  pipe,
-  withTestMeasurer,
-  withPretext,
-} from "flexily"
+import { createFlexily, createBareFlexily, pipe, withTestMeasurer, withPretext } from "flexily"
 
 // Terminal (default) — 1 char = 1 cell
 const termFlex = createFlexily()
