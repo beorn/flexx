@@ -137,7 +137,7 @@ Text measurement backends:
 npm install flexily
 ```
 
-**Runtimes:** Bun >= 1.0, Node.js >= 18. Pure JavaScript — no native or WASM dependencies.
+**Runtimes:** Bun >= 1.0, Node.js >= 23.6. Pure JavaScript — no native or WASM dependencies.
 
 ## Performance
 
