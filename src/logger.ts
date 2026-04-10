@@ -14,11 +14,12 @@ interface ConditionalLogger {
 
 let _logger: ConditionalLogger | null = null
 
-function createFallbackLogger(namespace: string): ConditionalLogger {
-  // Dynamic require to avoid bundling debug if not needed
+async function createFallbackLogger(namespace: string): Promise<ConditionalLogger> {
+  // Dynamic import to avoid bundling debug if not needed
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const createDebug = require("debug") as (ns: string) => DebugFn & { enabled: boolean }
+    const { default: createDebug } = (await import("debug")) as {
+      default: (ns: string) => DebugFn & { enabled: boolean }
+    }
     const debug = createDebug(namespace)
     return { debug: debug.enabled ? debug : undefined }
   } catch {
