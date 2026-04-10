@@ -5,7 +5,7 @@ Thanks for your interest in contributing to Flexily! This guide covers the essen
 ## Prerequisites
 
 - **Bun** >= 1.0 (runtime and package manager)
-- **Node.js** >= 18 (for TypeScript tooling)
+- **Node.js** >= 23.6 (for TypeScript tooling)
 - **TypeScript** >= 5.7
 
 ## Getting Started
