@@ -217,8 +217,7 @@ function layoutNode(
   // ============================================================================
 
   let nodeWidth: number
-  const isFitContentWidth =
-    style.width.unit === C.UNIT_FIT_CONTENT || style.width.unit === C.UNIT_SNUG_CONTENT
+  const isFitContentWidth = style.width.unit === C.UNIT_FIT_CONTENT || style.width.unit === C.UNIT_SNUG_CONTENT
   if (style.width.unit === C.UNIT_POINT) {
     nodeWidth = style.width.value
   } else if (style.width.unit === C.UNIT_PERCENT) {
@@ -1578,9 +1577,7 @@ function layoutNode(
       const crossDimIsFitContent =
         crossDimForCheck.unit === C.UNIT_FIT_CONTENT || crossDimForCheck.unit === C.UNIT_SNUG_CONTENT
       const crossIsAuto =
-        crossDimForCheck.unit === C.UNIT_AUTO ||
-        crossDimForCheck.unit === C.UNIT_UNDEFINED ||
-        crossDimIsFitContent
+        crossDimForCheck.unit === C.UNIT_AUTO || crossDimForCheck.unit === C.UNIT_UNDEFINED || crossDimIsFitContent
       // Only override if child has explicit sizing OR parent has explicit cross size
       // When parent has auto cross size, let children shrink-wrap first
       // Note: parentCrossDim and parentHasDefiniteCross already computed above
