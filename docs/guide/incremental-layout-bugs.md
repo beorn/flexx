@@ -60,7 +60,7 @@ Tali Garsiel's landmark deep dive (originally published ~2009, updated 2011) exp
 
 **Lesson**: "Just recompute the dirty subtree" sounds simple but is deceptively hard. Parent-child interactions in flexbox mean a child's final size depends on sibling sizes, parent constraints, and flex distribution — all of which may change when any node in the tree changes.
 
-_Source: [taligarsiel.com/Projects/howbrowserswork.htm](https://taligarsiel.com/Projects/howbrowserswork.htm)_
+_Source: [taligarsiel.com/Projects/howbrowserswork.html](https://taligarsiel.com/Projects/howbrowserswork.html)_
 
 ## Bug Taxonomy
 

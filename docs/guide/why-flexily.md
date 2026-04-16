@@ -10,7 +10,7 @@ _External project claims last verified: 2026-03._
 
 **WASM boundary crossing.** Every method call (`setWidth`, `setFlexGrow`, etc.) crosses the JS-to-WASM boundary. Node creation is ~8x more expensive than a JS object. For TUIs that rebuild layout trees per render, this dominates.
 
-**Memory growth.** WASM linear memory grows but never shrinks. Yoga's yoga-wasm-web has a [known memory growth bug](https://github.com/nicolo-ribaudo/yoga-wasm-web/issues/1) where each node allocation permanently grows the WASM heap. In long-running apps, this caused [120GB RAM usage in Claude Code](https://github.com/anthropics/claude-code/issues/4953).
+**Memory growth.** WASM linear memory grows but never shrinks. Yoga's yoga-wasm-web had a known memory growth bug where each node allocation permanently grew the WASM heap. In long-running apps, this caused [120GB RAM usage in Claude Code](https://github.com/anthropics/claude-code/issues/4953).
 
 **Debugging opacity.** You can't step into WASM in a JS debugger. When layout is wrong, you get a computed number with no way to inspect the algorithm's intermediate state. Flexily is readable JS -- set a breakpoint in `layout-zero.ts`.
 
