@@ -456,7 +456,24 @@ function layoutNode(
 
     // Determine base size (flex-basis or explicit size)
     // Guard: percent against NaN (unconstrained) resolves to 0 (CSS/Yoga behavior)
+    //
+    // We track baseSize (used for flex distribution per CSS §9.2) and
+    // contentMinSize (used for CSS §4.5 auto-min-size). When flex-basis is
+    // auto, the two coincide. When flex-basis is definite (e.g. flex: 1 1 0),
+    // they diverge: baseSize comes from flex-basis, contentMinSize must still
+    // come from intrinsic content. Computing contentMinSize separately is
+    // gated on `minVal.unit === UNIT_AUTO` below to avoid extra measureFunc
+    // calls when the auto-min rule isn't in play.
+    const minValEarly = isRow ? childStyle.minWidth : childStyle.minHeight
+    const childMainDimEarly = isRow ? childStyle.width : childStyle.height
+    const isFitContentEarly =
+      childMainDimEarly.unit === C.UNIT_FIT_CONTENT || childMainDimEarly.unit === C.UNIT_SNUG_CONTENT
+    const autoMinNeedsContent =
+      minValEarly.unit === C.UNIT_AUTO &&
+      childStyle.overflow === C.OVERFLOW_VISIBLE &&
+      !isFitContentEarly
     let baseSize = 0
+    let contentMinSize = 0
     if (childStyle.flexBasis.unit === C.UNIT_POINT) {
       baseSize = childStyle.flexBasis.value
     } else if (childStyle.flexBasis.unit === C.UNIT_PERCENT) {
@@ -565,10 +582,75 @@ function layoutNode(
       }
     }
 
+    // Derive contentMinSize for the auto-min-size rule. Only computed when
+    // auto-min applies (otherwise the value is unused). When flex-basis was
+    // auto, baseSize already equals content; reuse it. When flex-basis was
+    // definite (e.g. flex: 1 1 0), re-derive content separately so auto-min
+    // doesn't collapse to 0.
+    if (autoMinNeedsContent) {
+      const flexBasisIsDefinite =
+        childStyle.flexBasis.unit === C.UNIT_POINT || childStyle.flexBasis.unit === C.UNIT_PERCENT
+      const sizeVal = isRow ? childStyle.width : childStyle.height
+      const sizeIsDefinite = sizeVal.unit === C.UNIT_POINT || sizeVal.unit === C.UNIT_PERCENT
+      if (!flexBasisIsDefinite && !sizeIsDefinite) {
+        // baseSize already came from intrinsic content (measureFunc, recursive
+        // layout, or padding+border). Reuse — second cachedMeasure call would
+        // be a free cache hit but the assignment is cheaper.
+        contentMinSize = baseSize
+      } else if (child.hasMeasureFunc()) {
+        // baseSize came from a definite size — re-derive content via measureFunc.
+        // Same constraints as the flex-basis-auto path above; cachedMeasure
+        // amortizes if both calls land on the same args (often they do).
+        const crossMargin = isRow ? cflex.marginT + cflex.marginB : cflex.marginL + cflex.marginR
+        const availCross = crossAxisSize - crossMargin
+        const wantMaxContent = childStyle.flexGrow > 0
+        const mW = isRow
+          ? wantMaxContent
+            ? Infinity
+            : Number.isNaN(mainAxisSize)
+              ? Infinity
+              : mainAxisSize
+          : Number.isNaN(availCross)
+            ? Infinity
+            : availCross
+        const mH = isRow
+          ? Number.isNaN(availCross)
+            ? Infinity
+            : availCross
+          : wantMaxContent
+            ? Infinity
+            : Number.isNaN(mainAxisSize)
+              ? Infinity
+              : mainAxisSize
+        const mWMode = isRow
+          ? wantMaxContent
+            ? C.MEASURE_MODE_UNDEFINED
+            : C.MEASURE_MODE_AT_MOST
+          : Number.isNaN(availCross)
+            ? C.MEASURE_MODE_UNDEFINED
+            : C.MEASURE_MODE_AT_MOST
+        const mHMode = isRow
+          ? C.MEASURE_MODE_UNDEFINED
+          : wantMaxContent
+            ? C.MEASURE_MODE_UNDEFINED
+            : C.MEASURE_MODE_AT_MOST
+        const measured = child.cachedMeasure(mW, mWMode, mH, mHMode)!
+        contentMinSize = isRow ? measured.width : measured.height
+      } else {
+        // Empty leaf or container with definite size: padding+border is the
+        // best content-based minimum we have without recursive layout. The
+        // recursive-layout case (children + definite size) is a remaining gap
+        // tracked alongside the wrapping-row-text gap. baseSize works as
+        // approximation; if explicit size is too large, the max-clamp below
+        // catches it.
+        contentMinSize = baseSize
+      }
+    }
+
     // Min/max on main axis
     //
-    // CSS §4.5 "Implied Minimum Size of Flex Items" — implemented in common
-    // cases under the CSS preset, using `baseSize` as a content-size proxy.
+    // CSS §4.5 "Implied Minimum Size of Flex Items" — implemented under the
+    // CSS preset using `contentMinSize` as a content-based-min approximation.
     //
     // Rule: when a flex item's main-axis min-size is `auto` (CSS default for
     // flex items), the used value is the item's content-based minimum size,
@@ -592,19 +674,33 @@ function layoutNode(
     // The result is clamped by any definite max-* below — CSS spec: when
     // min > max, min wins, but the auto-derived "specified size suggestion"
     // already includes max-clamping per the spec.
-    const minVal = isRow ? childStyle.minWidth : childStyle.minHeight
+    const minVal = minValEarly
     const maxVal = isRow ? childStyle.maxWidth : childStyle.maxHeight
+    const isFitContent = isFitContentEarly
     if (minVal.unit === C.UNIT_AUTO) {
-      let autoMin = childStyle.overflow === C.OVERFLOW_VISIBLE ? baseSize : 0
-      // Clamp by definite max-* (CSS spec: auto min-size includes a "specified
-      // size suggestion" that's bounded by max-* if specified).
-      if (maxVal.unit === C.UNIT_POINT || maxVal.unit === C.UNIT_PERCENT) {
-        const maxResolved = resolveValue(maxVal, mainAxisSize)
-        if (!Number.isNaN(maxResolved) && maxResolved !== Infinity) {
-          autoMin = Math.min(autoMin, maxResolved)
+      // Skip auto-min-size for fit-content / snug-content children: fit-content
+      // implements its own clamping (min(max-content, max(min-content, available)))
+      // and using max-content as the floor would prevent fit-content from
+      // collapsing below max-content as it should. fit-content children fall
+      // through to minMain = 0 so the existing fit-content logic owns the clamp.
+      if (isFitContent) {
+        cflex.minMain = 0
+      } else {
+        // contentMinSize was computed above when autoMinNeedsContent. Use it
+        // here — it equals baseSize when flex-basis is auto, and is re-derived
+        // from intrinsic content when flex-basis is definite (the flex: 1 1 0
+        // case). For overflow != visible, the auto rule resolves to 0.
+        let autoMin = childStyle.overflow === C.OVERFLOW_VISIBLE ? contentMinSize : 0
+        // Clamp by definite max-* (CSS spec: auto min-size includes a "specified
+        // size suggestion" that's bounded by max-* if specified).
+        if (maxVal.unit === C.UNIT_POINT || maxVal.unit === C.UNIT_PERCENT) {
+          const maxResolved = resolveValue(maxVal, mainAxisSize)
+          if (!Number.isNaN(maxResolved) && maxResolved !== Infinity) {
+            autoMin = Math.min(autoMin, maxResolved)
+          }
         }
+        cflex.minMain = autoMin
       }
-      cflex.minMain = autoMin
     } else if (minVal.unit !== C.UNIT_UNDEFINED) {
       cflex.minMain = resolveValue(minVal, mainAxisSize)
     } else {
@@ -630,8 +726,7 @@ function layoutNode(
     // Fit-content children must shrink when they exceed available space.
     // CSS fit-content = min(max-content, available) — the child should never
     // overflow the parent when there's negative free space.
-    const mainDim = isRow ? childStyle.width : childStyle.height
-    if (mainDim.unit === C.UNIT_FIT_CONTENT || mainDim.unit === C.UNIT_SNUG_CONTENT) {
+    if (isFitContent) {
       shrink = Math.max(shrink, 1)
     }
     cflex.flexShrink = shrink

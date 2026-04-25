@@ -305,12 +305,18 @@ describe("CSS §4.5 flex-item auto min-size", () => {
     })
   })
 
-  describe("known v1 gaps (documenting current behavior; refined in follow-ups)", () => {
-    test("flex-basis: 0 collapses auto-min (known gap, will be fixed in follow-up)", () => {
-      // Per pro review: when baseSize comes from explicit flex-basis: 0,
-      // auto-min ends up at 0 instead of preserving content size. This is a
-      // known approximation gap of using baseSize as the content proxy.
-      // CSS-correct behavior would use min-content separately from flex-basis.
+  describe("flex-basis: 0 / flex: 1 1 0 with measureFunc (re-derives content)", () => {
+    test("flex: 1 1 0 with measureFunc keeps content as auto-min", () => {
+      // Bead km-flexily.auto-min-size-flex-basis-zero. When flex-basis is 0
+      // (explicit) but the item has measureFunc, auto-min-size must use the
+      // intrinsic content size, not the flex-basis-derived baseSize. This
+      // test verifies the fix lands.
+      //
+      // Setup: flex container 40 wide, item with flex:1 1 0 and 50-wide content,
+      // sibling 40 wide rigid. Without the fix, item would collapse to 0 (or
+      // very small) because auto-min = baseSize = flex-basis = 0. With the
+      // fix, auto-min = content-size = 50, so item keeps its content width
+      // and the row overflows.
       const root = Node.create({ defaults: "css" })
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setWidth(40)
@@ -329,12 +335,61 @@ describe("CSS §4.5 flex-item auto min-size", () => {
 
       root.calculateLayout(40, 1, DIRECTION_LTR)
 
-      // CURRENT v1 BEHAVIOR: item shrinks to 0 because baseSize from
-      // flex-basis:0 is 0, so auto-min = 0. Documenting this; fix lives in
-      // a follow-up that derives content-size separately from flex-basis.
-      // This test lock-steps the limitation so a future fix changes both
-      // the assertion and the impl together.
-      expect(item.getComputedWidth()).toBeLessThanOrEqual(50)
+      // With auto-min-size deriving content separately from flex-basis,
+      // item keeps its content width (50), not collapsing to flex-basis (0).
+      expect(item.getComputedWidth()).toBe(50)
+    })
+
+    test("flex: 1 1 0 with measureFunc + sibling fitting exactly: item gets remaining space", () => {
+      // Counterpoint: when the row has room, flex distribution still grows
+      // the item naturally — auto-min doesn't pin it to content if max-* or
+      // grown size is larger.
+      const root = Node.create({ defaults: "css" })
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+      root.setWidth(100)
+      root.setHeight(1)
+
+      const item = Node.create({ defaults: "css" })
+      item.setFlexBasis(0)
+      item.setFlexGrow(1)
+      item.setMeasureFunc(() => ({ width: 20, height: 1 }))
+      root.insertChild(item, 0)
+
+      const sibling = Node.create({ defaults: "css" })
+      sibling.setWidth(40)
+      sibling.setFlexShrink(0)
+      root.insertChild(sibling, 1)
+
+      root.calculateLayout(100, 1, DIRECTION_LTR)
+
+      // 100 - 40 sibling = 60 free; flexGrow=1 distributes all 60 to item.
+      expect(item.getComputedWidth()).toBe(60)
+    })
+
+    test("flex: 1 1 0 + max-width clamps auto-min", () => {
+      // Auto-min "specified-size suggestion" is bounded by max-*. With max-width
+      // smaller than content, auto-min doesn't exceed max — item can shrink to max.
+      const root = Node.create({ defaults: "css" })
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+      root.setWidth(40)
+      root.setHeight(1)
+
+      const item = Node.create({ defaults: "css" })
+      item.setFlexBasis(0)
+      item.setFlexGrow(1)
+      item.setMaxWidth(10)
+      item.setMeasureFunc(() => ({ width: 50, height: 1 }))
+      root.insertChild(item, 0)
+
+      const sibling = Node.create({ defaults: "css" })
+      sibling.setWidth(40)
+      sibling.setFlexShrink(0)
+      root.insertChild(sibling, 1)
+
+      root.calculateLayout(40, 1, DIRECTION_LTR)
+
+      // Auto-min = min(content=50, max-width=10) = 10. Item respects max.
+      expect(item.getComputedWidth()).toBeLessThanOrEqual(10)
     })
   })
 })
