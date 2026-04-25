@@ -60,17 +60,23 @@ export function expectHeight(node: Node, height: number): void {
 }
 
 /**
- * Creates a child node with fixed dimensions and inserts it at given index
+ * Creates a child node with fixed dimensions and inserts it at given index.
+ *
+ * Defaults `flexShrink: 0` (rigid sibling) so tests survive the Phase 6
+ * `DEFAULT_PRESET` flip from `"yoga"` → `"css"`. Most layout tests want
+ * children to keep their explicit width/height under flex distribution;
+ * pass `flexShrink: 1` explicitly when shrinkable behavior is wanted.
  */
 export function createChild(
   parent: Node,
   index: number,
-  options: { width?: number; height?: number; flexGrow?: number } = {},
+  options: { width?: number; height?: number; flexGrow?: number; flexShrink?: number } = {},
 ): Node {
   const child = Node.create()
   if (options.width !== undefined) child.setWidth(options.width)
   if (options.height !== undefined) child.setHeight(options.height)
   if (options.flexGrow !== undefined) child.setFlexGrow(options.flexGrow)
+  child.setFlexShrink(options.flexShrink ?? 0)
   parent.insertChild(child, index)
   return child
 }

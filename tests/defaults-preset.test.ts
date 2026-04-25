@@ -20,13 +20,17 @@ import {
   createFlexily,
 } from "../src/index.js"
 
+// Phase-flip-tolerant: tests below derive expected values from DEFAULT_PRESET
+// so they remain green when Phase 6 flips the static default from "yoga" → "css".
+const expectedDefaultShrink = DEFAULT_PRESET === "css" ? 1 : 0
+const expectedDefaultAlignContent = DEFAULT_PRESET === "css" ? ALIGN_STRETCH : ALIGN_FLEX_START
+
 describe("defaults preset", () => {
   describe("createDefaultStyle", () => {
-    test("default arg → DEFAULT_PRESET (yoga; current behavior)", () => {
+    test("default arg → DEFAULT_PRESET", () => {
       const style = createDefaultStyle()
-      expect(DEFAULT_PRESET).toBe("yoga")
-      expect(style.flexShrink).toBe(0)
-      expect(style.alignContent).toBe(ALIGN_FLEX_START)
+      expect(style.flexShrink).toBe(expectedDefaultShrink)
+      expect(style.alignContent).toBe(expectedDefaultAlignContent)
     })
 
     test("yoga preset → flexShrink:0, alignContent:FLEX_START", () => {
@@ -49,8 +53,8 @@ describe("defaults preset", () => {
   })
 
   describe("Node.create", () => {
-    test("default Node uses DEFAULT_PRESET (yoga)", () => {
-      expect(Node.create().getFlexShrink()).toBe(0)
+    test("default Node uses DEFAULT_PRESET", () => {
+      expect(Node.create().getFlexShrink()).toBe(expectedDefaultShrink)
     })
 
     test("Node.create({ defaults: 'css' }) → CSS defaults", () => {
@@ -77,9 +81,9 @@ describe("defaults preset", () => {
       expect(node.getFlexShrink()).toBe(0)
     })
 
-    test("createFlexily() (no preset) → DEFAULT_PRESET (yoga)", () => {
+    test("createFlexily() (no preset) → DEFAULT_PRESET", () => {
       const flex = createFlexily()
-      expect(flex.createNode().getFlexShrink()).toBe(0)
+      expect(flex.createNode().getFlexShrink()).toBe(expectedDefaultShrink)
     })
 
     test("preset persists across nodes from same engine (closure-captured)", () => {
@@ -100,9 +104,9 @@ describe("defaults preset", () => {
 
     test("createFlexily preset doesn't leak to bare Node.create()", () => {
       // Bare Node.create() always uses DEFAULT_PRESET regardless of any
-      // engine instances that exist.
+      // engine instances that exist (no module-level state).
       createFlexily({ defaults: "css" })
-      expect(Node.create().getFlexShrink()).toBe(0) // Still yoga
+      expect(Node.create().getFlexShrink()).toBe(expectedDefaultShrink)
     })
   })
 })

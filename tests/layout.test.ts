@@ -521,9 +521,19 @@ describe("Flexily Layout Engine", () => {
       })
     })
 
-    it("should have correct default values", () => {
-      const node = Node.create()
+    it("should have correct default values (yoga preset)", () => {
+      const node = Node.create({ defaults: "yoga" })
       expect(node.getFlexShrink()).toBe(0)
+      expect(node.getFlexGrow()).toBe(0)
+      expect(node.getFlexDirection()).toBe(FLEX_DIRECTION_ROW)
+      expect(node.getAlignItems()).toBe(ALIGN_STRETCH)
+      expect(node.getJustifyContent()).toBe(JUSTIFY_FLEX_START)
+      expect(node.getPositionType()).toBe(POSITION_TYPE_RELATIVE)
+    })
+
+    it("should have correct default values (css preset)", () => {
+      const node = Node.create({ defaults: "css" })
+      expect(node.getFlexShrink()).toBe(1)
       expect(node.getFlexGrow()).toBe(0)
       expect(node.getFlexDirection()).toBe(FLEX_DIRECTION_ROW)
       expect(node.getAlignItems()).toBe(ALIGN_STRETCH)
@@ -584,7 +594,7 @@ describe("Flexily Layout Engine", () => {
 
   describe("Flex Wrap", () => {
     it("should wrap items to new line when they exceed container width", () => {
-      const root = Node.create()
+      const root = Node.create({ defaults: "yoga" })
       root.setWidth(100)
       root.setHeight(100)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
@@ -604,7 +614,7 @@ describe("Flexily Layout Engine", () => {
     })
 
     it("should not wrap when flex-wrap is no-wrap (default)", () => {
-      const root = Node.create()
+      const root = Node.create({ defaults: "yoga" })
       root.setWidth(100)
       root.setHeight(100)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
@@ -657,8 +667,8 @@ describe("Flexily Layout Engine", () => {
     })
 
     describe("createDefaultStyle", () => {
-      it("should create a style object with correct defaults", () => {
-        const style = createDefaultStyle()
+      it("should create a style object with correct yoga-preset defaults", () => {
+        const style = createDefaultStyle("yoga")
 
         expect(style.display).toBe(DISPLAY_FLEX)
         expect(style.positionType).toBe(POSITION_TYPE_RELATIVE)
@@ -677,6 +687,16 @@ describe("Flexily Layout Engine", () => {
         expect(style.position).toHaveLength(6)
         expect(style.border).toEqual([0, 0, 0, 0, NaN, NaN])
         expect(style.gap).toEqual([0, 0])
+      })
+
+      it("should create a style object with correct css-preset defaults", () => {
+        const style = createDefaultStyle("css")
+        // Differs from yoga preset:
+        expect(style.flexShrink).toBe(1)
+        expect(style.alignContent).toBe(ALIGN_STRETCH)
+        // Same as yoga preset:
+        expect(style.display).toBe(DISPLAY_FLEX)
+        expect(style.flexDirection).toBe(FLEX_DIRECTION_ROW)
       })
 
       it("should create independent style objects", () => {
@@ -1332,14 +1352,14 @@ describe("Flexily Layout Engine", () => {
     it("should wrap row items correctly with measureFunc children", () => {
       // Container width=2, three 1-wide children
       // Should wrap: first line [A,B], second line [C]
-      const root = Node.create()
+      const root = Node.create({ defaults: "yoga" })
       root.setWidth(2)
       root.setHeight(3)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setFlexWrap(WRAP_WRAP)
 
       for (let i = 0; i < 3; i++) {
-        const child = Node.create()
+        const child = Node.create({ defaults: "yoga" })
         child.setMeasureFunc(() => ({ width: 1, height: 1 }))
         root.insertChild(child, i)
       }
@@ -1355,14 +1375,14 @@ describe("Flexily Layout Engine", () => {
     it("should wrap column items correctly", () => {
       // Container height=2, three 1-tall children
       // Should wrap: first line [A,B], second line [C]
-      const root = Node.create()
+      const root = Node.create({ defaults: "yoga" })
       root.setWidth(3)
       root.setHeight(2)
       root.setFlexDirection(FLEX_DIRECTION_COLUMN)
       root.setFlexWrap(WRAP_WRAP)
 
       for (let i = 0; i < 3; i++) {
-        const child = Node.create()
+        const child = Node.create({ defaults: "yoga" })
         child.setWidth(1)
         child.setHeight(1)
         root.insertChild(child, i)
@@ -1377,23 +1397,23 @@ describe("Flexily Layout Engine", () => {
     })
 
     it("should handle wrap-reverse in row direction", () => {
-      const root = Node.create()
+      const root = Node.create({ defaults: "yoga" })
       root.setWidth(100)
       root.setHeight(100)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setFlexWrap(WRAP_WRAP_REVERSE)
 
-      const child1 = Node.create()
+      const child1 = Node.create({ defaults: "yoga" })
       child1.setWidth(40)
       child1.setHeight(20)
       root.insertChild(child1, 0)
 
-      const child2 = Node.create()
+      const child2 = Node.create({ defaults: "yoga" })
       child2.setWidth(40)
       child2.setHeight(20)
       root.insertChild(child2, 1)
 
-      const child3 = Node.create()
+      const child3 = Node.create({ defaults: "yoga" })
       child3.setWidth(40)
       child3.setHeight(20)
       root.insertChild(child3, 2)
@@ -1410,23 +1430,23 @@ describe("Flexily Layout Engine", () => {
     })
 
     it("should handle wrap-reverse in column direction", () => {
-      const root = Node.create()
+      const root = Node.create({ defaults: "yoga" })
       root.setWidth(100)
       root.setHeight(100)
       root.setFlexDirection(FLEX_DIRECTION_COLUMN)
       root.setFlexWrap(WRAP_WRAP_REVERSE)
 
-      const child1 = Node.create()
+      const child1 = Node.create({ defaults: "yoga" })
       child1.setWidth(20)
       child1.setHeight(40)
       root.insertChild(child1, 0)
 
-      const child2 = Node.create()
+      const child2 = Node.create({ defaults: "yoga" })
       child2.setWidth(20)
       child2.setHeight(40)
       root.insertChild(child2, 1)
 
-      const child3 = Node.create()
+      const child3 = Node.create({ defaults: "yoga" })
       child3.setWidth(20)
       child3.setHeight(40)
       root.insertChild(child3, 2)
@@ -1441,14 +1461,14 @@ describe("Flexily Layout Engine", () => {
     })
 
     it("should wrap row items with fixed-size children", () => {
-      const root = Node.create()
+      const root = Node.create({ defaults: "yoga" })
       root.setWidth(2)
       root.setHeight(3)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setFlexWrap(WRAP_WRAP)
 
       for (let i = 0; i < 3; i++) {
-        const child = Node.create()
+        const child = Node.create({ defaults: "yoga" })
         child.setWidth(1)
         child.setHeight(1)
         root.insertChild(child, i)
@@ -1463,18 +1483,18 @@ describe("Flexily Layout Engine", () => {
     })
 
     it("should wrap with larger children", () => {
-      const root = Node.create()
+      const root = Node.create({ defaults: "yoga" })
       root.setWidth(5)
       root.setHeight(4)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setFlexWrap(WRAP_WRAP)
 
-      const child1 = Node.create()
+      const child1 = Node.create({ defaults: "yoga" })
       child1.setWidth(3)
       child1.setHeight(2)
       root.insertChild(child1, 0)
 
-      const child2 = Node.create()
+      const child2 = Node.create({ defaults: "yoga" })
       child2.setWidth(3)
       child2.setHeight(2)
       root.insertChild(child2, 1)
@@ -1560,24 +1580,24 @@ describe("Flexily Layout Engine", () => {
     it("should apply both row and column gap in wrapping row layout", () => {
       // Row container with wrap, gap=1 in both directions
       // Two 1x1 children on first line, one 1x1 child wrapping to second line
-      const root = Node.create()
+      const root = Node.create({ defaults: "yoga" })
       root.setWidth(3)
       root.setHeight(5)
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setFlexWrap(WRAP_WRAP)
       root.setGap(GUTTER_ALL, 1)
 
-      const child1 = Node.create()
+      const child1 = Node.create({ defaults: "yoga" })
       child1.setWidth(1)
       child1.setHeight(1)
       root.insertChild(child1, 0)
 
-      const child2 = Node.create()
+      const child2 = Node.create({ defaults: "yoga" })
       child2.setWidth(1)
       child2.setHeight(1)
       root.insertChild(child2, 1)
 
-      const child3 = Node.create()
+      const child3 = Node.create({ defaults: "yoga" })
       child3.setWidth(1)
       child3.setHeight(1)
       root.insertChild(child3, 2)
@@ -1593,24 +1613,24 @@ describe("Flexily Layout Engine", () => {
     })
 
     it("should apply column gap in wrapping column layout", () => {
-      const root = Node.create()
+      const root = Node.create({ defaults: "yoga" })
       root.setWidth(5)
       root.setHeight(3)
       root.setFlexDirection(FLEX_DIRECTION_COLUMN)
       root.setFlexWrap(WRAP_WRAP)
       root.setGap(GUTTER_ALL, 1)
 
-      const child1 = Node.create()
+      const child1 = Node.create({ defaults: "yoga" })
       child1.setWidth(1)
       child1.setHeight(1)
       root.insertChild(child1, 0)
 
-      const child2 = Node.create()
+      const child2 = Node.create({ defaults: "yoga" })
       child2.setWidth(1)
       child2.setHeight(1)
       root.insertChild(child2, 1)
 
-      const child3 = Node.create()
+      const child3 = Node.create({ defaults: "yoga" })
       child3.setWidth(1)
       child3.setHeight(1)
       root.insertChild(child3, 2)

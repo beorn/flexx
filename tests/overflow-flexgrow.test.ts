@@ -56,18 +56,22 @@ describe("overflow + flexGrow", () => {
   })
 
   test("overflow:visible child with flexGrow=1 expands to content (Yoga default)", () => {
-    const root = Node.create()
+    // Explicitly Yoga preset — verifies overflow:visible + flexShrink:0
+    // (Yoga default) keeps container at content size. With CSS preset
+    // (flexShrink:1), the container would shrink to fit parent.
+    const YOGA = { defaults: "yoga" } as const
+    const root = Node.create(YOGA)
     root.setFlexDirection(C.FLEX_DIRECTION_COLUMN)
     root.setHeight(10)
     root.setWidth(80)
 
-    const container = Node.create()
+    const container = Node.create(YOGA)
     container.setFlexGrow(1)
     container.setFlexDirection(C.FLEX_DIRECTION_COLUMN)
     // default overflow = visible
 
     for (let i = 0; i < 30; i++) {
-      const line = Node.create()
+      const line = Node.create(YOGA)
       line.setHeight(1)
       container.insertChild(line, i)
     }

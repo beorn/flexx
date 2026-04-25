@@ -142,10 +142,11 @@ describe("row cross-axis remeasure after flex distribution", () => {
     row.setFlexDirection(FLEX_DIRECTION_ROW)
     root.insertChild(row, 0)
 
-    // Fixed-width child: 10 wide, 1 tall
+    // Fixed-width child: 10 wide, 1 tall (rigid sibling, doesn't shrink)
     const fixedChild = Node.create()
     fixedChild.setWidth(10)
     fixedChild.setHeight(1)
+    fixedChild.setFlexShrink(0) // explicit so test passes under either preset
     row.insertChild(fixedChild, 0)
 
     // FlexGrow child with wrapping text
@@ -209,10 +210,11 @@ describe("row cross-axis remeasure after flex distribution", () => {
     rootRow.setAlignItems(ALIGN_FLEX_START)
     card.insertChild(rootRow, 0)
 
-    // Prefix
+    // Prefix (rigid sibling, doesn't shrink)
     const prefix1 = Node.create()
     prefix1.setWidth(3)
     prefix1.setHeight(1)
+    prefix1.setFlexShrink(0)
     rootRow.insertChild(prefix1, 0)
 
     // Content column (flexGrow)
@@ -247,6 +249,7 @@ describe("row cross-axis remeasure after flex distribution", () => {
     const childPrefix1 = Node.create()
     childPrefix1.setWidth(4)
     childPrefix1.setHeight(1)
+    childPrefix1.setFlexShrink(0)
     childRow1.insertChild(childPrefix1, 0)
 
     const childContent1 = Node.create()

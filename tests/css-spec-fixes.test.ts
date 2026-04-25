@@ -157,29 +157,31 @@ describe("CSS spec: flex-wrap uses hypothetical main size", () => {
   })
 
   it("should use minWidth-clamped size for line breaking", () => {
-    // A child with flexBasis:10 but minWidth:40 should use 40 for line breaking
-    const root = Node.create()
+    // A child with flexBasis:10 but minWidth:40 should use 40 for line breaking.
+    // Authored under Yoga preset (alignContent: flex-start, flexShrink: 0).
+    const Y = { defaults: "yoga" } as const
+    const root = Node.create(Y)
     root.setWidth(100)
     root.setHeight(200)
     root.setFlexDirection(FLEX_DIRECTION_ROW)
     root.setFlexWrap(WRAP_WRAP)
 
     // Child A: baseSize=10, minWidth=40 → hypothetical=40
-    const childA = Node.create()
+    const childA = Node.create(Y)
     childA.setFlexBasis(10)
     childA.setMinWidth(40)
     childA.setHeight(20)
     root.insertChild(childA, 0)
 
     // Child B: baseSize=10, minWidth=40 → hypothetical=40
-    const childB = Node.create()
+    const childB = Node.create(Y)
     childB.setFlexBasis(10)
     childB.setMinWidth(40)
     childB.setHeight(20)
     root.insertChild(childB, 1)
 
     // Child C: baseSize=10, minWidth=40 → hypothetical=40
-    const childC = Node.create()
+    const childC = Node.create(Y)
     childC.setFlexBasis(10)
     childC.setMinWidth(40)
     childC.setHeight(20)
@@ -235,31 +237,31 @@ describe("CSS spec: flex-wrap uses hypothetical main size", () => {
 
 describe("CSS spec: wrapped auto-sized containers get proper line cross-size", () => {
   it("should compute line cross-size from auto-sized container children", () => {
-    const root = Node.create()
+    const root = Node.create({ defaults: "yoga" })
     root.setWidth(100)
     root.setHeight(200)
     root.setFlexDirection(FLEX_DIRECTION_ROW)
     root.setFlexWrap(WRAP_WRAP)
 
     // Child A: auto-sized container with a grandchild of height 40
-    const childA = Node.create()
+    const childA = Node.create({ defaults: "yoga" })
     childA.setWidth(60)
     // No explicit height — auto-sized
     root.insertChild(childA, 0)
 
-    const grandchildA = Node.create()
+    const grandchildA = Node.create({ defaults: "yoga" })
     grandchildA.setWidth(60)
     grandchildA.setHeight(40)
     childA.insertChild(grandchildA, 0)
 
     // Child B: auto-sized container with a grandchild of height 30
     // Forces wrap to second line (60+60 > 100)
-    const childB = Node.create()
+    const childB = Node.create({ defaults: "yoga" })
     childB.setWidth(60)
     // No explicit height — auto-sized
     root.insertChild(childB, 1)
 
-    const grandchildB = Node.create()
+    const grandchildB = Node.create({ defaults: "yoga" })
     grandchildB.setWidth(60)
     grandchildB.setHeight(30)
     childB.insertChild(grandchildB, 0)
@@ -275,37 +277,37 @@ describe("CSS spec: wrapped auto-sized containers get proper line cross-size", (
   })
 
   it("should handle all auto-sized containers on the same line", () => {
-    const root = Node.create()
+    const root = Node.create({ defaults: "yoga" })
     root.setWidth(200)
     root.setHeight(200)
     root.setFlexDirection(FLEX_DIRECTION_ROW)
     root.setFlexWrap(WRAP_WRAP)
 
     // Two auto-sized container children on the same line
-    const childA = Node.create()
+    const childA = Node.create({ defaults: "yoga" })
     childA.setWidth(80)
     root.insertChild(childA, 0)
 
-    const grandchildA = Node.create()
+    const grandchildA = Node.create({ defaults: "yoga" })
     grandchildA.setWidth(80)
     grandchildA.setHeight(50)
     childA.insertChild(grandchildA, 0)
 
-    const childB = Node.create()
+    const childB = Node.create({ defaults: "yoga" })
     childB.setWidth(80)
     root.insertChild(childB, 1)
 
-    const grandchildB = Node.create()
+    const grandchildB = Node.create({ defaults: "yoga" })
     grandchildB.setWidth(80)
     grandchildB.setHeight(30)
     childB.insertChild(grandchildB, 0)
 
     // Third child forces a second line
-    const childC = Node.create()
+    const childC = Node.create({ defaults: "yoga" })
     childC.setWidth(80)
     root.insertChild(childC, 2)
 
-    const grandchildC = Node.create()
+    const grandchildC = Node.create({ defaults: "yoga" })
     grandchildC.setWidth(80)
     grandchildC.setHeight(25)
     childC.insertChild(grandchildC, 0)
@@ -322,29 +324,29 @@ describe("CSS spec: wrapped auto-sized containers get proper line cross-size", (
   })
 
   it("should handle column direction with auto-width containers", () => {
-    const root = Node.create()
+    const root = Node.create({ defaults: "yoga" })
     root.setWidth(200)
     root.setHeight(100)
     root.setFlexDirection(FLEX_DIRECTION_COLUMN)
     root.setFlexWrap(WRAP_WRAP)
 
     // Child A: auto-width container with grandchild of width 40
-    const childA = Node.create()
+    const childA = Node.create({ defaults: "yoga" })
     childA.setHeight(60)
     // No explicit width — auto-sized on cross axis
     root.insertChild(childA, 0)
 
-    const grandchildA = Node.create()
+    const grandchildA = Node.create({ defaults: "yoga" })
     grandchildA.setWidth(40)
     grandchildA.setHeight(60)
     childA.insertChild(grandchildA, 0)
 
     // Child B: auto-width container, forces wrap (60+60 > 100)
-    const childB = Node.create()
+    const childB = Node.create({ defaults: "yoga" })
     childB.setHeight(60)
     root.insertChild(childB, 1)
 
-    const grandchildB = Node.create()
+    const grandchildB = Node.create({ defaults: "yoga" })
     grandchildB.setWidth(35)
     grandchildB.setHeight(60)
     childB.insertChild(grandchildB, 0)

@@ -72,6 +72,7 @@ describe("wrap measurement: nested flexGrow columns + measureFunc text", () => {
 
     const side = Node.create()
     side.setWidth(40)
+    side.setFlexShrink(0) // rigid sibling — explicit so the test passes under either preset
     root.insertChild(side, 1)
 
     root.calculateLayout(120, 30, DIRECTION_LTR)
@@ -109,6 +110,7 @@ describe("wrap measurement: nested flexGrow columns + measureFunc text", () => {
 
     const side = Node.create()
     side.setWidth(40)
+    side.setFlexShrink(0) // rigid sibling — explicit so the test passes under either preset
     root.insertChild(side, 1)
 
     root.calculateLayout(120, 30, DIRECTION_LTR)
@@ -179,6 +181,7 @@ describe("wrap measurement: nested flexGrow columns + measureFunc text", () => {
     // Side panel (right).
     const side = Node.create()
     side.setWidth(40)
+    side.setFlexShrink(0) // rigid sibling — explicit so the test passes under either preset
     root.insertChild(side, 1)
 
     root.calculateLayout(160, 30, DIRECTION_LTR)
