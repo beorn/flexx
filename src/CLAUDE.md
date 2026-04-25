@@ -353,8 +353,17 @@ silvery calls `calculateLayout()` on every render. The no-change case (cursor mo
 | Default `alignContent`                    | flex-start                               | Preset: flex-start (yoga) or stretch (css) | stretch                                        |
 | Default `flexDirection`                   | Column                                   | Row (CSS default)                          | Row                                            |
 | Baseline alignment                        | Full spec (recursive first-child)        | Simplified (no recursive propagation)      | Recursive first-child                          |
+| **Flex-item default min-size**            | `0` (no auto floor)                      | `0` today (Yoga shape)                     | §4.5 item rule: `min-block-size: auto = content-based minimum` |
 
 The `flexShrink` override for overflow containers (line ~1244 in layout-zero.ts) is the most significant divergence. Without it, `overflow:hidden` children inside constrained parents balloon to content size, defeating the purpose of clipping.
+
+### Known gap: flex-item auto min-size (CSS §4.5, item-side)
+
+CSS §4.5 has two complementary rules: the *container* side (overflow containers get `min-size: auto = 0`, implemented around layout-zero.ts:587) and the *item* side (flex items default to `min-block-size: auto = content-based minimum`, **not implemented**). Today, when a flex item's `min-width`/`min-height` is unspecified, layout-zero.ts:571 falls back to `0` instead of the content-based minimum.
+
+Under Yoga preset (`flexShrink: 0`) this is invisible — items never shrink. Under CSS preset (`flexShrink: 1`) items can shrink to zero, which is the wrong-by-default behavior browsers protect against via the auto min-size rule.
+
+Implementation lives in the same path that already computes intrinsic sizes (`baseSize` from measureFunc / measureNode); the change is local to layout-zero.ts:571 and gated on the CSS preset so Yoga consumers stay unaffected. Tracked by bead `km-flexily.auto-min-size-flex-items`.
 
 **Defaults preset**: `createFlexily({ defaults: "css" | "yoga" })` and
 `Node.create({ defaults })` toggle `flexShrink`/`alignContent`. `DEFAULT_PRESET`
