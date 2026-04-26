@@ -107,19 +107,13 @@ flex.calculateLayout(root, 40, 6)
 // being smaller than total content. Yoga preset would collapse each to 0.6.
 ```
 
-**Implementation detail**: `contentMinSize` is derived alongside `baseSize` and used as the content-based minimum. When `flex-basis` is auto, `contentMinSize === baseSize`. When `flex-basis` is definite (e.g. `flex: 1 1 0`), `contentMinSize` is re-derived via `measureFunc` so auto-min doesn't collapse to 0.
+**Implementation detail**: `contentMinSize` is derived alongside `baseSize` and used as the content-based minimum. When `flex-basis` is auto, `contentMinSize === baseSize`. When `flex-basis` is definite (e.g. `flex: 1 1 0`), `contentMinSize` is re-derived via `measureFunc` so auto-min doesn't collapse to 0. Aspect-ratio + definite cross-axis is folded in via the transferred-size suggestion clamp.
 
-**Remaining approximation gaps** (smaller, deferred):
-
-- Wrapping row text: `contentMinSize` returns max-content from `measureFunc`, not min-content (longest unbreakable word). Items become more rigid horizontally than browsers would.
-- Nodes-with-children with definite `flex-basis`: falls back to `baseSize` rather than re-running recursive layout for content-min.
-- Aspect-ratio / replaced-element transferred-size suggestions: not folded in.
-
-For the targeted scroll-container case (column layouts with rigid intrinsic items) and the `flex: 1 1 0` pattern with measureFunc text, the rule produces CSS-correct results.
+**Approximation note**: `contentMinSize` uses **max-content**, not spec-correct min-content. For non-wrappable content (truncate / clip / fixed-width) min-content == max-content so the rule is exact. For wrappable row text the rule is conservative — items don't shrink to their longest-unbreakable-word width. This matches the natural-width-of-padded-columns idiom common in TUI dashboards (PID / NAME / CPU% / STATUS / ... rows). Switching to true min-content (mW=0 AT_MOST) is one-line in code but breaks padded-text column alignment in real-world dashboards.
 
 **Test coverage**: See `tests/auto-min-size.test.ts`.
 
-**Workaround when the gap matters**: set explicit `minHeight`/`minWidth` (or `minHeight: 0` to opt into shrinking, matching the canonical CSS escape hatch).
+**Workaround when the gap matters** (you want wrap-text to shrink to longest-word): set `overflow: hidden` on the item (forces auto-min = 0 via the CSS §4.5 container-side rule) or explicit `min-width: 0` (canonical CSS escape hatch).
 
 **Spec reference**: <https://www.w3.org/TR/css-flexbox-1/#min-size-auto>
 

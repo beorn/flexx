@@ -394,14 +394,26 @@ when auto-min applies (gating: `minVal.unit === UNIT_AUTO` + visible overflow
   call as the flex-basis-auto path re-derives content; the cache amortizes
   when both calls land on the same args.
 
-### Remaining approximation gaps (smaller, deferred)
+### Approximation note: max-content vs min-content
 
-- Wrapping row text: `contentMinSize` from measureFunc returns max-content
-  (full text width); CSS spec wants min-content (longest unbreakable word).
-  Items become more rigid horizontally than browsers would.
-- Nodes-with-children with definite flex-basis: falls back to `baseSize`
-  rather than re-running recursive layout for content-min separately.
-- Aspect-ratio / replaced-element transferred-size suggestions: not folded in.
+`contentMinSize` uses **max-content** (= `baseSize` from the existing measure
+path) rather than spec-correct min-content. For non-wrappable content (truncate,
+clip, fixed-width), min-content == max-content so the rule is exact. For
+wrappable row text the rule is conservative — items don't shrink to longest-
+unbreakable-word width.
+
+This is intentional. Switching to true min-content (mW=0 AT_MOST for measureFunc)
+is one-line in code but causes layout regressions in row-direction prose
+dashboards: padded-text columns (PID/NAME/CPU%/STATUS/...) start collapsing to
+longest-word width when the row is squeezed, breaking column alignment that the
+component author expected to be rigid.
+
+The chosen approximation aligns with the natural-width-of-padded-columns idiom
+common in TUI dashboards. Consumers wanting wrap-text to shrink to its longest-
+word width can opt in with `setOverflow(HIDDEN)` (forces auto-min = 0 via the
+CSS §4.5 container-side rule) or explicit `setMinWidth(0)` (canonical CSS
+escape hatch). Aspect-ratio + definite cross-axis is folded in via the
+transferred-size suggestion clamp.
 
 ### `UNIT_AUTO` semantics outside flex-item-main
 

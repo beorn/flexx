@@ -35,9 +35,65 @@ import {
 
 describe("CSS §4.5 flex-item auto min-size", () => {
   describe("CSS preset (default min: AUTO)", () => {
-    test("rigid items in over-full container keep their content size", () => {
-      // 10 children at 1 row each in a 6-row column container.
-      // Total 10 > container 6 → must overflow, not compress.
+    test("rigid items with content keep their content size in over-full container", () => {
+      // 10 children with measureFunc (1-line text) in a 6-row column container.
+      // Total content 10 rows > container 6 rows → must overflow, not compress.
+      // Each item's min-content height = 1 (the content row), so auto-min-size
+      // prevents shrinking below 1 row even though flexShrink:1 is default.
+      //
+      // Note: empty divs with `setHeight(1)` and no measureFunc CAN shrink to 0
+      // under CSS spec — auto-min-size = min(specified, content), and content-min
+      // for an empty div is 0 (padding+border). The CSS escape hatch is
+      // setFlexShrink(0) or setMinHeight(1). This test uses measureFunc to
+      // mirror the real silvery scroll-container scenario (text rows with content).
+      const root = Node.create({ defaults: "css" })
+      root.setFlexDirection(FLEX_DIRECTION_COLUMN)
+      root.setWidth(40)
+      root.setHeight(6)
+
+      const items: Node[] = []
+      for (let i = 0; i < 10; i++) {
+        const item = Node.create({ defaults: "css" })
+        item.setMeasureFunc(() => ({ width: 5, height: 1 }))
+        root.insertChild(item, i)
+        items.push(item)
+      }
+
+      root.calculateLayout(40, 6, DIRECTION_LTR)
+
+      // Each item keeps its 1-row content height despite flexShrink:1 default.
+      for (let i = 0; i < items.length; i++) {
+        expect(items[i]!.getComputedHeight()).toBe(1)
+      }
+    })
+
+    test("empty leaves with explicit size CAN shrink to 0 (spec-correct)", () => {
+      // Counterpoint to the previous test: empty divs with no measureFunc and
+      // no explicit min-height collapse under flexShrink:1 + over-full
+      // container. CSS spec: auto-min-size = min(specified, content), and
+      // content-min for an empty div is 0 (padding+border). To prevent shrink,
+      // the canonical CSS escape hatch is setFlexShrink(0) or setMinHeight.
+      const root = Node.create({ defaults: "css" })
+      root.setFlexDirection(FLEX_DIRECTION_COLUMN)
+      root.setWidth(40)
+      root.setHeight(6)
+
+      const items: Node[] = []
+      for (let i = 0; i < 10; i++) {
+        const item = Node.create({ defaults: "css" })
+        item.setHeight(1) // explicit size, but no content and no min-height
+        root.insertChild(item, i)
+        items.push(item)
+      }
+      root.calculateLayout(40, 6, DIRECTION_LTR)
+
+      // Items shrink to fit container; some end up at 0 due to rounding.
+      const totalHeight = items.reduce((s, n) => s + n.getComputedHeight(), 0)
+      expect(totalHeight).toBeLessThanOrEqual(6)
+    })
+
+    test("empty leaves with explicit size + flexShrink:0 stay rigid", () => {
+      // The CSS escape hatch for keeping empty divs rigid: opt out of shrink.
       const root = Node.create({ defaults: "css" })
       root.setFlexDirection(FLEX_DIRECTION_COLUMN)
       root.setWidth(40)
@@ -47,15 +103,14 @@ describe("CSS §4.5 flex-item auto min-size", () => {
       for (let i = 0; i < 10; i++) {
         const item = Node.create({ defaults: "css" })
         item.setHeight(1)
+        item.setFlexShrink(0)
         root.insertChild(item, i)
         items.push(item)
       }
-
       root.calculateLayout(40, 6, DIRECTION_LTR)
 
-      // Each item keeps its 1-row height despite flexShrink:1 default.
-      for (let i = 0; i < items.length; i++) {
-        expect(items[i]!.getComputedHeight()).toBe(1)
+      for (const item of items) {
+        expect(item.getComputedHeight()).toBe(1)
       }
     })
 
@@ -150,6 +205,7 @@ describe("CSS §4.5 flex-item auto min-size", () => {
     })
 
     test("row direction: main-axis is width, auto applies to min-width", () => {
+      // Items have measureFunc so they have a meaningful content-min.
       const root = Node.create({ defaults: "css" })
       root.setFlexDirection(FLEX_DIRECTION_ROW)
       root.setWidth(20)
@@ -158,7 +214,7 @@ describe("CSS §4.5 flex-item auto min-size", () => {
       const items: Node[] = []
       for (let i = 0; i < 5; i++) {
         const item = Node.create({ defaults: "css" })
-        item.setWidth(10) // each wants 10, total 50, container 20
+        item.setMeasureFunc(() => ({ width: 10, height: 1 }))
         root.insertChild(item, i)
         items.push(item)
       }
@@ -273,14 +329,16 @@ describe("CSS §4.5 flex-item auto min-size", () => {
     test("toggling overflow visible↔hidden re-evaluates auto-min", () => {
       // Pro-recommended cache regression test: changing overflow on a flex
       // item under CSS preset must change the auto-min decision and the
-      // resulting layout must reflect that.
+      // resulting layout must reflect that. Use measureFunc so the item has
+      // a meaningful content-min (= 10) — empty divs would shrink to 0
+      // regardless of overflow per CSS spec.
       const root = Node.create({ defaults: "css" })
       root.setFlexDirection(FLEX_DIRECTION_COLUMN)
       root.setWidth(20)
       root.setHeight(3)
 
       const item = Node.create({ defaults: "css" })
-      item.setHeight(10)
+      item.setMeasureFunc(() => ({ width: 5, height: 10 }))
       // Sibling forces the item to want to shrink (column overflows).
       const sibling = Node.create({ defaults: "css" })
       sibling.setHeight(10)
@@ -302,6 +360,105 @@ describe("CSS §4.5 flex-item auto min-size", () => {
       expect(heightVisible).not.toBe(heightHidden)
       // hidden allows full shrink; visible preserves content.
       expect(heightHidden).toBeLessThan(heightVisible)
+    })
+  })
+
+  describe("min-content semantics for wrappable measureFunc text", () => {
+    test("row direction with wrappable text: auto-min uses min-content (longest word), not max-content", () => {
+      // CSS §4.5: content-based minimum is min-content. For wrappable text in
+      // a row, that's the longest unbreakable word width — NOT the full text
+      // width (max-content). When the container is narrower than max-content
+      // but wider than min-content, the item shrinks and wraps.
+      //
+      // Simulated text: 30 chars max-content, 5 chars longest word.
+      // Container 15 cols → item shrinks to 15, wraps to 2 lines.
+      const root = Node.create({ defaults: "css" })
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+      root.setWidth(15)
+      root.setHeight(3)
+
+      const item = Node.create({ defaults: "css" })
+      item.setMeasureFunc((width, widthMode) => {
+        // measureFunc reports min-content when width=0 AT_MOST.
+        if (widthMode === 2 /* AT_MOST */ && width <= 5) {
+          return { width: 5, height: 6 } // min-content: 5-char word, 6 lines
+        }
+        if (widthMode === 0 /* UNDEFINED */) {
+          return { width: 30, height: 1 } // max-content: full text
+        }
+        // Constrained: wrap to fit
+        const cols = Math.max(5, Math.floor(width))
+        return { width: cols, height: Math.ceil(30 / cols) }
+      })
+      root.insertChild(item, 0)
+
+      root.calculateLayout(15, 3, DIRECTION_LTR)
+
+      // Item shrinks to container (15 cols), wrapping internally.
+      // If contentMinSize were max-content (30), item couldn't shrink below 30 → overflow.
+      // With min-content (5), item shrinks to 15.
+      expect(item.getComputedWidth()).toBe(15)
+    })
+
+    test("row direction: rigid sibling forces wrappable item to min-content floor", () => {
+      // Sibling 12 cols rigid + container 15 cols → item gets 3 cols available.
+      // Item's min-content = 5 → item floor at 5. Total exceeds container.
+      const root = Node.create({ defaults: "css" })
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+      root.setWidth(15)
+      root.setHeight(3)
+
+      const item = Node.create({ defaults: "css" })
+      item.setMeasureFunc((width, widthMode) => {
+        if (widthMode === 2 && width <= 5) return { width: 5, height: 6 }
+        if (widthMode === 0) return { width: 30, height: 1 }
+        const cols = Math.max(5, Math.floor(width))
+        return { width: cols, height: Math.ceil(30 / cols) }
+      })
+      const sibling = Node.create({ defaults: "css" })
+      sibling.setWidth(12)
+      sibling.setFlexShrink(0)
+      root.insertChild(item, 0)
+      root.insertChild(sibling, 1)
+
+      root.calculateLayout(15, 3, DIRECTION_LTR)
+
+      // Item should not shrink below min-content (5).
+      expect(item.getComputedWidth()).toBeGreaterThanOrEqual(5)
+    })
+  })
+
+  describe("aspect-ratio transferred-size suggestion", () => {
+    test("aspect-ratio + definite cross-axis bounds auto-min by transferred size", () => {
+      // Item with aspect-ratio 2 and definite height 4 → transferred main-axis = 4*2 = 8.
+      // contentMinSize is bounded above by transferred-size suggestion.
+      // With measureFunc returning content of 50, auto-min would be 50;
+      // transferred-size clamps it to 8, allowing the item to shrink to 8.
+      const root = Node.create({ defaults: "css" })
+      root.setFlexDirection(FLEX_DIRECTION_ROW)
+      root.setWidth(20)
+      root.setHeight(4)
+
+      const item = Node.create({ defaults: "css" })
+      item.setHeight(4) // definite cross-axis
+      item.setAspectRatio(2)
+      item.setMeasureFunc((width, widthMode) => {
+        if (widthMode === 2 && width <= 50) return { width: Math.min(50, Math.max(8, width)), height: 4 }
+        return { width: 50, height: 4 }
+      })
+      root.insertChild(item, 0)
+
+      // Sibling forces shrink pressure
+      const sibling = Node.create({ defaults: "css" })
+      sibling.setWidth(15)
+      sibling.setFlexShrink(0)
+      root.insertChild(sibling, 1)
+
+      root.calculateLayout(20, 4, DIRECTION_LTR)
+
+      // With transferred-size clamp: contentMin = min(50, 8) = 8. Item can shrink to 8.
+      // Without it: contentMin = 50, item couldn't shrink below 50.
+      expect(item.getComputedWidth()).toBeLessThanOrEqual(8)
     })
   })
 
