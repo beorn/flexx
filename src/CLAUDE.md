@@ -394,33 +394,71 @@ when auto-min applies (gating: `minVal.unit === UNIT_AUTO` + visible overflow
   call as the flex-basis-auto path re-derives content; the cache amortizes
   when both calls land on the same args.
 
-### Hybrid min-content / max-content for `contentMinSize`
+### Recursive intrinsic min-content for `contentMinSize`
 
-For `measureFunc` nodes (Text and other leaf measurers), `contentMinSize`
-queries the measurer via `MEASURE_MODE_MIN_CONTENT` — spec-correct CSS
-min-content (longest-unbreakable-word for wrappable text; `naturalWidth`
-for non-wrappable). The non-wrappable case is exact (min-content ==
-max-content == naturalWidth); the wrappable case shrinks rows down to
-the longest token, matching browser flexbox behaviour.
+Every `Node` exposes `getMinContent(direction, containingBlockSize?)` — its
+intrinsic CSS min-content along a given axis, computed recursively from
+its content. `layout-zero.ts` queries the child uniformly when deriving
+the auto-min-size for a flex item: no parent-side branching on
+measureFunc / has-children / empty-leaf.
 
-For nodes-with-children (recursive containers), `contentMinSize` falls
-back to `baseSize` (max-content from the recursive layout pass) — true
-min-content there would require an extra recursive layout pass at
-main-axis = 0 that `measureNode` can't reliably emulate (it forces inner
-content to 0 height, returning 0 for column layouts with Text descendants).
-This is a remaining gap; in practice recursive containers usually have
-measureFunc descendants whose own auto-min uses true min-content via the
-measureFunc branch above.
+The recursive walk:
 
-Practical consequence: a Box wrapping a `<Text wrap="wrap">` inherits
-max-content as its auto-min — the Box reserves natural width and the
-row can't shrink past it. If that pins a row's siblings off-screen,
-add `setMinWidth(0)` on the wrapping Box (canonical CSS escape hatch)
-or `setOverflow(HIDDEN)` (forces auto-min = 0 via the CSS §4.5
-container-side rule).
+- **Leaf with measureFunc**: query measurer with `MEASURE_MODE_MIN_CONTENT`
+  along the requested axis (spec-correct CSS min-content — longest
+  unbreakable word for wrappable text; `naturalWidth` for non-wrappable).
+- **Container, main axis** (`direction == flexDirection`):
+  `padding + border + sum(child.getMinContent(direction)) + total gap`
+- **Container, cross axis** (`direction != flexDirection`):
+  `padding + border + max(child.getMinContent(direction))`
+- **Empty leaf without measureFunc**: `padding + border`.
+
+The recursive call from a parent's container walk goes through
+`Node._getMinContentForParent`, which applies the CSS escape hatches:
+
+- `overflow != visible` on the child → returns `0` (CSS §4.5
+  container-side rule: scroll/hidden children can clip on parent's main
+  axis, so their min-content from the parent's POV is 0).
+- Explicit `minWidth: 0` / `minHeight: 0` in points → returns `0`
+  (canonical CSS opt-out from the auto-min floor).
+- Explicit definite size (`width`/`height` in points) → returns that
+  size (a Box with `width: 10` reports min-content = 10 to its parent
+  even if its content min is smaller).
+
+Cached per-node in two slots (`_minContentRow`, `_minContentCol`).
+Uses `-1` as the invalidation sentinel (NOT `NaN` — `Object.is(NaN, NaN)`
+would cause false cache hits, same reason `_lc0`/`_lc1` use `-1`).
+Cleared in `markDirty()` alongside the existing measure + layout caches;
+since style setters and `insertChild`/`removeChild` all funnel through
+`markDirty`, every invalidation path is covered.
+
+`layout-zero.ts` adds the **CSS §4.5 specified-size suggestion** as a
+cap on top of the recursive content-min:
+
+```ts
+contentMinSize = child.getMinContent(direction, containingBlock)
+// Cap: auto-min = min(content-min, specified-size, ...)
+//   specified-size = flex-basis (if definite) else main-axis size
+let specifiedSize = Infinity
+if (childStyle.flexBasis.unit === C.UNIT_POINT) {
+  specifiedSize = childStyle.flexBasis.value
+} else if (childStyle.flexBasis.unit === C.UNIT_AUTO) {
+  // fall through to width/height when flex-basis is auto
+  ...
+}
+if (specifiedSize !== Infinity) {
+  contentMinSize = Math.min(contentMinSize, specifiedSize)
+}
+```
+
+This is what makes `flexBasis: 0` opt-out work correctly. Without the
+cap, a Fill-style child (clipped 500-char repeated text inside
+`flexGrow: 1, flexBasis: 0`) would report content-min = 500 and force
+its row to expand past the parent. The cap restores the
+"flexBasis: 0 means I carry no inherent main-axis size" contract.
 
 Aspect-ratio + definite cross-axis is folded in via the transferred-size
-suggestion clamp.
+suggestion clamp (a separate Math.min after the specified-size cap).
 
 ### `UNIT_AUTO` semantics outside flex-item-main
 

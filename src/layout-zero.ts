@@ -643,10 +643,7 @@ function layoutNode(
         // queries on the main axis; crossAxisSize for orthogonal) so percent
         // padding/minWidth on the child resolve against the right context.
         const containingBlock = isRow ? mainAxisSize : crossAxisSize
-        contentMinSize = child.getMinContent(
-          isRow ? C.FLEX_DIRECTION_ROW : C.FLEX_DIRECTION_COLUMN,
-          containingBlock,
-        )
+        contentMinSize = child.getMinContent(isRow ? C.FLEX_DIRECTION_ROW : C.FLEX_DIRECTION_COLUMN, containingBlock)
 
         // CSS §4.5 specified-size suggestion: auto-min is bounded ABOVE by
         // any definite specified-size (flex-basis or main-axis size). When

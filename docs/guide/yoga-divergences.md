@@ -109,11 +109,11 @@ flex.calculateLayout(root, 40, 6)
 
 **Implementation detail**: `contentMinSize` is derived alongside `baseSize` and used as the content-based minimum. When `flex-basis` is auto, `contentMinSize === baseSize`. When `flex-basis` is definite (e.g. `flex: 1 1 0`), `contentMinSize` is re-derived via `measureFunc` so auto-min doesn't collapse to 0. Aspect-ratio + definite cross-axis is folded in via the transferred-size suggestion clamp.
 
-**Hybrid min-content / max-content**: For `measureFunc` nodes (Text and other leaf measurers), `contentMinSize` queries the measurer via `MEASURE_MODE_MIN_CONTENT` — spec-correct CSS min-content (longest-unbreakable-word for wrappable text; `naturalWidth` for non-wrappable). For nodes-with-children (recursive containers), `contentMinSize` falls back to `baseSize` (max-content from the recursive layout pass) — true min-content there would require an extra recursive layout pass at main-axis = 0 that `measureNode` can't reliably emulate. Box-wrappers around Text therefore inherit the max-content path: if wrappable Text inside a Box pins the row, add `setMinWidth(0)` on the Box to opt out (canonical CSS escape hatch).
+**Recursive intrinsic min-content**: Every `Node` exposes `getMinContent(direction)` — its CSS min-content along a given axis, computed recursively from its content. `measureFunc` leaves call the measurer with `MEASURE_MODE_MIN_CONTENT`; containers walk their children (sum on main axis, max on cross axis) plus padding/border/gap; empty leaves return padding+border. Box-wrappers around `<Text wrap="wrap">` propagate the longest unbreakable token like the wrap-Text would alone — no need to thread `setMinWidth(0)` or `setOverflow(HIDDEN)` through wrappers to opt out of the historical max-content fallback. Cached per-node in two slots, cleared in `markDirty()` alongside the measure cache.
 
-**Test coverage**: See `tests/auto-min-size.test.ts`.
+The CSS §4.5 specified-size suggestion is applied as a cap in the auto-min derivation: `auto-min = min(content-min, specified-size)`. So `flexBasis: 0` and explicit `width: 0` items still report auto-min = 0, preserving the "I carry no inherent main-axis size" contract for opt-out children like Fill-leader Box wrappers.
 
-**Workaround when a Box wrapper pins its row** (you want a Box-wrapped wrap-text to shrink to longest-word): set `overflow: hidden` on the Box (forces auto-min = 0 via the CSS §4.5 container-side rule) or explicit `min-width: 0` (canonical CSS escape hatch). Direct measureFunc nodes already get spec-correct min-content; this workaround applies to wrappers above them.
+**Test coverage**: See `tests/auto-min-size.test.ts` and `tests/min-content-recursive.test.ts`.
 
 **Spec reference**: <https://www.w3.org/TR/css-flexbox-1/#min-size-auto>
 
