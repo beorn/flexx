@@ -581,34 +581,44 @@ function layoutNode(
     }
 
     // Derive contentMinSize for the auto-min-size rule. Only computed when
-    // auto-min applies. Per CSS §4.5 the spec-correct value is min-content.
+    // auto-min applies. Per CSS §4.5 the spec-correct value is min-content,
+    // bounded by the specified-size suggestion when the child has a definite
+    // main-axis size: `auto-min = min(content-min, specified-size)`.
     //
-    // For measureFunc nodes, we ask the measurer directly via the
-    // MEASURE_MODE_MIN_CONTENT extension. Measurers that recognize the mode
-    // return CSS min-content (longest unbreakable word for wrappable text;
-    // naturalWidth for non-wrappable). Measurers that don't fall through to
-    // AT_MOST with width=0, which is the conservative degradation.
+    // Every Node (leaf or container) owns its own intrinsic min-content as
+    // a property of itself, computed recursively from its content (see
+    // `Node.getMinContent` in node-zero.ts). The recursive walk:
     //
-    // For containers with children (no measureFunc), we still use baseSize
-    // (= max-content from the recursive layout pass) as a conservative
-    // approximation — true min-content would require an additional
-    // recursive layout at main-axis = 0, which `measureNode` can't reliably
-    // produce. In practice, recursive containers usually have measureFunc
-    // descendants whose own auto-min uses true min-content via the
-    // measureFunc branch above.
+    //  - Leaf with measureFunc: query measurer with MEASURE_MODE_MIN_CONTENT
+    //  - Container, main axis: padding + border + sum(children) + gap
+    //  - Container, cross axis: padding + border + max(children)
+    //  - Empty leaf: padding + border only
+    //
+    // CSS escape hatches (overflow != visible → 0; explicit minWidth=0 → 0;
+    // explicit definite size on a CHILD's parent-facing min → that size) are
+    // applied in `_getMinContentForParent`, used by the recursive walk above.
+    //
+    // The measureFunc branch is NOT folded into getMinContent because it
+    // wants the cross-axis CONSTRAINT (availCross) for height min-content
+    // of wrappable text — multi-line wrap height depends on the cross-axis
+    // available size. getMinContent uses Infinity/0 for the orthogonal
+    // axis, which is correct for the unconstrained "intrinsic min-content"
+    // definition, but layout-zero has more context.
+    //
+    // Specified-size cap: when the child has a definite main-axis size
+    // (width or height in points/percent), CSS bounds the auto-min by that
+    // value. Without the cap, a Box(width=20) with content-min=5 reports
+    // auto-min=5 — letting flex-shrink compress it past its declared size.
+    // The cap restores the user's "I want at least 20" intent while still
+    // allowing CSS-correct shrinkage for content-min items.
     if (autoMinNeedsContent) {
-      const flexBasisIsDefinite =
-        childStyle.flexBasis.unit === C.UNIT_POINT || childStyle.flexBasis.unit === C.UNIT_PERCENT
-      const sizeVal = isRow ? childStyle.width : childStyle.height
-      const sizeIsDefinite = sizeVal.unit === C.UNIT_POINT || sizeVal.unit === C.UNIT_PERCENT
       if (child.hasMeasureFunc()) {
-        // CSS §4.5 spec-correct min-content: ask the measurer directly for
-        // its content-based minimum. For non-wrappable text this equals
-        // naturalWidth (== max-content); for wrappable text this is the
-        // longest unbreakable word.
+        // CSS §4.5 spec-correct min-content for measureFunc leaves: ask the
+        // measurer directly. The cross axis carries the parent's available
+        // cross size so wrapped text reports a wrap-aware min-content.
         //
         // The MIN_CONTENT mode is a flexily-only extension — adapters and
-        // measurers that don't recognize it should fall through to AT_MOST
+        // measurers that don't recognize it fall through to AT_MOST
         // semantics (degrade to a conservative content-min). See the
         // constants.ts doc comment.
         const crossMargin = isRow ? cflex.marginT + cflex.marginB : cflex.marginL + cflex.marginR
@@ -627,42 +637,50 @@ function layoutNode(
           : C.MEASURE_MODE_MIN_CONTENT
         const measured = child.cachedMeasure(mW, mWMode, mH, mHMode)!
         contentMinSize = isRow ? measured.width : measured.height
-      } else if (!flexBasisIsDefinite && !sizeIsDefinite) {
-        // No measureFunc, auto flex-basis: baseSize already came from
-        // intrinsic content (recursive measure or padding+border). Reuse
-        // as content-min — true min-content for containers without a
-        // measureFunc is approximated by the recursive layout result.
-        contentMinSize = baseSize
-      } else if (child.children.length > 0) {
-        // Container with children: use baseSize (= max-content from the
-        // flex-basis-auto recursive path) as the content-based-min proxy.
-        // True min-content would require an additional recursive layout pass
-        // at main-axis = 0, but `measureNode` doesn't reliably emulate that
-        // (it forces inner content to 0 height, returning 0 for column
-        // layouts with Text descendants — which collapses scroll-container
-        // items). max-content is a safe upper bound; items keep their
-        // natural size as the auto-min floor. Treating row-wrappable
-        // recursive content as min-content is a remaining gap; in practice
-        // recursive containers tend to have measureFunc descendants whose
-        // own auto-min uses true min-content via the measureFunc branch.
-        contentMinSize = baseSize
       } else {
-        // Empty leaf with definite size: content-based minimum is just
-        // padding+border. baseSize is the flex-basis/explicit size value
-        // (definite, by the outer gate), so re-derive padding+border
-        // explicitly so contentMinSize doesn't inherit a too-large size.
-        const parentWidth = isRow ? mainAxisSize : crossAxisSize
-        const childPadding = isRow
-          ? resolveEdgeValue(childStyle.padding, 0, childStyle.flexDirection, parentWidth, direction) +
-            resolveEdgeValue(childStyle.padding, 2, childStyle.flexDirection, parentWidth, direction)
-          : resolveEdgeValue(childStyle.padding, 1, childStyle.flexDirection, parentWidth, direction) +
-            resolveEdgeValue(childStyle.padding, 3, childStyle.flexDirection, parentWidth, direction)
-        const childBorder = isRow
-          ? resolveEdgeBorderValue(childStyle.border, 0, childStyle.flexDirection, direction) +
-            resolveEdgeBorderValue(childStyle.border, 2, childStyle.flexDirection, direction)
-          : resolveEdgeBorderValue(childStyle.border, 1, childStyle.flexDirection, direction) +
-            resolveEdgeBorderValue(childStyle.border, 3, childStyle.flexDirection, direction)
-        contentMinSize = childPadding + childBorder
+        // Container or empty leaf: query the recursive Node.getMinContent.
+        // Pass parent's containing-block size (mainAxisSize for row direction
+        // queries on the main axis; crossAxisSize for orthogonal) so percent
+        // padding/minWidth on the child resolve against the right context.
+        const containingBlock = isRow ? mainAxisSize : crossAxisSize
+        contentMinSize = child.getMinContent(
+          isRow ? C.FLEX_DIRECTION_ROW : C.FLEX_DIRECTION_COLUMN,
+          containingBlock,
+        )
+
+        // CSS §4.5 specified-size suggestion: auto-min is bounded ABOVE by
+        // any definite specified-size (flex-basis or main-axis size). When
+        // a consumer sets `flexBasis: 0` on a flex item (canonical CSS
+        // pattern for "this item carries no inherent main-axis size"), the
+        // auto-min must collapse to 0 — otherwise content-min of e.g. a
+        // <Fill> child (a long repeated-text string clipped to fit) would
+        // push the row well past its allocated width and force siblings
+        // off-screen. Same intent for an explicit `width: 0` / `height: 0`.
+        //
+        // Spec wording: auto-min = min(content-suggestion, specified-size-
+        // suggestion, transferred-size-suggestion). The specified-size
+        // suggestion for a flex item with definite flex-basis is the
+        // flex-basis value; for items with auto flex-basis but a definite
+        // main-axis size, it's that size. For auto flex-basis + auto size,
+        // the specified-size suggestion is "infinity" (no cap).
+        let specifiedSize = Infinity
+        if (childStyle.flexBasis.unit === C.UNIT_POINT) {
+          specifiedSize = childStyle.flexBasis.value
+        } else if (childStyle.flexBasis.unit === C.UNIT_PERCENT && !Number.isNaN(mainAxisSize)) {
+          specifiedSize = mainAxisSize * (childStyle.flexBasis.value / 100)
+        } else if (childStyle.flexBasis.unit === C.UNIT_AUTO || childStyle.flexBasis.unit === C.UNIT_UNDEFINED) {
+          // flex-basis: auto → use main-axis size
+          const sizeVal = isRow ? childStyle.width : childStyle.height
+          if (sizeVal.unit === C.UNIT_POINT) {
+            specifiedSize = sizeVal.value
+          } else if (sizeVal.unit === C.UNIT_PERCENT && !Number.isNaN(mainAxisSize)) {
+            specifiedSize = mainAxisSize * (sizeVal.value / 100)
+          }
+          // else: auto/undef size + auto flex-basis → no cap (infinity)
+        }
+        if (specifiedSize !== Infinity) {
+          contentMinSize = Math.min(contentMinSize, specifiedSize)
+        }
       }
 
       // Aspect-ratio transferred-size suggestion (CSS §4.5 + CSS Sizing 4):

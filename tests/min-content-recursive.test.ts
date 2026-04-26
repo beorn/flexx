@@ -215,6 +215,48 @@ describe("recursive min-content (Node.getMinContent)", () => {
     })
   })
 
+  describe("layout-zero contract: Box(wrap-Text) lays out identically to wrap-Text alone", () => {
+    test("row constrained narrower than max-content: Box doesn't pin sibling off-screen", () => {
+      // Reference: bare wrap-Text in a constrained row
+      const ref = Node.create({ defaults: "css" })
+      ref.setFlexDirection(FLEX_DIRECTION_ROW)
+      ref.setWidth(10)
+      const refText = Node.create({ defaults: "css" })
+      refText.setMeasureFunc(makeWrapTextMeasurer("alpha beta gamma delta"))
+      ref.insertChild(refText, 0)
+      const refSibling = Node.create({ defaults: "css" })
+      refSibling.setFlexShrink(0)
+      refSibling.setMeasureFunc(() => ({ width: 3, height: 1 }))
+      ref.insertChild(refSibling, 1)
+      ref.calculateLayout(10, 10, DIRECTION_LTR)
+
+      // Test: same wrap-Text wrapped in a Box
+      const test = Node.create({ defaults: "css" })
+      test.setFlexDirection(FLEX_DIRECTION_ROW)
+      test.setWidth(10)
+      const testBox = Node.create({ defaults: "css" })
+      testBox.setFlexDirection(FLEX_DIRECTION_ROW)
+      const testText = Node.create({ defaults: "css" })
+      testText.setMeasureFunc(makeWrapTextMeasurer("alpha beta gamma delta"))
+      testBox.insertChild(testText, 0)
+      test.insertChild(testBox, 0)
+      const testSibling = Node.create({ defaults: "css" })
+      testSibling.setFlexShrink(0)
+      testSibling.setMeasureFunc(() => ({ width: 3, height: 1 }))
+      test.insertChild(testSibling, 1)
+      test.calculateLayout(10, 10, DIRECTION_LTR)
+
+      // Sibling stays at 3 wide on both — recursive min-content lets the
+      // Box-wrapped Text shrink the same way bare Text does.
+      expect(testSibling.getComputedWidth()).toBe(3)
+      expect(testSibling.getComputedWidth()).toBe(refSibling.getComputedWidth())
+
+      // Text gets the same width inside the Box as it does bare
+      // (Box adds no padding/border, so its content box == its outer box)
+      expect(testText.getComputedWidth()).toBe(refText.getComputedWidth())
+    })
+  })
+
   describe("cache invalidation", () => {
     test("markDirty clears min-content cache", () => {
       const node = Node.create()
