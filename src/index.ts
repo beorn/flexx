@@ -114,6 +114,7 @@ export {
   MEASURE_MODE_UNDEFINED,
   MEASURE_MODE_EXACTLY,
   MEASURE_MODE_AT_MOST,
+  MEASURE_MODE_MIN_CONTENT,
   // Unit (internal, but exported for advanced use)
   UNIT_UNDEFINED,
   UNIT_POINT,

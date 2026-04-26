@@ -71,9 +71,20 @@ export const DIRECTION_LTR = 1
 export const DIRECTION_RTL = 2
 
 // Measure Mode (for measureFunc)
+//
+// Yoga-compatible modes (UNDEFINED/AT_MOST/EXACTLY) are stable. MIN_CONTENT
+// is a flexily-only extension used by CSS §4.5 auto-min-size derivation —
+// when the layout engine asks "what is your content-based minimum?" the
+// measurer reports CSS min-content (longest unbreakable token for
+// wrappable text; natural width for non-wrappable). Adapters that bridge
+// flexily to other engines should translate MIN_CONTENT to AT_MOST with
+// width=0 (or fail soft and return AT_MOST behavior) — measurers that
+// don't know about MIN_CONTENT will degrade to over-conservative sizes
+// rather than crash.
 export const MEASURE_MODE_UNDEFINED = 0
 export const MEASURE_MODE_EXACTLY = 1
 export const MEASURE_MODE_AT_MOST = 2
+export const MEASURE_MODE_MIN_CONTENT = 3
 
 // Unit (for internal use)
 export const UNIT_UNDEFINED = 0
