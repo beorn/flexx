@@ -152,22 +152,6 @@ describe("silvercode gutter-collapse repro", () => {
 
     root.calculateLayout(20, 20, DIRECTION_LTR)
 
-    console.log(
-      `gutter: width=${gutter.getComputedWidth()}, height=${gutter.getComputedHeight()}, x=${gutter.getComputedLeft()}`,
-    )
-    console.log(
-      `list: width=${list.getComputedWidth()}, height=${list.getComputedHeight()}, x=${list.getComputedLeft()}`,
-    )
-    console.log(`gutter.minContentRow=${gutter.getMinContent(FLEX_DIRECTION_ROW, 20)}`)
-    console.log(`list.minContentRow=${list.getMinContent(FLEX_DIRECTION_ROW, 20)}`)
-    console.log(`root.minContentRow=${root.getMinContent(FLEX_DIRECTION_ROW, 20)}`)
-    // Inspect each list child:
-    for (let i = 0; i < list.children.length; i++) {
-      const c = list.children[i]!
-      console.log(
-        `  list[${i}]: width=${c.getComputedWidth()}, x=${c.getComputedLeft()}, minContentRow=${c.getMinContent(FLEX_DIRECTION_ROW, 19)}`,
-      )
-    }
     expect(gutter.getComputedWidth()).toBe(1)
   })
 
@@ -195,8 +179,6 @@ describe("silvercode gutter-collapse repro", () => {
     root.insertChild(sib, 1)
 
     root.calculateLayout(10, 5, DIRECTION_LTR)
-    console.log(`MINIMAL gutter: width=${gutter.getComputedWidth()}`)
-    console.log(`MINIMAL sib: width=${sib.getComputedWidth()}`)
     expect(gutter.getComputedWidth()).toBe(1)
   })
 
