@@ -394,26 +394,33 @@ when auto-min applies (gating: `minVal.unit === UNIT_AUTO` + visible overflow
   call as the flex-basis-auto path re-derives content; the cache amortizes
   when both calls land on the same args.
 
-### Approximation note: max-content vs min-content
+### Hybrid min-content / max-content for `contentMinSize`
 
-`contentMinSize` uses **max-content** (= `baseSize` from the existing measure
-path) rather than spec-correct min-content. For non-wrappable content (truncate,
-clip, fixed-width), min-content == max-content so the rule is exact. For
-wrappable row text the rule is conservative — items don't shrink to longest-
-unbreakable-word width.
+For `measureFunc` nodes (Text and other leaf measurers), `contentMinSize`
+queries the measurer via `MEASURE_MODE_MIN_CONTENT` — spec-correct CSS
+min-content (longest-unbreakable-word for wrappable text; `naturalWidth`
+for non-wrappable). The non-wrappable case is exact (min-content ==
+max-content == naturalWidth); the wrappable case shrinks rows down to
+the longest token, matching browser flexbox behaviour.
 
-This is intentional. Switching to true min-content (mW=0 AT_MOST for measureFunc)
-is one-line in code but causes layout regressions in row-direction prose
-dashboards: padded-text columns (PID/NAME/CPU%/STATUS/...) start collapsing to
-longest-word width when the row is squeezed, breaking column alignment that the
-component author expected to be rigid.
+For nodes-with-children (recursive containers), `contentMinSize` falls
+back to `baseSize` (max-content from the recursive layout pass) — true
+min-content there would require an extra recursive layout pass at
+main-axis = 0 that `measureNode` can't reliably emulate (it forces inner
+content to 0 height, returning 0 for column layouts with Text descendants).
+This is a remaining gap; in practice recursive containers usually have
+measureFunc descendants whose own auto-min uses true min-content via the
+measureFunc branch above.
 
-The chosen approximation aligns with the natural-width-of-padded-columns idiom
-common in TUI dashboards. Consumers wanting wrap-text to shrink to its longest-
-word width can opt in with `setOverflow(HIDDEN)` (forces auto-min = 0 via the
-CSS §4.5 container-side rule) or explicit `setMinWidth(0)` (canonical CSS
-escape hatch). Aspect-ratio + definite cross-axis is folded in via the
-transferred-size suggestion clamp.
+Practical consequence: a Box wrapping a `<Text wrap="wrap">` inherits
+max-content as its auto-min — the Box reserves natural width and the
+row can't shrink past it. If that pins a row's siblings off-screen,
+add `setMinWidth(0)` on the wrapping Box (canonical CSS escape hatch)
+or `setOverflow(HIDDEN)` (forces auto-min = 0 via the CSS §4.5
+container-side rule).
+
+Aspect-ratio + definite cross-axis is folded in via the transferred-size
+suggestion clamp.
 
 ### `UNIT_AUTO` semantics outside flex-item-main
 
