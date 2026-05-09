@@ -18,6 +18,10 @@ jobs:
           bun-version: latest
       - run: bun install
       - run: bun test
+      - run: bun run build
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -29,12 +33,17 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           if npm view $NAME@$VERSION version 2>/dev/null; then
             echo "skip=true" >> $GITHUB_OUTPUT
-            echo "$NAME@$VERSION already published, skipping npm publish"
+            echo "$NAME@$VERSION already published, skipping pnpm publish"
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
       - if: steps.check.outputs.skip != 'true'
-        run: npm publish --access public
+        # pnpm publish (NOT npm publish) — npm doesn't apply publishConfig.exports
+        # overrides; pnpm does. flexily's package.json keeps `exports` pointing
+        # to ./src/* for local dev (Bun workspace) and `publishConfig.exports`
+        # to ./dist/* for npm consumers; pnpm publish applies the override.
+        # See vendor/CLAUDE.md "npm Publishing" section for the canonical pattern.
+        run: pnpm publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Create GitHub Release
