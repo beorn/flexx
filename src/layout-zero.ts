@@ -2285,16 +2285,28 @@ function layoutNode(
 
     // Determine child width
     // - If both left and right set with auto width: stretch to fill
-    // - If auto width but NOT both left and right: shrink to intrinsic (NaN)
+    // - If auto width (or fit-content/snug-content with no opposite edge):
+    //   shrink to intrinsic (NaN). fit-content treated as auto here so its
+    //   Phase 9 shrink-wrap measures the children's max-content width — when
+    //   the parent constrains the available width to `contentW` first, the
+    //   inner shrink-wrap clamps to that smaller bound and we never see the
+    //   true max-content. Used by AutoFit's off-screen phantom.
     // - For percentage width: resolve against content box
-    // - Otherwise (explicit width): use available width as constraint
+    // - Otherwise (explicit pixel width): use available width as constraint
     let childAvailWidth: number
     const widthIsAuto = childStyle.width.unit === C.UNIT_AUTO || childStyle.width.unit === C.UNIT_UNDEFINED
+    const widthIsFit = childStyle.width.unit === C.UNIT_FIT_CONTENT || childStyle.width.unit === C.UNIT_SNUG_CONTENT
     const widthIsPercent = childStyle.width.unit === C.UNIT_PERCENT
     if (widthIsAuto && hasLeft && hasRight) {
       childAvailWidth = contentW - leftOffset - rightOffset - childMarginLeft - childMarginRight
     } else if (widthIsAuto) {
       childAvailWidth = NaN // Shrink to intrinsic size
+    } else if (widthIsFit && !(hasLeft && hasRight)) {
+      // fit-content without opposing horizontal anchors: behave like auto so
+      // Phase 9 fit-content shrink-wrap can measure children at unconstrained
+      // (max-content) width. With both anchors set, fit-content still clamps
+      // to the available distance between anchors.
+      childAvailWidth = NaN
     } else if (widthIsPercent) {
       // Percentage widths resolve against content box (inside padding)
       childAvailWidth = absContentBoxW
