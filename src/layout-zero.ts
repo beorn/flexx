@@ -229,7 +229,46 @@ function layoutNode(
 
   let nodeWidth: number
   const isFitContentWidth = style.width.unit === C.UNIT_FIT_CONTENT || style.width.unit === C.UNIT_SNUG_CONTENT
-  if (style.width.unit === C.UNIT_POINT) {
+
+  // A0.2: fit-width lanes take precedence over width/percent/auto. Algorithm:
+  //   1. Measure children's max-content unconstrained
+  //   2. Resolve each lane (POINT plain, CQI/CQMIN against ownQueryInlineSize)
+  //   3. Pick smallest resolved lane >= max-content, else last (typically largest)
+  //   4. Use that as nodeWidth (still subject to applyMinMax below)
+  // Single pass: max-content is pre-measured via measureNode (intrinsic-only),
+  // then the actual child layout in Phase 8 lays them out within the selected lane.
+  if (style.fitWidth !== undefined && style.fitWidth.length > 0) {
+    let maxContent = 0
+    for (const child of node.children) {
+      measureNode(child, NaN, NaN, direction)
+      maxContent += child.layout.width
+    }
+    // Add gaps + padding + border. gap[0] is column gap (row layout's between-children).
+    const isRowLayout =
+      style.flexDirection === C.FLEX_DIRECTION_ROW ||
+      style.flexDirection === C.FLEX_DIRECTION_ROW_REVERSE
+    const gap = isRowLayout ? style.gap[0] : 0
+    if (node.children.length > 1 && gap > 0) {
+      maxContent += gap * (node.children.length - 1)
+    }
+    maxContent += paddingLeft + paddingRight + borderLeft + borderRight
+
+    let smallestFit = Infinity
+    let smallestFitValue = NaN
+    for (const lane of style.fitWidth) {
+      const resolved = resolveValue(lane, availableWidth, ownQueryInlineSize)
+      if (resolved >= maxContent && resolved < smallestFit) {
+        smallestFit = resolved
+        smallestFitValue = resolved
+      }
+    }
+    if (Number.isNaN(smallestFitValue)) {
+      // No lane fits — pick the last entry (largest, by convention)
+      const lastLane = style.fitWidth[style.fitWidth.length - 1]!
+      smallestFitValue = resolveValue(lastLane, availableWidth, ownQueryInlineSize)
+    }
+    nodeWidth = smallestFitValue
+  } else if (style.width.unit === C.UNIT_POINT) {
     nodeWidth = style.width.value
   } else if (style.width.unit === C.UNIT_PERCENT) {
     // Percentage against NaN (auto-sized parent) resolves to 0 via resolveValue
@@ -2064,12 +2103,15 @@ function layoutNode(
     // child sizes feeding back into its own size would oscillate when a CQ
     // branch flip changed child size.
     const containsInlineSize = style.containSize && style.containerType !== C.CONTAINER_TYPE_NORMAL
+    // A0.2: fit-width pre-selected the inline-size — don't shrink-wrap over it.
+    const hasFitWidth = style.fitWidth !== undefined && style.fitWidth.length > 0
     if (
       isRow &&
       style.width.unit !== C.UNIT_POINT &&
       style.width.unit !== C.UNIT_PERCENT &&
       !hasAR &&
-      !containsInlineSize
+      !containsInlineSize &&
+      !hasFitWidth
     ) {
       // Auto-width row: shrink-wrap to content
       nodeWidth = actualUsedMain + innerLeft + innerRight
@@ -2124,7 +2166,8 @@ function layoutNode(
       style.width.unit !== C.UNIT_PERCENT &&
       Number.isNaN(availableWidth) &&
       !hasAR &&
-      !containsInlineSize
+      !containsInlineSize &&
+      !hasFitWidth
     ) {
       // Auto-width column: shrink-wrap to total cross size (accounts for multi-line)
       // — also gated by containSize on the inline-axis (here inline === width === cross).

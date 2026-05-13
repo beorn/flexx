@@ -205,6 +205,16 @@ export interface Style {
   // oscillation). Phase 1 implements inline-size containment only (paired with
   // containerType: inline-size).
   containSize: boolean
+
+  // fit-width lanes (A0.2). CSS precedent: `width: fit-content(<length>)`
+  // extended to a list. Used by silvery's `<Box fitWidth={[80, 120, "100cqi"]}>`
+  // to snap a Box's inline-size to the smallest lane that still fits its
+  // max-content children. Replaces the React-side `<AutoFit>` primitive.
+  //
+  // `undefined` means "no fit-width selection"; non-empty array activates the
+  // single-pass lane-select algorithm in `layoutNode`. Each Value is a length
+  // unit (UNIT_POINT for plain numbers, UNIT_CQI for cqi entries).
+  fitWidth: readonly Value[] | undefined
 }
 
 /**
@@ -263,5 +273,6 @@ export function createDefaultStyle(preset: DefaultsPreset = DEFAULT_PRESET): Sty
     overflow: 0, // OVERFLOW_VISIBLE (same in CSS and Yoga)
     containerType: 0, // CONTAINER_TYPE_NORMAL — not a CQ container by default (A0.1)
     containSize: false, // CSS contain: size — off by default (A0.1)
+    fitWidth: undefined, // fit-width lanes — disabled by default (A0.2)
   }
 }

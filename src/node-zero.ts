@@ -1761,6 +1761,33 @@ export class Node {
   }
 
   /**
+   * Set fit-width lanes for the single-pass lane-snap algorithm (A0.2).
+   *
+   * Accepts a list of width entries. Each entry is either a plain number
+   * (treated as UNIT_POINT) or a Value object with explicit unit (e.g.
+   * `{ value: 100, unit: UNIT_CQI }` for "100cqi").
+   *
+   * The layout algorithm measures children's max-content unconstrained, picks
+   * the smallest lane >= max-content (else the last entry — typically the
+   * largest if the array is sorted ascending), and sets the node's inline-size
+   * to that lane. Single pass, no React round-trip.
+   *
+   * Pass `undefined` or an empty array to disable fit-width selection.
+   *
+   * @param lanes - Width lanes (numbers or Value objects with unit)
+   */
+  setFitWidth(lanes: readonly (number | { value: number; unit: number })[] | undefined): void {
+    if (lanes === undefined || lanes.length === 0) {
+      this._style.fitWidth = undefined
+    } else {
+      this._style.fitWidth = lanes.map((entry) =>
+        typeof entry === "number" ? { value: entry, unit: C.UNIT_POINT } : entry,
+      )
+    }
+    this.markDirty()
+  }
+
+  /**
    * Get the node's frozen container-query inline-size from the most recent layout (A0.1).
    *
    * Populated by `layoutNode` during Pass 1 when `style.containerType ===
