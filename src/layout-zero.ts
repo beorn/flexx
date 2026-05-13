@@ -235,6 +235,32 @@ function layoutNode(
   // Apply min/max constraints (works even with NaN available for point-based constraints)
   nodeWidth = applyMinMax(nodeWidth, style.minWidth, style.maxWidth, availableWidth)
 
+  // ============================================================================
+  // PHASE 3a: Freeze container-query inline-size (A0.1 — Pass 1 of two-phase layout)
+  // ============================================================================
+  //
+  // If this node is declared as a CQ container (`container-type: inline-size`),
+  // freeze its inline-size NOW — before child layout recursion. Descendants will
+  // resolve `cqi`/`cqmin` against this frozen value during their own layoutNode
+  // pass (via `findContainerQuerySize`, lands with Pass 2).
+  //
+  // Why here: nodeWidth has been derived from parent's constraint + min/max,
+  // BEFORE any shrink-wrap from children's intrinsic sizes (Phase 9). This is
+  // the invariant the two-phase algorithm depends on — without it, CQ branch
+  // resolution could oscillate as child sizes feed back into container size.
+  //
+  // NaN nodeWidth (auto-sized, unconstrained) is propagated as-is. Combined
+  // with `containSize`, the dev-mode assertion fires; without `containSize`,
+  // resolveValue(cqi, _, NaN) returns 0, so the user sees collapsed cqi values.
+  // Either way, the surface is well-defined — silent oscillation is impossible.
+  if (style.containerType !== C.CONTAINER_TYPE_NORMAL) {
+    node._setFrozenQuerySize(nodeWidth)
+  } else {
+    // Not a CQ container — clear any stale freeze from prior layout passes when
+    // the user toggled containerType off. Cheap; no-op if already NaN.
+    node._setFrozenQuerySize(NaN)
+  }
+
   let nodeHeight: number
   if (style.height.unit === C.UNIT_POINT) {
     nodeHeight = style.height.value

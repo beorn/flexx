@@ -193,6 +193,11 @@ export interface Style {
 
   // Overflow
   overflow: number
+
+  // Container queries (A0.1) — declares this node as a CQ container.
+  // Phase 1 supports CONTAINER_TYPE_INLINE_SIZE; descendants' cqi/cqmin values
+  // resolve against this container's frozen inline-size from Pass 1.
+  containerType: number
 }
 
 /**
@@ -249,5 +254,6 @@ export function createDefaultStyle(preset: DefaultsPreset = DEFAULT_PRESET): Sty
     border: [0, 0, 0, 0, NaN, NaN],
     gap: [0, 0],
     overflow: 0, // OVERFLOW_VISIBLE (same in CSS and Yoga)
+    containerType: 0, // CONTAINER_TYPE_NORMAL — not a CQ container by default (A0.1)
   }
 }

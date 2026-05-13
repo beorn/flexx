@@ -165,6 +165,13 @@ export class Node {
     lastDir: 0,
   }
 
+  // Container-query freeze (A0.1 Pass 1) — populated during layoutNode when
+  // style.containerType === CONTAINER_TYPE_INLINE_SIZE. Holds the node's
+  // frozen inline-size, against which descendants' cqi/cqmin values resolve.
+  // NaN means "not a CQ container" — descendants walk up the parent chain to
+  // find the nearest ancestor with a finite _frozenQuerySize.
+  private _frozenQuerySize: number = NaN
+
   // Dirty flags
   private _isDirty = true
   private _hasNewLayout = false
@@ -1711,6 +1718,55 @@ export class Node {
   setOverflow(overflow: number): void {
     this._style.overflow = overflow
     this.markDirty()
+  }
+
+  // ============================================================================
+  // Container Queries (A0.1)
+  // ============================================================================
+
+  /**
+   * Declare this node as a container-query container (A0.1).
+   *
+   * When set to `CONTAINER_TYPE_INLINE_SIZE`, the layout engine freezes this
+   * node's inline-size during Pass 1 and uses it to resolve descendants'
+   * `cqi` / `cqmin` values. Combined with `setContainSize(true)` (forthcoming),
+   * the container's size is invariant under CQ branch flips.
+   *
+   * `CONTAINER_TYPE_NORMAL` (default) opts the node out.
+   *
+   * @param containerType - CONTAINER_TYPE_NORMAL or CONTAINER_TYPE_INLINE_SIZE
+   */
+  setContainerType(containerType: number): void {
+    this._style.containerType = containerType
+    this.markDirty()
+  }
+
+  /**
+   * Get the node's frozen container-query inline-size from the most recent layout (A0.1).
+   *
+   * Populated by `layoutNode` during Pass 1 when `style.containerType ===
+   * CONTAINER_TYPE_INLINE_SIZE`. Otherwise NaN.
+   *
+   * Descendants needing to resolve `cqi`/`cqmin` walk up via `findContainerQuerySize`
+   * (lands with Pass 2 consumption) — they should NOT read this directly off arbitrary
+   * ancestors; the walk picks the nearest finite value.
+   *
+   * @returns Frozen inline-size in points, or NaN if not a CQ container
+   */
+  getFrozenQuerySize(): number {
+    return this._frozenQuerySize
+  }
+
+  /**
+   * Internal: set the frozen query size during layout. Called by `layoutNode` Pass 1
+   * after the node's inline-size is computed but before child layout recursion.
+   *
+   * Public for the layout module; consumers should never call this directly.
+   *
+   * @internal
+   */
+  _setFrozenQuerySize(size: number): void {
+    this._frozenQuerySize = size
   }
 
   // ============================================================================

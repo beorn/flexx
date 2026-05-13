@@ -98,3 +98,9 @@ export const UNIT_SNUG_CONTENT = 5
 // cqmin in 1D (Phase 1) is identical to cqi — block-size resolution arrives in a later phase.
 export const UNIT_CQI = 6
 export const UNIT_CQMIN = 7
+
+// Container type (A0.1) — declares a node as a container-query container.
+// Maps to CSS `container-type`. Phase 1 supports `inline-size` only.
+// CSS `container-type: size` requires block-size containment too (Phase 2+).
+export const CONTAINER_TYPE_NORMAL = 0
+export const CONTAINER_TYPE_INLINE_SIZE = 1
