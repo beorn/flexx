@@ -79,6 +79,20 @@ export class Node {
   // See bead km-silvercode.layout-corrupt-during-stream-with-queue.
   private _flexShrinkExplicit: boolean = false
 
+  // [A0.0 spike] Container-query resolution callback. Invoked by layout-zero.ts
+  // between Phase 7b (alignContent applied) and Phase 8 (child layout recursion)
+  // when set on a parent node. Intended substrate for the engine-native CQ
+  // resolution work in Phase A0.1 of the responsive-layout reframe — the
+  // callback fires once per layoutNode pass at the moment the parent's box
+  // dimensions are frozen and child layout has not yet recursed.
+  //
+  // This is a NO-OP STUB in A0.0: present so the spike can validate the
+  // insertion-point invariants (no-op idempotency, mutation-propagates-to-child)
+  // without committing to a public CQ API surface. The shipping CQ API in A0.1
+  // will replace this with a structured `containerQueries`/`containerType`
+  // resolution that runs from the layout engine, not user-installed callbacks.
+  private _cqResolve: (() => void) | null = null
+
   // Min-content cache — two slots for the two flex axes. Populated lazily by
   // getMinContent(direction). Cleared in markDirty() alongside the measure +
   // layout caches. Uses -1 as the invalidation sentinel (NOT NaN — NaN is a
@@ -863,6 +877,79 @@ export class Node {
    */
   markLayoutSeen(): void {
     this._hasNewLayout = false
+  }
+
+  // ============================================================================
+  // [A0.0 spike] Container-query mutation hook
+  // ============================================================================
+  //
+  // **Status**: experimental, A0.0 spike scaffolding. Not part of the public
+  // Yoga-compatible API. The shape will be replaced in A0.1 by an
+  // engine-driven container-query resolution; the spike's job is to validate
+  // that the **insertion point** (between Phase 7b and Phase 8 of layoutNode)
+  // is sound — no-op idempotency and mutation-propagation-to-child layout.
+  //
+  // See `hub/silvery/diagnosis/flexily-two-phase-feasibility.md` for the
+  // verdict report and `@km/silvery/responsive-layout-architecture-reframe`
+  // for the dragon bead.
+
+  /**
+   * Register a callback fired between Phase 7b (alignContent) and Phase 8
+   * (child layout recursion). The callback runs once per `layoutNode` call
+   * on this node; it's the canonical opportunity to mutate child styles
+   * before children are recursively laid out, with the parent's frozen
+   * "query size" already computed.
+   *
+   * Pass `null` to clear.
+   *
+   * @internal A0.0 spike surface — will be replaced by engine-native CQ in A0.1.
+   */
+  setContainerQueryResolver(callback: (() => void) | null): void {
+    this._cqResolve = callback
+  }
+
+  /** @internal A0.0 spike — invoked by `layout-zero.ts` only. */
+  get cqResolve(): (() => void) | null {
+    return this._cqResolve
+  }
+
+  /**
+   * Shallow-merge a `Partial<Style>` over this node's style and mark dirty.
+   * Intended for use inside a `setContainerQueryResolver` callback, where the
+   * containing parent has just frozen its query size and the engine is about
+   * to recurse into child layout.
+   *
+   * Mutation paths:
+   *  - Empty overrides → no-op (no `markDirty`, no allocation).
+   *  - Single-key common cases (padding/margin) — preserves edge-array identity
+   *    (caller is responsible for passing a fresh edge tuple when needed).
+   *  - Caller passes ONLY the fields they want changed. Untouched fields keep
+   *    their current values.
+   *
+   * **Important**: this is a thin pass-through onto `_style`. It does NOT call
+   * the regular `setX()` setters individually; those exist for ergonomics and
+   * also call `markDirty()`. For the spike, we want a single `markDirty()`
+   * regardless of how many keys are mutated, so we touch `_style` directly
+   * then dirty once.
+   *
+   * @internal A0.0 spike surface — will be replaced by engine-native CQ in A0.1.
+   */
+  setContainerQueryStyle(overrides: Partial<Style>): void {
+    let touched = false
+    // Object.entries is fine here — this is a slow/cold path called at most
+    // once per layoutNode pass on CQ-active nodes; the hot path is layout-zero
+    // itself, not this mutator.
+    for (const key of Object.keys(overrides) as (keyof Style)[]) {
+      const v = overrides[key]
+      if (v === undefined) continue
+      // Type-erased write — the Partial<Style> shape guarantees v matches the
+      // field type. Cast is local to this assignment.
+      ;(this._style as unknown as Record<string, unknown>)[key as string] = v
+      touched = true
+    }
+    if (touched) {
+      this.markDirty()
+    }
   }
 
   // ============================================================================

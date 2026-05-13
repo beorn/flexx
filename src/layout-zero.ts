@@ -1316,6 +1316,31 @@ function layoutNode(
     }
 
     // -----------------------------------------------------------------------
+    // [A0.0 spike] Container-query resolution hook
+    // -----------------------------------------------------------------------
+    // Fires between Phase 7b and Phase 8: parent's box dimensions are frozen,
+    // line data is preserved against recursive corruption, but children have
+    // NOT been recursively laid out yet. This is the canonical opportunity
+    // for engine-native CQ resolution (Phase A0.1 of the responsive-layout
+    // reframe) to mutate child styles based on the parent's frozen size.
+    //
+    // The callback runs at most once per layoutNode pass. It typically calls
+    // `child.setContainerQueryStyle({ ... })` on one or more children; that
+    // call dirties the child and propagates up to this node — which is OK
+    // because we already past the fingerprint check for this pass (line 160).
+    // The subsequent Phase 8 recursion (`layoutNode(child, ...)`) re-runs the
+    // dirty child fresh with the mutated style.
+    //
+    // No-op semantics: an unset / null callback is a zero-overhead pass-through.
+    // A callback that doesn't mutate anything (`setContainerQueryStyle({})`)
+    // also performs no work — `markDirty()` is skipped on the empty-overrides
+    // path. This means installing the hook is safe in non-CQ trees without
+    // measurable cost.
+    if (node.cqResolve !== null) {
+      node.cqResolve()
+    }
+
+    // -----------------------------------------------------------------------
     // PHASE 8: Position and Layout Children
     // -----------------------------------------------------------------------
     // Calculate each child's position in the container.
