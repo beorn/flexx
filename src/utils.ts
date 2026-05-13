@@ -5,6 +5,7 @@
  */
 
 import * as C from "./constants.js"
+import type { Node } from "./node-zero.js"
 import type { Value } from "./types.js"
 
 // ============================================================================
@@ -157,6 +158,30 @@ export function getEdgeBorderValue(arr: [number, number, number, number, number,
     default:
       return arr[0] // Default to left
   }
+}
+
+/**
+ * Walk up the parent chain from `node`, return the nearest ancestor's frozen
+ * container-query inline-size (set by Pass 1 of layoutNode). NaN if no CQ ancestor.
+ *
+ * Used at resolveValue call sites for cqi/cqmin units (A0.1 Pass 2 consumption).
+ * The walk skips `node` itself — a CQ container's OWN width/height/padding values
+ * resolve against its PARENT's queryInlineSize (the container is the queried
+ * subject, not the query target). This matches CSS where `container-type: inline-size`
+ * + `width: 50cqi` would create a self-referential cycle; CSS resolves this by
+ * defining `cqi` against the *parent* containment context.
+ *
+ * O(tree depth). Acceptable since (a) trees in terminal UIs are shallow and
+ * (b) cqi resolutions are rare per layout pass.
+ */
+export function findContainerQuerySize(node: Node): number {
+  let cur: Node | null = node.getParent()
+  while (cur !== null) {
+    const size = cur.getFrozenQuerySize()
+    if (!Number.isNaN(size)) return size
+    cur = cur.getParent()
+  }
+  return NaN
 }
 
 /**
