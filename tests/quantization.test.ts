@@ -59,8 +59,8 @@ describe("[A0.1] largestRemainder", () => {
     const sum = weights.reduce((a, b) => a + b, 0)
     const result = largestRemainder(weights, total)
     for (let i = 0; i < weights.length; i++) {
-      const lower = Math.floor((total * weights[i]) / sum)
-      expect(result[i]).toBeGreaterThanOrEqual(lower)
+      const lower = Math.floor((total * (weights[i] ?? 0)) / sum)
+      expect(result[i] ?? 0).toBeGreaterThanOrEqual(lower)
     }
   })
 
@@ -70,8 +70,8 @@ describe("[A0.1] largestRemainder", () => {
     const sum = weights.reduce((a, b) => a + b, 0)
     const result = largestRemainder(weights, total)
     for (let i = 0; i < weights.length; i++) {
-      const upper = Math.ceil((total * weights[i]) / sum)
-      expect(result[i]).toBeLessThanOrEqual(upper)
+      const upper = Math.ceil((total * (weights[i] ?? 0)) / sum)
+      expect(result[i] ?? 0).toBeLessThanOrEqual(upper)
     }
   })
 
@@ -83,7 +83,7 @@ describe("[A0.1] largestRemainder", () => {
       let diffPositive = 0
       let diffOther = 0
       for (let i = 0; i < weights.length; i++) {
-        const d = b[i] - a[i]
+        const d = (b[i] ?? 0) - (a[i] ?? 0)
         if (d === 1) diffPositive += 1
         else if (d !== 0) diffOther += 1
       }
@@ -110,9 +110,9 @@ describe("[A0.1] largestRemainder", () => {
     // Bounds: each within ±1 of exact share.
     const sum = w.reduce((a, b) => a + b, 0)
     for (let i = 0; i < w.length; i++) {
-      const exact = (100 * w[i]) / sum
-      expect(result[i]).toBeGreaterThanOrEqual(Math.floor(exact))
-      expect(result[i]).toBeLessThanOrEqual(Math.ceil(exact))
+      const exact = (100 * (w[i] ?? 0)) / sum
+      expect(result[i] ?? 0).toBeGreaterThanOrEqual(Math.floor(exact))
+      expect(result[i] ?? 0).toBeLessThanOrEqual(Math.ceil(exact))
     }
   })
 

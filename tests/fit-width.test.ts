@@ -97,8 +97,8 @@ describe("[A0.2] fitWidth lane selection", () => {
     const flex = createFlexily()
     const box = flex.createNode()
     box.setFitWidth([80, 120, 160])
-    box.setPadding(C.EDGE_LEFT, 10, C.UNIT_POINT)
-    box.setPadding(C.EDGE_RIGHT, 10, C.UNIT_POINT)
+    box.setPadding(C.EDGE_LEFT, 10)
+    box.setPadding(C.EDGE_RIGHT, 10)
 
     const child = flex.createNode()
     child.setWidth(100) // child max-content

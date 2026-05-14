@@ -62,7 +62,7 @@ export function largestRemainder(weights: readonly number[], total: number): num
   }
 
   let sum = 0
-  for (let i = 0; i < n; i++) sum += weights[i]
+  for (let i = 0; i < n; i++) sum += weights[i] ?? 0
 
   if (sum <= 0) {
     const zeros = new Array<number>(n)
@@ -78,7 +78,7 @@ export function largestRemainder(weights: readonly number[], total: number): num
   const pairs: Array<{ index: number; remainder: number }> = new Array(n)
 
   for (let i = 0; i < n; i++) {
-    const raw = (T * weights[i]) / sum
+    const raw = (T * (weights[i] ?? 0)) / sum
     const floor = Math.floor(raw)
     result[i] = floor
     allocated += floor
@@ -96,7 +96,9 @@ export function largestRemainder(weights: readonly number[], total: number): num
     })
 
     for (let i = 0; i < n && leftover > 0; i++) {
-      result[pairs[i].index] += 1
+      const pair = pairs[i]
+      if (!pair) continue
+      result[pair.index] = (result[pair.index] ?? 0) + 1
       leftover -= 1
     }
   }
