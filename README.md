@@ -5,6 +5,8 @@
 
 **Pure JavaScript flexbox layout engine with Yoga-compatible API.**
 
+![Flexily layout output rendered in a terminal](docs/public/screenshots/layout-output.svg)
+
 **Composable API** (recommended):
 
 ```typescript
