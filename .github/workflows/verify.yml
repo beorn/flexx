@@ -20,6 +20,16 @@ jobs:
       - run: npm install -g pnpm
       - run: bun install
 
+      - name: Verify publishable (tarball assertion)
+        # Fast deterministic check before the slower pack+install+import
+        # roundtrip below. Asserts no .ts source files in tarball + every
+        # exports[*] leaf points at ./dist/. Catches publishConfig.exports
+        # regressions even if the pack+install path happens to succeed.
+        # Owned by @km/flexily/14343-publish-guard.
+        run: |
+          bun run build
+          bun scripts/verify-publishable.ts
+
       - name: Build and verify
         run: |
           set -e

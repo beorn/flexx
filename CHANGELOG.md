@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-05-18
+
+### Added
+
+- **Pre-publish guard** (`scripts/verify-publishable.ts`): packs the
+  package with `pnpm pack` and asserts (a) no TypeScript source files in
+  the tarball, (b) every `exports[*]` leaf points at `./dist/`, (c)
+  `dist/` is non-empty. Wired into both `release.yml` (immediately before
+  `pnpm publish`) and `verify.yml` (every push to `main` + every PR), so
+  regressions of the 0.7.0 broken-exports class are caught BEFORE a
+  release tag rides them out. Local invocation:
+  `bun scripts/verify-publishable.ts`. Tracking:
+  `@km/flexily/14343-publish-guard`.
+
+### Fixed
+
+- No source / behavior changes from 0.7.1 — pure release-pipeline
+  hardening.
+
 ## [0.7.1] - 2026-05-09
 
 ### Fixed

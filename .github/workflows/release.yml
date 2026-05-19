@@ -26,6 +26,13 @@ jobs:
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
+      - name: Verify publishable (tarball assertion)
+        # Pre-publish guard: pnpm pack + assert no .ts source files in
+        # the tarball AND every exports[*] leaf points at ./dist/. Catches
+        # removing publishConfig.exports, switching back to npm publish,
+        # and shipping without bun run build. Owned by
+        # @km/flexily/14343-publish-guard.
+        run: bun scripts/verify-publishable.ts
       - name: Check if version already published
         id: check
         run: |
